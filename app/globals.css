@@ -1,0 +1,750 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: #082033;
+  background:
+    radial-gradient(circle at top left, rgba(17, 109, 157, 0.12), transparent 32rem),
+    linear-gradient(180deg, #f8fbfd 0%, #ffffff 44%, #eef5f8 100%);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  main > section,
+  main > div,
+  .premium-card {
+    animation: editorial-rise 720ms ease both;
+  }
+}
+
+@keyframes editorial-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(216, 226, 234, 0.9);
+  backdrop-filter: blur(22px);
+}
+
+.hero-grid {
+  background:
+    radial-gradient(circle at 82% 18%, rgba(216, 226, 234, 0.56), transparent 20rem),
+    radial-gradient(circle at 12% 82%, rgba(17, 109, 157, 0.08), transparent 24rem),
+    linear-gradient(180deg, #fbfdfe 0%, #ffffff 58%, #f4f8fa 100%);
+}
+
+.premium-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(216, 226, 234, 0.82);
+  box-shadow: 0 20px 60px rgba(8, 32, 51, 0.08);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms ease, border-color 420ms ease, background 420ms ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(17, 109, 157, 0.26);
+  box-shadow: 0 28px 80px rgba(8, 32, 51, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.specialty-flow {
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.92), transparent 22rem),
+    radial-gradient(circle at 86% 32%, rgba(17, 109, 157, 0.12), transparent 28rem),
+    radial-gradient(circle at 18% 68%, rgba(148, 163, 184, 0.16), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0%, #eef7fb 24%, #f7fafc 48%, #edf5f2 72%, #ffffff 100%);
+}
+
+.specialty-flow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(17, 109, 157, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 109, 157, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, transparent 0%, black 14%, black 82%, transparent 100%);
+}
+
+.specialty-flow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(238, 247, 251, 0.9)),
+    var(--specialty-photo),
+    url("/doctor-diagnosis.jpg"),
+    url("/clinic-consultation.jpg");
+  background-position:
+    center,
+    var(--specialty-position, center top),
+    center 44%,
+    center 88%;
+  background-size:
+    cover,
+    100% 36rem,
+    100% 38rem,
+    100% 36rem;
+  background-repeat: no-repeat;
+  opacity: 0.34;
+  filter: saturate(0.8) contrast(0.95);
+}
+
+.specialty-flow > .mx-auto {
+  position: relative;
+  z-index: 1;
+}
+
+.specialty-content {
+  align-items: start;
+}
+
+.specialty-card-grid > .premium-card:nth-child(3n + 2) {
+  transform: translateY(1.15rem);
+}
+
+.specialty-card-grid > .premium-card:nth-child(3n + 2):hover {
+  transform: translateY(0.55rem);
+}
+
+.specialty-card-grid > .premium-card:nth-child(3n) {
+  transform: translateY(2.25rem);
+}
+
+.specialty-card-grid > .premium-card:nth-child(3n):hover {
+  transform: translateY(1.65rem);
+}
+
+.specialty-motion-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.specialty-motion-card > *:not(.specialty-card-photo) {
+  position: relative;
+  z-index: 1;
+}
+
+.specialty-card-photo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.93)), var(--card-photo);
+  background-position: var(--card-position, center);
+  background-size: cover;
+  transform: scale(1.08) translateY(8px);
+  transition: opacity 460ms ease, transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.specialty-motion-card:hover .specialty-card-photo,
+.specialty-motion-card:focus-visible .specialty-card-photo {
+  opacity: 1;
+  transform: scale(1.02) translateY(0);
+}
+
+.specialty-preview {
+  position: relative;
+  position: sticky;
+  top: 6rem;
+  z-index: 1;
+  min-height: 24rem;
+  align-self: start;
+  will-change: transform;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 520ms ease, opacity 520ms ease, filter 520ms ease;
+  transform-origin: center;
+  opacity: 0.86;
+  filter: saturate(0.82) contrast(0.94);
+}
+
+.specialty-preview img {
+  transform: scale(1.035);
+  filter: saturate(0.88) contrast(0.96);
+}
+
+.doctor-card-game {
+  position: relative;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(232, 243, 249, 0.92)),
+    radial-gradient(circle at 84% 18%, rgba(216, 226, 234, 0.42), transparent 14rem);
+  border-color: rgba(216, 226, 234, 0.76);
+}
+
+.doctor-card-game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 0 42%, rgba(255, 255, 255, 0.28) 50%, transparent 58% 100%);
+  opacity: 0;
+  transform: translateX(-32%);
+  transition: opacity 420ms ease, transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.doctor-card-game:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+.doctor-card-game:hover::after {
+  opacity: 1;
+  transform: translateX(32%);
+}
+
+.doctor-card-game img {
+  transition: transform 920ms cubic-bezier(0.22, 1, 0.36, 1), filter 520ms ease;
+}
+
+.doctor-card-game:hover img {
+  transform: scale(1.055);
+  filter: saturate(1.03) contrast(1.02);
+}
+
+.doctor-results-grid > article,
+.doctor-results-grid > button {
+  animation: editorial-rise 720ms ease both;
+}
+
+.doctor-results-grid > article:nth-child(2n),
+.doctor-results-grid > button:nth-child(2n) {
+  margin-top: 1.5rem;
+}
+
+.doctor-results-grid > article:nth-child(3n),
+.doctor-results-grid > button:nth-child(3n) {
+  margin-top: 3rem;
+}
+
+.specialty-filter-bar {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms ease, background 420ms ease;
+}
+
+.specialty-filter-bar:focus-within,
+.specialty-filter-bar:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 28px 80px rgba(8, 32, 51, 0.1);
+}
+
+.specialty-route-strip {
+  position: relative;
+  min-height: 10rem;
+  background-image:
+    linear-gradient(90deg, rgba(8, 32, 51, 0.84), rgba(8, 32, 51, 0.44)),
+    var(--route-photo);
+  background-position: center, var(--route-position, center);
+  background-size: cover;
+  transform: translateZ(0);
+}
+
+.specialty-route-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(90deg, black, transparent 78%);
+  opacity: 0.5;
+}
+
+.specialty-route-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 84% 22%, rgba(255, 255, 255, 0.22), transparent 14rem);
+}
+
+.specialty-route-strip:hover {
+  background-size: cover, 104%;
+}
+
+.medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.05rem;
+  min-width: 2.05rem;
+  border-radius: 0;
+  padding: 0.28rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 10px 22px rgba(8, 32, 51, 0.12);
+  white-space: nowrap;
+  max-width: 100%;
+  clip-path: polygon(50% 0%, 88% 16%, 82% 66%, 50% 100%, 18% 66%, 12% 16%);
+  transition: transform 240ms ease, filter 240ms ease;
+}
+
+.medal:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.04);
+}
+
+.medal-compact {
+  min-height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0;
+}
+
+.shield-medal span {
+  padding-right: 0.42rem;
+}
+
+.shield-medal-oro,
+.shield-medal-gold,
+.medal-gold {
+  color: #5d3b00;
+  background: linear-gradient(135deg, #fff2a6, #d8a12c 52%, #8f5f07);
+}
+
+.shield-medal-diamante,
+.medal-diamond {
+  color: #05314a;
+  background: linear-gradient(135deg, #ffffff, #aee7ff 46%, #4c9fd2);
+}
+
+.shield-medal-amatista,
+.medal-amethyst {
+  color: #ffffff;
+  background: linear-gradient(135deg, #d8c2ff, #8b5cf6 48%, #4c1d95);
+}
+
+.map-mini {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(circle at 54% 42%, rgba(17, 109, 157, 0.18), transparent 2.8rem),
+    linear-gradient(140deg, transparent 0 33%, rgba(17, 109, 157, 0.08) 33% 35%, transparent 35% 100%),
+    linear-gradient(42deg, transparent 0 43%, rgba(8, 32, 51, 0.07) 43% 45%, transparent 45% 100%),
+    linear-gradient(rgba(17, 109, 157, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 109, 157, 0.08) 1px, transparent 1px),
+    linear-gradient(145deg, #fbfdfe, #eef6fb);
+  background-size: auto, auto, auto, 26px 26px, 26px 26px, auto;
+}
+
+.map-mini::before {
+  content: "";
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(17, 109, 157, 0.12);
+  border-radius: 1.25rem;
+}
+
+.map-pin {
+  position: relative;
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #071726;
+  box-shadow: 0 0 0 0.45rem rgba(17, 109, 157, 0.14);
+  z-index: 1;
+}
+
+.hero-stats {
+  align-items: stretch;
+}
+
+.pixieset-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.pixieset-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(17, 109, 157, 0.042) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 109, 157, 0.042) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, transparent 0%, black 16%, black 82%, transparent 100%);
+}
+
+.pixieset-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.soft-reveal {
+  animation: soft-reveal 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.editorial-image {
+  animation: image-drift 14s ease-in-out infinite alternate;
+}
+
+.editorial-image img {
+  transition: transform 1200ms cubic-bezier(0.22, 1, 0.36, 1), filter 700ms ease;
+}
+
+.editorial-image video {
+  display: block;
+  transition: transform 1200ms cubic-bezier(0.22, 1, 0.36, 1), filter 700ms ease;
+}
+
+.editorial-image:hover img {
+  transform: scale(1.035);
+  filter: saturate(1.03) contrast(1.02);
+}
+
+.editorial-image:hover video {
+  transform: scale(1.035);
+  filter: saturate(1.03) contrast(1.02);
+}
+
+.subscription-card,
+.doctor-plan-card {
+  min-height: 17rem;
+}
+
+.doctor-plan-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-plan-card::before,
+.doctor-plan-mini::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 86% 12%, rgba(17, 109, 157, 0.1), transparent 12rem);
+  pointer-events: none;
+}
+
+.doctor-plan-card > *,
+.doctor-plan-mini > * {
+  position: relative;
+  z-index: 1;
+}
+
+.doctor-plan-featured {
+  border-color: rgba(139, 92, 246, 0.34);
+  background:
+    radial-gradient(circle at 90% 12%, rgba(139, 92, 246, 0.12), transparent 14rem),
+    rgba(255, 255, 255, 0.94);
+  transform: translateY(-0.7rem);
+}
+
+.doctor-plan-mini {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(216, 226, 234, 0.78);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1rem;
+  text-align: center;
+  box-shadow: 0 10px 28px rgba(8, 32, 51, 0.06);
+}
+
+.doctor-plan-mini-featured {
+  border-color: rgba(139, 92, 246, 0.32);
+  box-shadow: 0 18px 44px rgba(139, 92, 246, 0.1);
+}
+
+.doctor-plan-ribbon {
+  display: inline-flex;
+  margin-bottom: 0.65rem;
+  border-radius: 999px;
+  background: #071726;
+  color: #ffffff;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-orientation-card {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(17, 109, 157, 0.08), transparent 18rem),
+    rgba(255, 255, 255, 0.9);
+}
+
+@keyframes soft-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes image-drift {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-10px) scale(1.006);
+  }
+}
+
+.hero-stats > div,
+.hero-stats > button,
+.hero-stats > a {
+  display: grid;
+  min-height: 8rem;
+  place-items: center;
+  align-content: center;
+  overflow: hidden;
+  transition: transform 260ms ease, box-shadow 260ms ease;
+  border-radius: 2rem;
+}
+
+.hero-bubble {
+  width: 100%;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.hero-medal-bubble {
+  padding-inline: 1rem;
+}
+
+.hero-medal-bubble .medal-compact {
+  min-height: 3rem;
+  min-width: 3rem;
+}
+
+.hero-stats > div:hover,
+.hero-stats > button:hover,
+.hero-stats > a:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 58px rgba(8, 32, 51, 0.1);
+}
+
+.hero-stats p {
+  max-width: 13rem;
+  margin-inline: auto;
+}
+
+.ai-orientation-card {
+  backdrop-filter: blur(18px);
+  transform: translateZ(0);
+}
+
+.ai-orientation-card input::placeholder {
+  color: rgba(100, 116, 139, 0.74);
+}
+
+.representatives-panel {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 109, 157, 0.28) transparent;
+}
+
+.representative-option {
+  position: relative;
+  overflow: hidden;
+}
+
+.representative-option::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(17, 109, 157, 0.07), transparent);
+  opacity: 0;
+  transform: translateX(-30%);
+  transition: opacity 360ms ease, transform 680ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.representative-option:hover::before {
+  opacity: 1;
+  transform: translateX(30%);
+}
+
+.representative-option > * {
+  position: relative;
+  z-index: 1;
+}
+
+.representative-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 22px 70px rgba(8, 32, 51, 0.08);
+}
+
+.modal-shell {
+  align-items: center;
+}
+
+.modal-panel {
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  flex: 0 0 auto;
+}
+
+.modal-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.booking-flow {
+  max-height: min(72vh, 58rem);
+}
+
+.booking-flow > section {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.booking-doctor-list {
+  max-height: 36rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.booking-doctor-option {
+  transform: translateZ(0);
+}
+
+.booking-doctor-option:hover {
+  transform: translateY(-2px);
+}
+
+.specialty-preview img {
+  animation: specialty-kenburns 11s ease-in-out infinite alternate;
+}
+
+@keyframes specialty-kenburns {
+  from {
+    transform: scale(1.015) translateX(0);
+  }
+  to {
+    transform: scale(1.055) translateX(-0.7rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-stats {
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+
+  .hero-stats > div,
+  .hero-stats > button {
+    min-height: 7.2rem;
+  }
+
+  .modal-shell {
+    align-items: start;
+    padding: 0.75rem;
+  }
+
+  .modal-panel {
+    max-height: calc(100vh - 1.5rem);
+    border-radius: 1.5rem;
+    padding: 1.1rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.65rem;
+  }
+
+  .booking-flow {
+    max-height: none;
+  }
+
+  .booking-flow > section,
+  .booking-doctor-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .doctor-plan-featured {
+    transform: none;
+  }
+
+  .medal-compact {
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+
+  .specialty-preview {
+    top: 5.8rem;
+    min-height: 11rem;
+    border-radius: 1.35rem;
+  }
+
+  .specialty-card-grid > .premium-card,
+  .specialty-card-grid > .premium-card:nth-child(3n + 2),
+  .specialty-card-grid > .premium-card:nth-child(3n),
+  .specialty-card-grid > .premium-card:hover,
+  .specialty-card-grid > .premium-card:nth-child(3n + 2):hover,
+  .specialty-card-grid > .premium-card:nth-child(3n):hover {
+    transform: none;
+  }
+
+  .doctor-results-grid > article,
+  .doctor-results-grid > article:nth-child(2n),
+  .doctor-results-grid > article:nth-child(3n) {
+    margin-top: 0;
+  }
+
+  .specialty-route-strip {
+    min-height: 12rem;
+  }
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .ticket-print,
+  .ticket-print * {
+    visibility: visible;
+  }
+  .ticket-print {
+    position: absolute;
+    inset: 0;
+    margin: 32px;
+  }
+}

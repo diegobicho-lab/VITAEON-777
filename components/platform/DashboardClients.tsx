@@ -1,0 +1,2030 @@
+"use client";
+
+import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, Loader2, MessageCircle, Pill, Send, ShieldCheck, Upload, Users, XCircle } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { clientApi } from "@/services/client/api";
+
+type Appointment = {
+  id: string;
+  status: string;
+  cancellationReason?: string | null;
+  originalAmountCents?: number;
+  discountCents?: number;
+  discountLabel?: string | null;
+  availabilitySlot: { startsAt: string; endsAt: string };
+  doctor: { fullName: string; specialty: { name: string }; hospital: { name: string } };
+  patient: { user: { name: string; email: string } };
+  payments: Array<{ status: string; provider: string; amountCents: number }>;
+};
+
+type DoctorProfile = {
+  id: string;
+  fullName: string;
+  specialtyId: string;
+  hospitalId: string;
+  subSpecialty: string;
+  bio: string;
+  imageUrl?: string | null;
+  practicePhotoUrl?: string | null;
+  professionalLicensePhotoUrl?: string | null;
+  university?: string | null;
+  professionalLicense?: string | null;
+  officeAddress?: string | null;
+  officeReference?: string | null;
+  cityState?: string | null;
+  mapsUrl?: string | null;
+  professionalPhone?: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  linkedinUrl?: string | null;
+  websiteUrl?: string | null;
+  whatsappUrl?: string | null;
+  affiliateCodeLast4?: string | null;
+  affiliateDiscountEnabled: boolean;
+  consultationPriceCents: number;
+  consultationDurationMinutes: number;
+  verificationStatus: string;
+  verifiedAt?: string | null;
+  medal: "oro" | "diamante" | "amatista";
+  subscriptionStatus: string;
+  achievements: string[];
+  certifications: string[];
+  legalDeclarationAccepted: boolean;
+  hospital: { name: string };
+  specialty: { name: string };
+};
+
+type SpecialtyOption = {
+  id: string;
+  name: string;
+};
+
+type HospitalOption = {
+  id: string;
+  name: string;
+  city: string;
+};
+
+type Verification = {
+  id: string;
+  status: string;
+  professionalLicense: string;
+  specialtyBoard?: string | null;
+  documentUrls: string[];
+  doctor: {
+    fullName: string;
+    specialty: { name: string };
+    hospital: { name: string };
+    user?: { email: string };
+  };
+};
+
+type AuditLog = {
+  id: string;
+  action: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  createdAt: string;
+  actor?: { email: string; name: string } | null;
+};
+
+type PatientSummary = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  appointmentsCount: number;
+  isActive: boolean;
+  createdAt: string;
+};
+
+type PaymentSummary = {
+  id: string;
+  provider: string;
+  status: string;
+  amountCents: number;
+  currency: string;
+  createdAt: string;
+  appointment: {
+    id: string;
+    status: string;
+    startsAt: string;
+    doctor: string;
+    specialty: string;
+    hospital: string;
+    patient?: { name: string; email: string };
+  };
+};
+
+type SubscriptionPaymentSummary = {
+  id: string;
+  plan: DoctorProfile["medal"];
+  status: string;
+  provider: string;
+  amountCents: number;
+  currency: string;
+  createdAt: string;
+  doctor: {
+    id: string;
+    fullName: string;
+    email: string;
+    subscriptionStatus: string;
+  };
+};
+
+type AdminDoctorSummary = {
+  id: string;
+  fullName: string;
+  email?: string | null;
+  isActive: boolean;
+  specialty: string;
+  hospital: string;
+  verificationStatus: string;
+  professionalLicense?: string | null;
+  appointmentsCount: number;
+  availabilityCount: number;
+};
+
+type DoctorOption = {
+  id: string;
+  name: string;
+  specialty: string;
+  hospital: string;
+};
+
+type DoctorAgenda = {
+  summary: { totalSlots: number; booked: number; available: number };
+  days: Array<{
+    date: string;
+    total: number;
+    booked: number;
+    available: number;
+    slots: Array<{
+      id: string;
+      startsAt: string;
+      endsAt: string;
+      isActive: boolean;
+      appointment: null | {
+        id: string;
+        status: string;
+        reason?: string | null;
+        patientName: string;
+        patientEmail: string;
+        specialty: string;
+        paymentStatus: string;
+        paymentProvider: string;
+      };
+    }>;
+  }>;
+};
+
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+type SecretarySummary = {
+  nextAppointment: null | {
+    patientName: string;
+    startsAt: string;
+    status: string;
+    paymentStatus: string;
+  };
+  todaySummary: { total: number; booked: number; available: number };
+  pendingConfirmations: number;
+  remindersToPrepare: number;
+  suggestedFreeSlots: Array<{ id: string; startsAt: string; endsAt: string }>;
+  notifications: NotificationItem[];
+  deliveryChannels: string[];
+  externalDeliveryPending: string[];
+};
+
+type MedicationResult = {
+  status: "ready" | "integration_pending";
+  disclaimer: string;
+  results: Array<{
+    name: string;
+    activeSubstance?: string;
+    presentations: string[];
+    indications: string;
+    contraindications: string;
+    warnings: string;
+    referenceDose?: string;
+    source: string;
+    sourceUrl?: string;
+  }>;
+};
+
+type MedicalConversation = {
+  id: string;
+  title: string;
+  status: string;
+  patientAlias?: string | null;
+  clinicalSummary?: string | null;
+  createdByDoctor: { id: string; fullName: string };
+  recipientDoctor?: { id: string; fullName: string } | null;
+  messages: Array<{
+    id: string;
+    body: string;
+    createdAt: string;
+    sender?: { name: string; role: string } | null;
+  }>;
+};
+
+type AssistantResponse = {
+  title: string;
+  specialty: string;
+  priority: string;
+  checklist: string[];
+  note: string;
+};
+
+type ReviewSummary = {
+  average: number;
+  total: number;
+  reviews: Array<{
+    id: string;
+    rating: number;
+    comment: string;
+    doctorReply?: string | null;
+    status: string;
+    patientName: string;
+    doctorName?: string;
+    createdAt: string;
+  }>;
+};
+
+const planLabels = {
+  oro: "Oro",
+  diamante: "Diamante",
+  amatista: "Amatista"
+};
+
+const doctorPlans = [
+  {
+    id: "oro",
+    name: "Oro",
+    price: "$0 MXN",
+    description: "Perfil básico, especialidad, hospital, fotografía, títulos médicos y visibilidad normal."
+  },
+  {
+    id: "diamante",
+    name: "Diamante",
+    price: "$250 MXN",
+    description: "Todo Oro, con prioridad sobre perfiles Oro y mayor presencia en resultados."
+  },
+  {
+    id: "amatista",
+    name: "Amatista",
+    price: "$399 MXN",
+    description: "Prioridad máxima, agenda personalizada y calendario asistido por IA."
+  }
+] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
+
+function dateTime(value: string) {
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function money(cents: number) {
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
+}
+
+function shortTime(value: string | Date) {
+  return new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(value));
+}
+
+function durationLabel(startsAt: string, endsAt: string) {
+  const minutes = Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000));
+  return `${minutes} min`;
+}
+
+function buildTimePreview(startTime: string, endTime: string, durationMinutes: 45 | 60) {
+  if (!startTime || !endTime || endTime <= startTime) return [];
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+  const base = new Date(2026, 0, 1, startHour, startMinute, 0, 0);
+  const end = new Date(2026, 0, 1, endHour, endMinute, 0, 0);
+  const values: string[] = [];
+  for (let cursor = base; new Date(cursor.getTime() + durationMinutes * 60_000) <= end; cursor = new Date(cursor.getTime() + durationMinutes * 60_000)) {
+    values.push(new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(cursor));
+  }
+  return values;
+}
+
+const appointmentLabels: Record<string, string> = {
+  PENDING: "Pendiente",
+  PENDING_DOCTOR_ACCEPTANCE: "Pendiente de aceptación médica",
+  ACCEPTED: "Aceptada por el médico",
+  CONFIRMED: "Confirmada",
+  COMPLETED: "Completada",
+  NO_SHOW: "El médico marcó que el paciente no asistió",
+  RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
+  CANCELLATION_REQUESTED: "Cancelación solicitada",
+  REFUND_PENDING: "Reembolso pendiente de revisión",
+  CANCELLED: "Cancelada",
+  REFUNDED: "Reembolsada",
+  PAID: "Pagado",
+  FAILED: "Fallido",
+  PENDING_PAYMENT: "Pago pendiente",
+  VERIFIED: "Médico verificado",
+  REJECTED: "Rechazado",
+  IN_REVIEW: "En revisión",
+  UNVERIFIED: "No verificado",
+  ACTIVE: "Activo",
+  INACTIVO: "Inactivo",
+  ACTIVO: "Activo"
+};
+
+function readableStatus(value: string) {
+  return appointmentLabels[value] ?? value.replaceAll("_", " ").toLowerCase();
+}
+
+function Badge({ value }: { value: string }) {
+  const success = ["ACCEPTED", "CONFIRMED", "COMPLETED", "PAID", "VERIFIED", "ACTIVE", "ACTIVO"].includes(value);
+  const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW"].includes(value);
+  const refund = ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED"].includes(value);
+  const tone = success
+    ? "bg-emerald-50 text-emerald-700"
+    : danger
+      ? "bg-red-50 text-red-700"
+      : refund
+        ? "bg-sky-50 text-sky-700"
+        : "bg-amber-50 text-amber-700";
+  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{readableStatus(value)}</span>;
+}
+
+function Shell({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#ffffff_55%,#eef7fb_100%)] px-5 pb-24 pt-32 text-ink">
+      <section className="mx-auto max-w-7xl">
+        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">{eyebrow}</p>
+        <h1 className="mt-3 text-5xl font-semibold text-deep">{title}</h1>
+        {children}
+      </section>
+    </main>
+  );
+}
+
+function LoadingState() {
+  return <div className="mt-8 flex items-center gap-3 rounded-3xl bg-white p-5 shadow-sm"><Loader2 className="h-5 w-5 animate-spin" /> Cargando información segura...</div>;
+}
+
+export function PatientDashboardClient() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      setAppointments(await clientApi<Appointment[]>("/api/appointments"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cargar tus citas.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function updatePatientAppointment(id: string, action: "REQUEST_CANCELLATION" | "REQUEST_RESCHEDULE") {
+    await clientApi(`/api/appointments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action,
+        cancellationReason: action === "REQUEST_CANCELLATION" ? "Cancelación solicitada por paciente desde panel." : undefined
+      })
+    });
+    await load();
+  }
+
+  return (
+    <Shell eyebrow="Pacientes" title="Tu expediente premium">
+      {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
+        <div className="mt-8 grid gap-5">
+          {appointments.length === 0 && <EmptyState text="Aún no tienes citas registradas." />}
+          {appointments.map((appointment) => (
+            <article key={appointment.id} className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold text-deep">{appointment.doctor.fullName}</h2>
+                  <p className="mt-2 text-slate-600">{appointment.doctor.specialty.name} · {appointment.doctor.hospital.name}</p>
+                </div>
+                <div className="flex gap-2"><Badge value={appointment.status} /><Badge value={appointment.payments[0]?.status ?? "PENDING"} /></div>
+              </div>
+              <p className="mt-5 flex items-center gap-3 text-slate-600"><Calendar className="h-5 w-5" /> {dateTime(appointment.availabilitySlot.startsAt)}</p>
+              <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Ticket</p>
+                <p className="mt-2 text-sm text-slate-600">Folio: {appointment.id}</p>
+                <p className="mt-1 text-sm text-slate-600">Estado de cita: {readableStatus(appointment.status)}</p>
+                <p className="mt-1 text-sm text-slate-600">Pago: {appointment.payments[0]?.provider ?? "PENDING"} · {money(appointment.payments[0]?.amountCents ?? 0)}</p>
+                <p className="mt-1 text-sm text-slate-600">Estado de pago: {readableStatus(appointment.payments[0]?.status ?? "PENDING")}</p>
+                {appointment.discountCents ? (
+                  <p className="mt-1 text-sm font-semibold text-emerald-700">
+                    {appointment.discountLabel}: -{money(appointment.discountCents)}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas.
+                </p>
+              </div>
+              {appointment.status === "NO_SHOW" && (
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Solicitar reagendar</button>
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelar cita</button>
+                </div>
+              )}
+              {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
+                <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelación</button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+export function DoctorDashboardClient() {
+  const [profile, setProfile] = useState<DoctorProfile | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [agenda, setAgenda] = useState<DoctorAgenda | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [secretarySummary, setSecretarySummary] = useState<SecretarySummary | null>(null);
+  const [conversations, setConversations] = useState<MedicalConversation[]>([]);
+  const [doctorOptions, setDoctorOptions] = useState<DoctorOption[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyOption[]>([]);
+  const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
+  const [assistantPrompt, setAssistantPrompt] = useState("");
+  const [assistantResponse, setAssistantResponse] = useState<AssistantResponse | null>(null);
+  const [recipientDoctorId, setRecipientDoctorId] = useState("");
+  const [conversationTitle, setConversationTitle] = useState("");
+  const [patientAlias, setPatientAlias] = useState("");
+  const [clinicalSummary, setClinicalSummary] = useState("");
+  const [chatMessage, setChatMessage] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [specialtyId, setSpecialtyId] = useState("");
+  const [hospitalId, setHospitalId] = useState("");
+  const [medal, setMedal] = useState<DoctorProfile["medal"]>("oro");
+  const [professionalLicense, setProfessionalLicense] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [subSpecialty, setSubSpecialty] = useState("");
+  const [bio, setBio] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [practicePhotoUrl, setPracticePhotoUrl] = useState("");
+  const [professionalLicensePhotoUrl, setProfessionalLicensePhotoUrl] = useState("");
+  const [university, setUniversity] = useState("");
+  const [officeAddress, setOfficeAddress] = useState("");
+  const [officeReference, setOfficeReference] = useState("");
+  const [cityState, setCityState] = useState("");
+  const [mapsUrl, setMapsUrl] = useState("");
+  const [professionalPhone, setProfessionalPhone] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [whatsappUrl, setWhatsappUrl] = useState("");
+  const [affiliateCode, setAffiliateCode] = useState("");
+  const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
+  const [reviewReply, setReviewReply] = useState("");
+  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "opiniones" | "notificaciones">("resumen");
+  const [achievementsText, setAchievementsText] = useState("");
+  const [certificationsText, setCertificationsText] = useState("");
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [price, setPrice] = useState("");
+  const [blockStartTime, setBlockStartTime] = useState("09:00");
+  const [blockEndTime, setBlockEndTime] = useState("13:00");
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState<45 | 60>(45);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
+  const [selectedCalendarDates, setSelectedCalendarDates] = useState<string[]>([]);
+  const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [repeatUntil, setRepeatUntil] = useState("");
+  const [medicationQuery, setMedicationQuery] = useState("");
+  const [medicationResult, setMedicationResult] = useState<MedicationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const assistantEnabled = medal === "amatista";
+
+  function monthKey(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  async function load(month = calendarMonth) {
+    setLoading(true);
+    const [doctor, appointmentData, agendaData, conversationData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
+      clientApi<DoctorProfile>("/api/doctors/me"),
+      clientApi<Appointment[]>("/api/appointments"),
+      clientApi<DoctorAgenda>(`/api/doctor-agenda?month=${monthKey(month)}`),
+      clientApi<MedicalConversation[]>("/api/doctor-conversations"),
+      clientApi<Array<{ id: string; name: string; specialty: string; hospital: string }>>("/api/doctors"),
+      clientApi<SpecialtyOption[]>("/api/specialties"),
+      clientApi<HospitalOption[]>("/api/hospitals"),
+      clientApi<NotificationItem[]>("/api/notifications"),
+      clientApi<ReviewSummary>("/api/reviews?mine=true")
+    ]);
+    setProfile(doctor);
+    setFullName(doctor.fullName);
+    setSpecialtyId(doctor.specialtyId);
+    setHospitalId(doctor.hospitalId);
+    setMedal(doctor.medal);
+    setSubSpecialty(doctor.subSpecialty);
+    setBio(doctor.bio);
+    setImageUrl(doctor.imageUrl ?? "");
+    setPracticePhotoUrl(doctor.practicePhotoUrl ?? "");
+    setProfessionalLicensePhotoUrl(doctor.professionalLicensePhotoUrl ?? "");
+    setUniversity(doctor.university ?? "");
+    setOfficeAddress(doctor.officeAddress ?? "");
+    setOfficeReference(doctor.officeReference ?? "");
+    setCityState(doctor.cityState ?? "");
+    setMapsUrl(doctor.mapsUrl ?? "");
+    setProfessionalPhone(doctor.professionalPhone ?? "");
+    setInstagramUrl(doctor.instagramUrl ?? "");
+    setFacebookUrl(doctor.facebookUrl ?? "");
+    setLinkedinUrl(doctor.linkedinUrl ?? "");
+    setWebsiteUrl(doctor.websiteUrl ?? "");
+    setWhatsappUrl(doctor.whatsappUrl ?? "");
+    setAffiliateCode("");
+    setProfessionalLicense(doctor.professionalLicense ?? "");
+    setAchievementsText(doctor.achievements.join("\n"));
+    setCertificationsText(doctor.certifications.join("\n"));
+    setLegalAccepted(doctor.legalDeclarationAccepted);
+    setPrice(String(Math.round(doctor.consultationPriceCents / 100)));
+    setAppointments(appointmentData);
+    setAgenda(agendaData);
+    setConversations(conversationData);
+    setDoctorOptions(doctorData.filter((item) => item.id !== doctor.id));
+    setSpecialties(specialtyData);
+    setHospitals(hospitalData);
+    setNotifications(notificationData);
+    setDoctorReviews(reviewData);
+    if (doctor.medal === "amatista") {
+      const secretary = await clientApi<SecretarySummary>("/api/doctor-assistant").catch(() => null);
+      setSecretarySummary(secretary);
+    } else {
+      setSecretarySummary(null);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load().catch((error) => {
+      setMessage(error instanceof Error ? error.message : "No fue posible cargar el panel médico.");
+      setLoading(false);
+    });
+    // La carga inicial debe correr una sola vez; los cambios de mes refrescan la agenda desde el calendario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function toggleAvailability(slotId: string, isActive: boolean) {
+    setMessage("");
+    await clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId, isActive }) });
+    setMessage(isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible.");
+    await load();
+  }
+
+  async function deleteAvailability(slotId: string) {
+    setMessage("");
+    await clientApi("/api/availability", { method: "DELETE", body: JSON.stringify({ slotId }) });
+    setMessage("Horario eliminado del calendario.");
+    await load();
+  }
+
+  async function markSelectedDayUnavailable() {
+    setMessage("");
+    const selectedDay = agenda?.days.find((day) => day.date === selectedCalendarDate);
+    const activeFreeSlots = selectedDay?.slots.filter((slot) => slot.isActive && !slot.appointment) ?? [];
+    if (activeFreeSlots.length === 0) {
+      setMessage("El día seleccionado no tiene horarios libres activos para ocultar.");
+      return;
+    }
+    await Promise.all(activeFreeSlots.map((slot) => clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId: slot.id, isActive: false }) })));
+    setMessage("Día marcado como no disponible para pacientes.");
+    await load();
+  }
+
+  async function createCalendarBlocks(repeat = false) {
+    setMessage("");
+    if (!repeat && selectedCalendarDates.length === 0) {
+      setMessage("Selecciona uno o varios días del calendario para publicar horarios.");
+      return;
+    }
+    const response = await clientApi<{ created: number; requested: number }>("/api/availability/bulk", {
+      method: "POST",
+      body: JSON.stringify({
+        dates: repeat ? undefined : selectedCalendarDates,
+        startTime: blockStartTime,
+        endTime: blockEndTime,
+        durationMinutes: slotDurationMinutes,
+        repeatWeekdays: repeat ? repeatWeekdays : undefined,
+        repeatUntil: repeat && repeatUntil ? repeatUntil : undefined
+      })
+    });
+    setMessage(`Calendario actualizado: ${response.created} de ${response.requested} horarios publicados en bloques de ${slotDurationMinutes} minutos.`);
+    await load();
+  }
+
+  async function uploadDoctorImage(kind: "profile" | "office" | "license", file?: File) {
+    if (!file) return;
+    setMessage("");
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+    const response = await clientApi<{ url: string }>("/api/uploads/images", {
+      method: "POST",
+      body: form
+    });
+    if (kind === "profile") setImageUrl(response.url);
+    if (kind === "office") setPracticePhotoUrl(response.url);
+    if (kind === "license") setProfessionalLicensePhotoUrl(response.url);
+    setMessage("Imagen cargada. Revisa la vista previa y guarda tu perfil.");
+  }
+
+  async function checkoutPlan(plan: DoctorProfile["medal"]) {
+    setMessage("");
+    const response = await clientApi<{ checkoutUrl?: string; status?: string }>("/api/subscriptions/checkout", {
+      method: "POST",
+      body: JSON.stringify({ plan })
+    });
+    if (response.checkoutUrl) {
+      window.location.href = response.checkoutUrl;
+      return;
+    }
+    setMedal(plan);
+    setMessage("Plan actualizado correctamente.");
+    await load();
+  }
+
+  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION") {
+    await clientApi(`/api/appointments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action,
+        cancellationReason: action === "REQUEST_CANCELLATION" ? "Cancelación solicitada por médico desde agenda clínica." : undefined
+      })
+    });
+    await load();
+  }
+
+  async function submitVerification() {
+    setMessage("");
+    await clientApi("/api/medical-verifications", {
+      method: "POST",
+      body: JSON.stringify({
+        professionalLicense,
+        documents: documentUrl ? [documentUrl] : []
+      })
+    });
+    setProfessionalLicense("");
+    setDocumentUrl("");
+    setMessage("Verificación enviada a revisión administrativa.");
+    await load();
+  }
+
+  async function updateProfile() {
+    setMessage("");
+    if (!legalAccepted) {
+      setMessage("Debes aceptar que tu información profesional es real y verificable antes de guardar tu perfil.");
+      return;
+    }
+
+    await clientApi("/api/doctors/me", {
+      method: "PATCH",
+      body: JSON.stringify({
+        fullName,
+        specialtyId,
+        hospitalId,
+        medal,
+        bio,
+        subSpecialty,
+        achievements: achievementsText.split("\n").map((item) => item.trim()).filter(Boolean),
+        certifications: certificationsText.split("\n").map((item) => item.trim()).filter(Boolean),
+        imageUrl: imageUrl || undefined,
+        practicePhotoUrl: practicePhotoUrl || undefined,
+        professionalLicensePhotoUrl: professionalLicensePhotoUrl || undefined,
+        university: university || undefined,
+        officeAddress: officeAddress || undefined,
+        officeReference: officeReference || undefined,
+        cityState: cityState || undefined,
+        mapsUrl: mapsUrl || undefined,
+        professionalPhone: professionalPhone || undefined,
+        instagramUrl: instagramUrl || undefined,
+        facebookUrl: facebookUrl || undefined,
+        linkedinUrl: linkedinUrl || undefined,
+        websiteUrl: websiteUrl || undefined,
+        whatsappUrl: whatsappUrl || undefined,
+        professionalLicense: professionalLicense || undefined,
+        legalDeclarationAccepted: legalAccepted,
+        affiliateCode: affiliateCode || undefined,
+        consultationPriceCents: Math.round(Number(price) * 100)
+      })
+    });
+    setAffiliateCode("");
+    setMessage("Perfil profesional actualizado.");
+    await load();
+  }
+
+  async function replyToReview(reviewId: string) {
+    if (!reviewReply.trim()) return;
+    await clientApi("/api/reviews", {
+      method: "PATCH",
+      body: JSON.stringify({ reviewId, doctorReply: reviewReply })
+    });
+    setReviewReply("");
+    setMessage("Respuesta publicada en la opinión del paciente.");
+    await load();
+  }
+
+  async function askAssistant() {
+    setMessage("");
+    if (!assistantEnabled) {
+      setMessage("El asistente de IA de agenda está disponible al actualizar al plan Amatista.");
+      return;
+    }
+    const response = await clientApi<AssistantResponse>("/api/doctor-assistant", {
+      method: "POST",
+      body: JSON.stringify({ prompt: assistantPrompt, context: profile?.subSpecialty })
+    });
+    setAssistantResponse(response);
+  }
+
+  async function searchMedicationReference() {
+    setMessage("");
+    if (!assistantEnabled) {
+      setMessage("La búsqueda de medicamentos está disponible en el plan Amatista.");
+      return;
+    }
+    const response = await clientApi<MedicationResult>("/api/medications/search", {
+      method: "POST",
+      body: JSON.stringify({ query: medicationQuery })
+    });
+    setMedicationResult(response);
+  }
+
+  async function createConversation() {
+    setMessage("");
+    await clientApi("/api/doctor-conversations", {
+      method: "POST",
+      body: JSON.stringify({
+        recipientDoctorId: recipientDoctorId || undefined,
+        title: conversationTitle,
+        patientAlias: patientAlias || undefined,
+        clinicalSummary: clinicalSummary || undefined,
+        initialMessage: chatMessage || undefined
+      })
+    });
+    setConversationTitle("");
+    setPatientAlias("");
+    setClinicalSummary("");
+    setChatMessage("");
+    setRecipientDoctorId("");
+    setMessage("Conversación médica creada.");
+    await load();
+  }
+
+  async function sendConversationMessage(conversationId: string) {
+    if (!chatMessage.trim()) return;
+    await clientApi(`/api/doctor-conversations/${conversationId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body: chatMessage })
+    });
+    setChatMessage("");
+    await load();
+  }
+
+  const sections = [
+    ["resumen", "Resumen"],
+    ["agenda", "Agenda clínica"],
+    ["disponibilidad", "Disponibilidad"],
+    ["perfil", "Perfil profesional"],
+    ["suscripcion", "Suscripción"],
+    ["opiniones", "Opiniones"],
+    ["notificaciones", "Notificaciones"]
+  ] as const;
+
+  return (
+    <Shell eyebrow="Médicos" title="Panel médico">
+      {loading ? <LoadingState /> : (
+        <div className="mt-8 grid gap-6">
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <div className="flex flex-wrap items-start justify-between gap-5">
+              <div>
+                <BadgeCheck className="h-8 w-8 text-medical" />
+                <h2 className="mt-4 text-3xl font-semibold text-deep">{profile?.fullName}</h2>
+                <p className="mt-2 text-slate-600">{profile?.specialty.name} · {profile?.hospital.name}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
+                <Badge value={`PLAN ${planLabels[medal]}`} />
+                <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
+              </div>
+            </div>
+            <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
+              {sections.map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${activeSection === id ? "bg-black text-white shadow-glass" : "border border-silver bg-white text-deep hover:bg-slate-50"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {message && <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm font-semibold text-medical">{message}</p>}
+          </section>
+
+          {activeSection === "resumen" && (
+            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Resumen clínico</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Tu operación de hoy</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">Agenda, disponibilidad y alertas principales en una vista ligera.</p>
+                </div>
+                <Calendar className="h-8 w-8 text-medical" />
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-4">
+                <MetricMini label="Citas" value={String(appointments.length)} />
+                <MetricMini label="Pendientes" value={String(appointments.filter((item) => item.status === "PENDING").length)} />
+                <MetricMini label="Confirmadas" value={String(appointments.filter((item) => item.status === "CONFIRMED").length)} />
+                <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
+              </div>
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl bg-slate-50 p-5">
+                  <p className="font-semibold text-deep">Próximas citas</p>
+                  <div className="mt-3 grid gap-3">
+                    {appointments.slice(0, 3).map((appointment) => (
+                      <div key={appointment.id} className="rounded-2xl bg-white p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-deep">{appointment.patient.user.name}</p>
+                            <p className="mt-1 text-sm text-slate-600">{dateTime(appointment.availabilitySlot.startsAt)}</p>
+                          </div>
+                          <Badge value={appointment.status} />
+                        </div>
+                      </div>
+                    ))}
+                    {appointments.length === 0 && <EmptyState text="No hay citas asignadas." />}
+                  </div>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-5">
+                  <p className="font-semibold text-deep">Alertas</p>
+                  <div className="mt-3 grid gap-3">
+                    {notifications.slice(0, 4).map((item) => (
+                      <p key={item.id} className="rounded-2xl bg-white p-4 text-sm leading-6 text-slate-600">
+                        <span className="font-semibold text-deep">{item.title}</span><br />{item.message}
+                      </p>
+                    ))}
+                    {notifications.length === 0 && <EmptyState text="Sin alertas pendientes." />}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {(activeSection === "agenda" || activeSection === "disponibilidad") && (
+            <DoctorAgendaPanel
+              agenda={agenda}
+              month={calendarMonth}
+              selectedDate={selectedCalendarDate}
+              selectedDates={selectedCalendarDates}
+              startTime={blockStartTime}
+              endTime={blockEndTime}
+              durationMinutes={slotDurationMinutes}
+              repeatWeekdays={repeatWeekdays}
+              repeatUntil={repeatUntil}
+              showConfigurator={activeSection === "disponibilidad"}
+              onMonthChange={(date) => {
+                setCalendarMonth(date);
+                load(date).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible cambiar de mes."));
+              }}
+              onSelectDate={(date) => {
+                setSelectedCalendarDate(date);
+                setSelectedCalendarDates((current) => current.includes(date) ? current.filter((item) => item !== date) : [...current, date].sort());
+              }}
+              onClearSelectedDates={() => setSelectedCalendarDates([])}
+              onStartTimeChange={setBlockStartTime}
+              onEndTimeChange={setBlockEndTime}
+              onDurationChange={setSlotDurationMinutes}
+              onRepeatWeekdaysChange={setRepeatWeekdays}
+              onRepeatUntilChange={setRepeatUntil}
+              onCreateBlocks={createCalendarBlocks}
+              onToggleSlot={toggleAvailability}
+              onDeleteSlot={deleteAvailability}
+              onMarkDayUnavailable={markSelectedDayUnavailable}
+              onAcceptAppointment={(id) => updateAppointment(id, "ACCEPT")}
+              onCompleteAppointment={(id) => updateAppointment(id, "COMPLETE")}
+              onNoShowAppointment={(id) => updateAppointment(id, "MARK_NO_SHOW")}
+              onCancelAppointment={(id) => updateAppointment(id, "REQUEST_CANCELLATION")}
+            />
+          )}
+
+          {activeSection === "agenda" && (
+            <AppointmentList
+              appointments={appointments}
+              onAccept={(id) => updateAppointment(id, "ACCEPT")}
+              onComplete={(id) => updateAppointment(id, "COMPLETE")}
+              onNoShow={(id) => updateAppointment(id, "MARK_NO_SHOW")}
+              onCancel={(id) => updateAppointment(id, "REQUEST_CANCELLATION")}
+            />
+          )}
+
+          {activeSection === "suscripcion" && (
+            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Suscripción médica</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Plan activo: {planLabels[medal]}</h2>
+                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Diamante/Amatista con checkout seguro.</p>
+                </div>
+                <CreditCard className="h-8 w-8 text-medical" />
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                {doctorPlans.map((plan) => (
+                  <button
+                    key={plan.id}
+                    onClick={() => checkoutPlan(plan.id).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar el pago del plan."))}
+                    className={`rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 ${medal === plan.id ? "border-medical bg-slate-50 ring-4 ring-medical/10" : "border-silver bg-white"}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-lg font-semibold text-deep">{plan.name}</p>
+                      <Badge value={medal === plan.id ? "ACTIVO" : plan.id === "oro" ? "GRATIS" : "CHECKOUT"} />
+                    </div>
+                    <p className="mt-2 text-2xl font-semibold text-medical">{plan.price}</p>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{plan.description}</p>
+                    <p className="mt-5 text-sm font-semibold text-deep">{plan.id === "oro" ? "Activar plan gratuito" : "Pagar con Stripe"}</p>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                Los pagos de Diamante y Amatista se procesan en Stripe con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
+              </p>
+            </section>
+          )}
+
+          {activeSection === "perfil" && (
+            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Perfil público</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Información profesional</h2>
+                </div>
+                <ShieldCheck className="h-8 w-8 text-medical" />
+              </div>
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Nombre profesional visible" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Precio MXN" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)} className="rounded-3xl bg-slate-50 px-4 py-3 outline-none">
+                  {specialties.map((specialty) => <option key={specialty.id} value={specialty.id}>{specialty.name}</option>)}
+                </select>
+                <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="rounded-3xl bg-slate-50 px-4 py-3 outline-none">
+                  {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name} · {hospital.city}</option>)}
+                </select>
+                <input value={professionalLicense} onChange={(event) => setProfessionalLicense(event.target.value)} placeholder="Cédula profesional visible" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={university} onChange={(event) => setUniversity(event.target.value)} placeholder="Universidad o institución formadora" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <textarea value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Biografía profesional" className="min-h-28 rounded-3xl bg-slate-50 px-4 py-3 outline-none lg:col-span-2" />
+                <input value={subSpecialty} onChange={(event) => setSubSpecialty(event.target.value)} placeholder="Subespecialidad, posgrado o enfoque clínico" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none lg:col-span-2" />
+                <textarea value={achievementsText} onChange={(event) => setAchievementsText(event.target.value)} placeholder="Títulos profesionales y logros, uno por línea" className="min-h-24 rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <textarea value={certificationsText} onChange={(event) => setCertificationsText(event.target.value)} placeholder="Posgrados y certificaciones, uno por línea" className="min-h-24 rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={officeAddress} onChange={(event) => setOfficeAddress(event.target.value)} placeholder="Dirección del consultorio" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={officeReference} onChange={(event) => setOfficeReference(event.target.value)} placeholder="Piso, consultorio o referencia" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={cityState} onChange={(event) => setCityState(event.target.value)} placeholder="Ciudad y estado" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={mapsUrl} onChange={(event) => setMapsUrl(event.target.value)} placeholder="Google Maps o ubicación" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={professionalPhone} onChange={(event) => setProfessionalPhone(event.target.value)} placeholder="Teléfono profesional opcional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={instagramUrl} onChange={(event) => setInstagramUrl(event.target.value)} placeholder="Instagram profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={facebookUrl} onChange={(event) => setFacebookUrl(event.target.value)} placeholder="Facebook profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} placeholder="LinkedIn" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="Sitio web" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={whatsappUrl} onChange={(event) => setWhatsappUrl(event.target.value)} placeholder="WhatsApp profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <div className="rounded-3xl bg-slate-50 px-4 py-3 lg:col-span-2">
+                  <label className="text-sm font-semibold text-slate-600">Código promocional del médico</label>
+                  <input value={affiliateCode} onChange={(event) => setAffiliateCode(event.target.value)} placeholder="Código de afiliación autorizado" className="mt-2 w-full bg-transparent outline-none" />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Solo campañas autorizadas activan beneficios para pacientes. Estado actual: {profile?.affiliateDiscountEnabled ? `campaña activa terminada en ${profile.affiliateCodeLast4 ?? "****"}` : "sin campaña activa"}.
+                  </p>
+                </div>
+                <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
+                  <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir foto principal</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("profile", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                </label>
+                <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
+                  <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir foto de consultorio</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("office", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                </label>
+                <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
+                  <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir imagen de cédula</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("license", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                </label>
+                {(imageUrl || practicePhotoUrl || professionalLicensePhotoUrl) && (
+                  <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
+                    {imageUrl && <Image src={imageUrl} alt="Vista previa perfil" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
+                    {practicePhotoUrl && <Image src={practicePhotoUrl} alt="Vista previa consultorio" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
+                    {professionalLicensePhotoUrl && <Image src={professionalLicensePhotoUrl} alt="Vista previa cédula" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
+                  </div>
+                )}
+                <label className="rounded-3xl border border-silver bg-slate-50 p-4 text-sm leading-6 text-slate-700 lg:col-span-2">
+                  <span className="block font-semibold text-deep">Declaración profesional obligatoria</span>
+                  <span className="mt-2 block">Declaro bajo protesta de decir verdad que la información profesional proporcionada es real, comprobable y me pertenece.</span>
+                  <span className="mt-4 flex items-start gap-3 font-semibold text-deep">
+                    <input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-silver" />
+                    <span>Acepto que mi información profesional es real y verificable.</span>
+                  </span>
+                </label>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button onClick={updateProfile} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Guardar perfil</button>
+                <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="Referencia privada para verificación" className="min-w-64 rounded-full bg-slate-50 px-4 py-3 outline-none" />
+                <button onClick={submitVerification} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Enviar verificación</button>
+              </div>
+            </section>
+          )}
+
+          {activeSection === "opiniones" && (
+            <DoctorReviewPanel reviews={doctorReviews} reply={reviewReply} setReply={setReviewReply} onReply={replyToReview} />
+          )}
+
+          {activeSection === "notificaciones" && (
+            <div className="grid gap-6">
+              <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} secretary={secretarySummary} notifications={notifications} />
+              <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} />
+              <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} />
+            </div>
+          )}
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+export function AdminDashboardClient() {
+  const [verifications, setVerifications] = useState<Verification[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctors, setDoctors] = useState<AdminDoctorSummary[]>([]);
+  const [payments, setPayments] = useState<PaymentSummary[]>([]);
+  const [subscriptionPayments, setSubscriptionPayments] = useState<SubscriptionPaymentSummary[]>([]);
+  const [patients, setPatients] = useState<PatientSummary[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [reviews, setReviews] = useState<ReviewSummary | null>(null);
+  const [specialtyName, setSpecialtyName] = useState("");
+  const [hospitalName, setHospitalName] = useState("");
+  const [hospitalCity, setHospitalCity] = useState("León, Guanajuato");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const [verificationData, appointmentData, doctorData, paymentData, subscriptionPaymentData, patientData, logData, reviewData] = await Promise.all([
+        clientApi<Verification[]>("/api/medical-verifications"),
+        clientApi<Appointment[]>("/api/appointments"),
+        clientApi<AdminDoctorSummary[]>("/api/admin/doctors"),
+        clientApi<PaymentSummary[]>("/api/payments"),
+        clientApi<SubscriptionPaymentSummary[]>("/api/subscription-payments"),
+        clientApi<PatientSummary[]>("/api/patients"),
+        clientApi<AuditLog[]>("/api/audit-logs"),
+        clientApi<ReviewSummary>("/api/reviews")
+      ]);
+      setVerifications(verificationData);
+      setAppointments(appointmentData);
+      setDoctors(doctorData);
+      setPayments(paymentData);
+      setSubscriptionPayments(subscriptionPaymentData);
+      setPatients(patientData);
+      setLogs(logData);
+      setReviews(reviewData);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cargar administración.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function review(verificationId: string, status: "VERIFIED" | "REJECTED") {
+    await clientApi("/api/medical-verifications", { method: "PATCH", body: JSON.stringify({ verificationId, status }) });
+    await load();
+  }
+
+  async function createSpecialty() {
+    setMessage("");
+    await clientApi("/api/specialties", { method: "POST", body: JSON.stringify({ name: specialtyName }) });
+    setSpecialtyName("");
+    setMessage("Especialidad creada.");
+    await load();
+  }
+
+  async function createHospital() {
+    setMessage("");
+    await clientApi("/api/hospitals", { method: "POST", body: JSON.stringify({ name: hospitalName, city: hospitalCity }) });
+    setHospitalName("");
+    setMessage("Hospital creado.");
+    await load();
+  }
+
+  async function moderateReview(reviewId: string, status: "PUBLISHED" | "REJECTED") {
+    await clientApi("/api/reviews", { method: "PATCH", body: JSON.stringify({ reviewId, status }) });
+    setMessage(status === "PUBLISHED" ? "Opinión aprobada." : "Opinión rechazada.");
+    await load();
+  }
+
+  async function toggleDoctorActive(doctorId: string, isActive: boolean) {
+    await clientApi("/api/admin/doctors", { method: "PATCH", body: JSON.stringify({ doctorId, isActive }) });
+    setMessage(isActive ? "Perfil médico activado." : "Perfil médico pausado.");
+    await load();
+  }
+
+  return (
+    <Shell eyebrow="Administración" title="Centro de control VITAEON">
+      {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
+        <div className="mt-8 grid gap-6">
+          <div className="grid gap-5 md:grid-cols-3">
+            <Metric icon={<ShieldCheck />} label="Verificaciones" value={String(verifications.length)} />
+            <Metric icon={<Calendar />} label="Citas" value={String(appointments.length)} />
+            <Metric icon={<BadgeCheck />} label="Médicos" value={String(doctors.length)} />
+            <Metric icon={<CreditCard />} label="Pagos" value={String(payments.length)} />
+            <Metric icon={<CreditCard />} label="Suscripciones" value={money(subscriptionPayments.filter((payment) => payment.status === "PAID").reduce((total, payment) => total + payment.amountCents, 0))} />
+            <Metric icon={<Users />} label="Pacientes" value={String(patients.length)} />
+            <Metric icon={<MessageCircle />} label="Opiniones" value={String(reviews?.total ?? 0)} />
+            <Metric icon={<Clock />} label="Auditoría" value={String(logs.length)} />
+          </div>
+          <BetaPrivateMode
+            doctors={doctors}
+            patients={patients}
+            appointments={appointments}
+            payments={payments}
+            subscriptionPayments={subscriptionPayments}
+            reviews={reviews}
+            logs={logs}
+          />
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Seguimiento clínico sensible</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Solicitudes que requieren revisión administrativa o seguimiento del equipo VITAEON.
+            </p>
+            <div className="mt-5 grid gap-3">
+              {appointments.filter((appointment) => ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED", "NO_SHOW"].includes(appointment.status)).length === 0 && (
+                <EmptyState text="No hay reembolsos, cancelaciones o reagendamientos pendientes." />
+              )}
+              {appointments
+                .filter((appointment) => ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED", "NO_SHOW"].includes(appointment.status))
+                .slice(0, 12)
+                .map((appointment) => (
+                  <article key={appointment.id} className="rounded-3xl bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-deep">{appointment.patient.user.name}</p>
+                        <p className="mt-1 text-sm text-slate-600">
+                          {appointment.doctor.fullName} · {dateTime(appointment.availabilitySlot.startsAt)}
+                        </p>
+                        {appointment.cancellationReason && <p className="mt-2 text-sm text-slate-600">{appointment.cancellationReason}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge value={appointment.status} />
+                        <Badge value={appointment.payments[0]?.status ?? "PENDING"} />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Verificación médica</h2>
+            <div className="mt-5 grid gap-4">
+              {verifications.length === 0 && <EmptyState text="No hay verificaciones pendientes." />}
+              {verifications.map((verification) => (
+                <article key={verification.id} className="rounded-3xl bg-slate-50 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-deep">{verification.doctor.fullName}</h3>
+                      <p className="mt-1 text-slate-600">{verification.doctor.specialty.name} · {verification.professionalLicense}</p>
+                    </div>
+                    <Badge value={verification.status} />
+                  </div>
+                  <div className="mt-4 flex gap-3">
+                    <button onClick={() => review(verification.id, "VERIFIED")} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 font-semibold text-white"><CheckCircle2 className="h-4 w-4" /> Aprobar</button>
+                    <button onClick={() => review(verification.id, "REJECTED")} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 font-semibold text-white"><XCircle className="h-4 w-4" /> Rechazar</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Catálogos clínicos</h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl bg-slate-50 p-5">
+                <p className="font-semibold text-deep">Nueva especialidad</p>
+                <input value={specialtyName} onChange={(event) => setSpecialtyName(event.target.value)} placeholder="Ej. Cardiología pediátrica" className="mt-4 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+                <button onClick={createSpecialty} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Crear especialidad</button>
+              </div>
+              <div className="rounded-3xl bg-slate-50 p-5">
+                <p className="font-semibold text-deep">Nuevo hospital o clínica</p>
+                <input value={hospitalName} onChange={(event) => setHospitalName(event.target.value)} placeholder="Nombre del hospital" className="mt-4 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+                <input value={hospitalCity} onChange={(event) => setHospitalCity(event.target.value)} placeholder="Ciudad" className="mt-3 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+                <button onClick={createHospital} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Crear hospital</button>
+              </div>
+            </div>
+            {message && <p className="mt-4 text-sm font-semibold text-medical">{message}</p>}
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Médicos registrados</h2>
+            <div className="mt-5 grid gap-3">
+              {doctors.length === 0 && <EmptyState text="No hay médicos registrados." />}
+              {doctors.slice(0, 12).map((doctor) => (
+                <div key={doctor.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{doctor.fullName}</p>
+                    <p className="mt-1 text-sm text-slate-600">{doctor.specialty} · {doctor.hospital} · {doctor.appointmentsCount} citas · {doctor.isActive ? "Activo" : "Pausado"}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge value={doctor.verificationStatus} />
+                    <button
+                      onClick={() => toggleDoctorActive(doctor.id, !doctor.isActive)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold ${doctor.isActive ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
+                    >
+                      {doctor.isActive ? "Pausar" : "Activar"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Citas recientes</h2>
+            <div className="mt-5 grid gap-3">
+              {appointments.length === 0 && <EmptyState text="No hay citas registradas." />}
+              {appointments.slice(0, 10).map((appointment) => (
+                <div key={appointment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{appointment.doctor.fullName}</p>
+                    <p className="mt-1 text-sm text-slate-600">{appointment.patient.user.name} · {dateTime(appointment.availabilitySlot.startsAt)}</p>
+                  </div>
+                  <Badge value={appointment.status} />
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Pagos recientes</h2>
+            <div className="mt-5 grid gap-3">
+              {payments.length === 0 && <EmptyState text="No hay pagos registrados." />}
+              {payments.slice(0, 10).map((payment) => (
+                <div key={payment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{payment.appointment.doctor}</p>
+                    <p className="mt-1 text-sm text-slate-600">{payment.provider} · {money(payment.amountCents)} · {dateTime(payment.appointment.startsAt)}</p>
+                  </div>
+                  <Badge value={payment.status} />
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Ingresos por suscripciones médicas</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Trazabilidad administrativa de planes Oro, Diamante y Amatista procesados desde backend/Stripe.</p>
+            <div className="mt-5 grid gap-3">
+              {subscriptionPayments.length === 0 && <EmptyState text="No hay pagos de suscripción registrados." />}
+              {subscriptionPayments.slice(0, 10).map((payment) => (
+                <div key={payment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{payment.doctor.fullName}</p>
+                    <p className="mt-1 text-sm text-slate-600">Plan {planLabels[payment.plan]} · {payment.provider} · {money(payment.amountCents)}</p>
+                  </div>
+                  <Badge value={payment.status} />
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Pacientes</h2>
+            <div className="mt-5 grid gap-3">
+              {patients.length === 0 && <EmptyState text="No hay pacientes registrados." />}
+              {patients.slice(0, 10).map((patient) => (
+                <div key={patient.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{patient.name}</p>
+                    <p className="mt-1 text-sm text-slate-600">{patient.email} · {patient.appointmentsCount} citas</p>
+                  </div>
+                  <Badge value={patient.isActive ? "ACTIVO" : "INACTIVO"} />
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Opiniones y moderación</h2>
+            <div className="mt-5 grid gap-3">
+              {(reviews?.reviews ?? []).length === 0 && <EmptyState text="No hay opiniones registradas." />}
+              {(reviews?.reviews ?? []).slice(0, 10).map((review) => (
+                <article key={review.id} className="rounded-3xl bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-deep">{review.doctorName}</p>
+                      <p className="mt-1 text-sm text-slate-600">{review.patientName} · {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</p>
+                    </div>
+                    <Badge value={review.status} />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{review.comment}</p>
+                  <div className="mt-4 flex gap-3">
+                    <button onClick={() => moderateReview(review.id, "PUBLISHED")} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Aprobar</button>
+                    <button onClick={() => moderateReview(review.id, "REJECTED")} className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white">Rechazar</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <h2 className="text-2xl font-semibold text-deep">Últimos accesos y acciones</h2>
+            <div className="mt-5 grid gap-3">
+              {logs.slice(0, 12).map((log) => (
+                <div key={log.id} className="flex flex-wrap justify-between gap-3 rounded-3xl bg-slate-50 p-4 text-sm">
+                  <span className="font-semibold text-deep">{log.action}</span>
+                  <span className="text-slate-500">{dateTime(log.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+function BetaPrivateMode({
+  doctors,
+  patients,
+  appointments,
+  payments,
+  subscriptionPayments,
+  reviews,
+  logs
+}: {
+  doctors: AdminDoctorSummary[];
+  patients: PatientSummary[];
+  appointments: Appointment[];
+  payments: PaymentSummary[];
+  subscriptionPayments: SubscriptionPaymentSummary[];
+  reviews: ReviewSummary | null;
+  logs: AuditLog[];
+}) {
+  const verifiedDoctors = doctors.filter((doctor) => doctor.verificationStatus === "VERIFIED").length;
+  const pausedDoctors = doctors.filter((doctor) => !doctor.isActive).length;
+  const completedAppointments = appointments.filter((appointment) => appointment.status === "COMPLETED").length;
+  const pendingPayments = payments.filter((payment) => payment.status === "PENDING").length;
+  const confirmedPayments = payments.filter((payment) => payment.status === "PAID").length;
+  const pendingSubscriptionPayments = subscriptionPayments.filter((payment) => payment.status === "PENDING").length;
+  const confirmedSubscriptionPayments = subscriptionPayments.filter((payment) => payment.status === "PAID").length;
+  const reschedules = appointments.filter((appointment) => appointment.status === "RESCHEDULE_REQUESTED").length;
+  const cancellations = appointments.filter((appointment) => appointment.status === "CANCELLATION_REQUESTED").length;
+  const refunds = appointments.filter((appointment) => appointment.status === "REFUND_PENDING").length;
+  const relevantErrors = logs.filter((log) => /FAILED|ERROR|REJECTED|RATE_LIMIT|FORBIDDEN/i.test(log.action)).length;
+  const betaRows = [
+    ["Médicos registrados", doctors.length],
+    ["Médicos verificados", verifiedDoctors],
+    ["Médicos pausados", pausedDoctors],
+    ["Pacientes registrados", patients.length],
+    ["Citas creadas", appointments.length],
+    ["Citas completadas", completedAppointments],
+    ["Pagos pendientes", pendingPayments + pendingSubscriptionPayments],
+    ["Pagos confirmados", confirmedPayments + confirmedSubscriptionPayments],
+    ["Reagendamientos solicitados", reschedules],
+    ["Cancelaciones solicitadas", cancellations],
+    ["Reembolsos pendientes", refunds],
+    ["Opiniones publicadas", reviews?.total ?? 0],
+    ["Eventos sensibles registrados", relevantErrors]
+  ] satisfies Array<[string, number]>;
+
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Modo Beta Privada</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Estado operativo para piloto en León, Guanajuato</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+            Lectura rápida para operar con médicos y pacientes reales sin mezclar datos demo ni perfiles incompletos.
+          </p>
+        </div>
+        <Badge value={refunds || cancellations || reschedules ? "IN_REVIEW" : "ACTIVE"} />
+      </div>
+      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {betaRows.map(([label, value]) => (
+          <div key={label} className="rounded-3xl bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+            <p className="mt-2 text-3xl font-semibold text-deep">{value}</p>
+          </div>
+        ))}
+      </div>
+      {doctors.length === 0 && patients.length === 0 && appointments.length === 0 && (
+        <div className="mt-5">
+          <EmptyState text="Aún no hay datos reales de beta. Invita médicos verificados y pacientes piloto para comenzar la operación controlada." />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DoctorAgendaPanel({
+  agenda,
+  month,
+  selectedDate,
+  selectedDates,
+  startTime,
+  endTime,
+  durationMinutes,
+  repeatWeekdays,
+  repeatUntil,
+  showConfigurator,
+  onMonthChange,
+  onSelectDate,
+  onClearSelectedDates,
+  onStartTimeChange,
+  onEndTimeChange,
+  onDurationChange,
+  onRepeatWeekdaysChange,
+  onRepeatUntilChange,
+  onCreateBlocks,
+  onToggleSlot,
+  onDeleteSlot,
+  onMarkDayUnavailable,
+  onAcceptAppointment,
+  onCompleteAppointment,
+  onNoShowAppointment,
+  onCancelAppointment
+}: {
+  agenda: DoctorAgenda | null;
+  month: Date;
+  selectedDate: string;
+  selectedDates: string[];
+  startTime: string;
+  endTime: string;
+  durationMinutes: 45 | 60;
+  repeatWeekdays: number[];
+  repeatUntil: string;
+  showConfigurator: boolean;
+  onMonthChange: (date: Date) => void;
+  onSelectDate: (value: string) => void;
+  onClearSelectedDates: () => void;
+  onStartTimeChange: (value: string) => void;
+  onEndTimeChange: (value: string) => void;
+  onDurationChange: (value: 45 | 60) => void;
+  onRepeatWeekdaysChange: (value: number[]) => void;
+  onRepeatUntilChange: (value: string) => void;
+  onCreateBlocks: (repeat?: boolean) => void;
+  onToggleSlot: (slotId: string, isActive: boolean) => void;
+  onDeleteSlot: (slotId: string) => void;
+  onMarkDayUnavailable: () => void;
+  onAcceptAppointment: (appointmentId: string) => void;
+  onCompleteAppointment: (appointmentId: string) => void;
+  onNoShowAppointment: (appointmentId: string) => void;
+  onCancelAppointment: (appointmentId: string) => void;
+}) {
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const calendarStart = new Date(first);
+  calendarStart.setDate(calendarStart.getDate() - calendarStart.getDay());
+  const dayMap = new Map((agenda?.days ?? []).map((day) => [day.date, day]));
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const value = new Date(calendarStart);
+    value.setDate(calendarStart.getDate() + index);
+    return value;
+  });
+  const monthLabel = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(month);
+  const selectedDay = selectedDate ? dayMap.get(selectedDate) : null;
+  const preview = buildTimePreview(startTime, endTime, durationMinutes);
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  function shiftMonth(direction: number) {
+    onMonthChange(new Date(month.getFullYear(), month.getMonth() + direction, 1));
+  }
+
+  function toggleWeekday(day: number) {
+    onRepeatWeekdaysChange(
+      repeatWeekdays.includes(day) ? repeatWeekdays.filter((item) => item !== day) : [...repeatWeekdays, day].sort()
+    );
+  }
+
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Agenda clínica</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Calendario mensual de pacientes</h2>
+        </div>
+        <Calendar className="h-8 w-8 text-medical" />
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <MetricMini label="Horarios" value={String(agenda?.summary.totalSlots ?? 0)} />
+        <MetricMini label="Ocupados" value={String(agenda?.summary.booked ?? 0)} />
+        <MetricMini label="Libres" value={String(agenda?.summary.available ?? 0)} />
+      </div>
+      <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button onClick={() => shiftMonth(-1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronLeft className="h-4 w-4" /></button>
+          <p className="text-lg font-semibold capitalize text-deep">{monthLabel}</p>
+          <button onClick={() => shiftMonth(1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+        <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => <span key={day}>{day}</span>)}
+        </div>
+        <div className="mt-2 grid grid-cols-7 gap-2">
+          {cells.map((date) => {
+            const key = date.toISOString().slice(0, 10);
+            const day = dayMap.get(key);
+            const outside = date.getMonth() !== month.getMonth();
+            const selected = selectedDates.includes(key);
+            const past = key < todayKey;
+            const status = day ? day.booked > 0 && day.available > 0 ? "Parcial" : day.booked > 0 ? "Ocupado" : day.available > 0 ? "Disponible" : "No disp." : "Sin horarios";
+            return (
+              <button
+                key={key}
+                onClick={() => !past && onSelectDate(key)}
+                disabled={past}
+                className={`min-h-24 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 ${selected ? "border-medical bg-white ring-4 ring-medical/10" : "border-silver bg-white"} ${outside ? "opacity-45" : ""}`}
+              >
+                <span className="font-semibold text-deep">{date.getDate()}</span>
+                <span className="mt-3 block text-[11px] font-semibold text-slate-500">{status}</span>
+                {day?.booked ? <span className="mt-1 block text-[11px] text-medical">{day.booked} cita(s)</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className={`mt-5 grid gap-4 ${showConfigurator ? "lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
+        {showConfigurator && (
+        <div className="rounded-3xl bg-slate-50 p-5">
+          <p className="font-semibold text-deep">Configurar horarios</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Selecciona uno o varios días del mes. VITAEON generará horarios en zona America/Mexico_City, en bloques de {durationMinutes} minutos.
+          </p>
+          <div className="mt-4 rounded-3xl bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-deep">{selectedDates.length} día(s) seleccionado(s)</p>
+              <button onClick={onClearSelectedDates} className="rounded-full border border-silver px-3 py-2 text-xs font-semibold text-deep">Limpiar</button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedDates.slice(0, 8).map((date) => <span key={date} className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{date}</span>)}
+              {selectedDates.length > 8 && <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">+{selectedDates.length - 8}</span>}
+              {selectedDates.length === 0 && <span className="text-sm text-slate-500">Elige días directamente en el calendario.</span>}
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-2 text-sm font-semibold text-slate-600">
+              Inicio
+              <input type="time" value={startTime} onChange={(event) => onStartTimeChange(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none" />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-slate-600">
+              Fin
+              <input type="time" value={endTime} onChange={(event) => onEndTimeChange(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none" />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-slate-600">
+              Duración
+              <select value={durationMinutes} onChange={(event) => onDurationChange(Number(event.target.value) as 45 | 60)} className="rounded-3xl bg-white px-4 py-3 outline-none">
+                <option value={45}>45 min</option>
+                <option value={60}>60 min</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-4 rounded-3xl bg-white p-4">
+            <p className="text-sm font-semibold text-deep">Vista previa</p>
+            {preview.length === 0 ? (
+              <p className="mt-2 text-sm text-red-600">La hora final debe ser posterior a la inicial.</p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {preview.map((time) => <span key={time} className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{time}</span>)}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button disabled={selectedDates.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(false)} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Guardar en días seleccionados</button>
+            <button disabled={!selectedDate || !selectedDay} onClick={onMarkDayUnavailable} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Marcar día no disponible</button>
+          </div>
+          <div className="mt-5 border-t border-silver pt-5">
+            <p className="text-sm font-semibold text-deep">Repetir por semana</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["D", "L", "M", "M", "J", "V", "S"].map((label, index) => (
+                <button key={`${label}-${index}`} onClick={() => toggleWeekday(index)} className={`h-10 w-10 rounded-full text-sm font-semibold ${repeatWeekdays.includes(index) ? "bg-black text-white" : "bg-white text-deep"}`}>{label}</button>
+              ))}
+            </div>
+            <input type="date" value={repeatUntil} onChange={(event) => onRepeatUntilChange(event.target.value)} className="mt-3 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+            <button disabled={repeatWeekdays.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(true)} className="mt-3 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Publicar repetición</button>
+          </div>
+        </div>
+        )}
+        <div className="rounded-3xl bg-slate-50 p-5">
+          <p className="font-semibold text-deep">Detalle del día</p>
+          {!selectedDay ? <EmptyState text="No hay horarios en el día seleccionado." /> : (
+            <div className="mt-4 grid gap-3">
+              {selectedDay.slots.map((slot) => (
+                <div key={slot.id} className="rounded-2xl bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-semibold text-deep">{new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(slot.startsAt))}</p>
+                    <Badge value={slot.appointment?.status ?? (slot.isActive ? "DISPONIBLE" : "NO DISPONIBLE")} />
+                  </div>
+                  {slot.appointment ? (
+                    <div className="mt-3 rounded-2xl border border-silver bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-deep">{slot.appointment.patientName}</p>
+                          <p className="mt-1 text-sm text-slate-600">{shortTime(slot.startsAt)} · {durationLabel(slot.startsAt, slot.endsAt)} · {slot.appointment.specialty}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge value={slot.appointment.status} />
+                          <Badge value={slot.appointment.paymentStatus} />
+                        </div>
+                      </div>
+                      {slot.appointment.reason && <p className="mt-3 text-sm leading-6 text-slate-600">Motivo: {slot.appointment.reason}</p>}
+                      {!["COMPLETED", "CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(slot.appointment.status) && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(slot.appointment.status) && (
+                            <button onClick={() => slot.appointment && onAcceptAppointment(slot.appointment.id)} className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">Aceptar cita</button>
+                          )}
+                          {["ACCEPTED", "CONFIRMED"].includes(slot.appointment.status) && (
+                            <>
+                              <button onClick={() => slot.appointment && onCompleteAppointment(slot.appointment.id)} className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">Completar cita</button>
+                              <button onClick={() => slot.appointment && onNoShowAppointment(slot.appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">Paciente no llegó</button>
+                            </>
+                          )}
+                          <button onClick={() => slot.appointment && onCancelAppointment(slot.appointment.id)} className="rounded-full border border-silver bg-white px-4 py-2 text-xs font-semibold text-deep">Solicitar cancelación</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => onToggleSlot(slot.id, !slot.isActive)} className="rounded-full border border-silver bg-white px-3 py-2 text-xs font-semibold text-deep">
+                        {slot.isActive ? "Marcar no disponible" : "Activar"}
+                      </button>
+                      <button onClick={() => onDeleteSlot(slot.id)} className="rounded-full border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DoctorAssistantPanel({
+  prompt,
+  setPrompt,
+  response,
+  onAsk,
+  locked,
+  secretary,
+  notifications
+}: {
+  prompt: string;
+  setPrompt: (value: string) => void;
+  response: AssistantResponse | null;
+  onAsk: () => void;
+  locked: boolean;
+  secretary: SecretarySummary | null;
+  notifications: NotificationItem[];
+}) {
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Asistente virtual médico</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Secretaria médica virtual</h2>
+        </div>
+        <Brain className="h-8 w-8 text-medical" />
+      </div>
+      {secretary && (
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <MetricMini label="Citas hoy" value={String(secretary.todaySummary.booked)} />
+          <MetricMini label="Pendientes" value={String(secretary.pendingConfirmations)} />
+          <MetricMini label="Huecos libres" value={String(secretary.todaySummary.available)} />
+        </div>
+      )}
+      {secretary?.nextAppointment && (
+        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-medical">Próxima cita</p>
+          <p className="mt-2 font-semibold text-deep">{secretary.nextAppointment.patientName}</p>
+          <p className="mt-1 text-sm text-slate-600">{dateTime(secretary.nextAppointment.startsAt)} · {secretary.nextAppointment.status} · {secretary.nextAppointment.paymentStatus}</p>
+        </div>
+      )}
+      {!locked && (
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="font-semibold text-deep">Notificaciones internas</p>
+            <div className="mt-3 grid gap-2">
+              {(notifications.length ? notifications : secretary?.notifications ?? []).slice(0, 5).map((item) => (
+                <p key={item.id} className="rounded-2xl bg-white p-3 text-sm leading-6 text-slate-600">
+                  <span className="font-semibold text-deep">{item.title}</span><br />{item.message}
+                </p>
+              ))}
+              {notifications.length === 0 && !secretary?.notifications.length && <p className="text-sm text-slate-500">Sin notificaciones pendientes.</p>}
+            </div>
+          </div>
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="font-semibold text-deep">Canales preparados</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Interno activo. Email, WhatsApp, SMS y push quedan listos para proveedor externo, sin simular envíos reales.</p>
+          </div>
+        </div>
+      )}
+      <textarea
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+        placeholder="Ej. Organiza mis citas pendientes, detecta huecos libres o resume mi agenda de hoy..."
+        disabled={locked}
+        className="mt-5 min-h-28 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none disabled:opacity-55"
+      />
+      {locked && (
+        <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
+          Esta asistencia de agenda está incluida en el plan Amatista.
+        </p>
+      )}
+      <button onClick={onAsk} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Pedir apoyo de agenda</button>
+      {response && (
+        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+          <p className="font-semibold text-deep">{response.title}: {response.specialty}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{response.priority}</p>
+          <div className="mt-4 grid gap-2">
+            {response.checklist.map((item) => (
+              <p key={item} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle2 className="h-4 w-4 text-medical" /> {item}</p>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-slate-500">{response.note}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MedicationSearchPanel({
+  query,
+  setQuery,
+  result,
+  onSearch,
+  locked
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  result: MedicationResult | null;
+  onSearch: () => void;
+  locked: boolean;
+}) {
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Referencia farmacológica</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Búsqueda de medicamentos</h2>
+        </div>
+        <Pill className="h-8 w-8 text-medical" />
+      </div>
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Ej. ibuprofeno"
+          disabled={locked}
+          className="min-w-0 flex-1 rounded-3xl bg-slate-50 px-5 py-4 outline-none disabled:opacity-55"
+        />
+        <button onClick={onSearch} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Buscar</button>
+      </div>
+      {locked && (
+        <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
+          La búsqueda avanzada de medicamentos está incluida en el plan Amatista.
+        </p>
+      )}
+      {result && (
+        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">{result.status === "ready" ? "Fuente conectada" : "Integración pendiente"}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{result.disclaimer}</p>
+          <div className="mt-4 grid gap-3">
+            {result.results.map((item) => (
+              <article key={`${item.name}-${item.source}`} className="rounded-2xl bg-white p-4">
+                <p className="font-semibold text-deep">{item.name}</p>
+                {item.activeSubstance && <p className="mt-1 text-sm text-slate-600">Sustancia activa: {item.activeSubstance}</p>}
+                <p className="mt-3 text-sm leading-6 text-slate-600">{item.indications}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600"><span className="font-semibold text-deep">Contraindicaciones:</span> {item.contraindications}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600"><span className="font-semibold text-deep">Advertencias:</span> {item.warnings}</p>
+                <p className="mt-3 text-xs font-semibold text-slate-500">Fuente: {item.source}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MedicalChatPanel(props: {
+  conversations: MedicalConversation[];
+  doctors: DoctorOption[];
+  recipientDoctorId: string;
+  setRecipientDoctorId: (value: string) => void;
+  conversationTitle: string;
+  setConversationTitle: (value: string) => void;
+  patientAlias: string;
+  setPatientAlias: (value: string) => void;
+  clinicalSummary: string;
+  setClinicalSummary: (value: string) => void;
+  chatMessage: string;
+  setChatMessage: (value: string) => void;
+  onCreate: () => void;
+  onSend: (id: string) => void;
+}) {
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Colaboración médica</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Chat para derivaciones y coordinación</h2>
+        </div>
+        <MessageCircle className="h-8 w-8 text-medical" />
+      </div>
+      <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
+        <select value={props.recipientDoctorId} onChange={(event) => props.setRecipientDoctorId(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none">
+          <option value="">Seleccionar médico destinatario</option>
+          {props.doctors.map((doctor) => (
+            <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.specialty} · {doctor.hospital}</option>
+          ))}
+        </select>
+        <input value={props.conversationTitle} onChange={(event) => props.setConversationTitle(event.target.value)} placeholder="Título de la conversación" className="rounded-3xl bg-white px-4 py-3 outline-none" />
+        <input value={props.patientAlias} onChange={(event) => props.setPatientAlias(event.target.value)} placeholder="Alias del paciente, sin exponer datos innecesarios" className="rounded-3xl bg-white px-4 py-3 outline-none" />
+        <textarea value={props.clinicalSummary} onChange={(event) => props.setClinicalSummary(event.target.value)} placeholder="Resumen clínico breve para la derivación" className="min-h-24 rounded-3xl bg-white px-4 py-3 outline-none" />
+        <textarea value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Mensaje inicial o respuesta" className="min-h-20 rounded-3xl bg-white px-4 py-3 outline-none" />
+        <button onClick={props.onCreate} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Crear conversación</button>
+      </div>
+      <div className="mt-5 grid gap-4">
+        {props.conversations.length === 0 && <EmptyState text="Aún no hay conversaciones médicas." />}
+        {props.conversations.slice(0, 6).map((conversation) => (
+          <article key={conversation.id} className="rounded-3xl bg-slate-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-deep">{conversation.title}</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {conversation.createdByDoctor.fullName}
+                  {conversation.recipientDoctor ? ` → ${conversation.recipientDoctor.fullName}` : ""}
+                </p>
+              </div>
+              <Badge value={conversation.status} />
+            </div>
+            {(conversation.patientAlias || conversation.clinicalSummary) && (
+              <p className="mt-3 text-sm leading-6 text-slate-600">{conversation.patientAlias ? `${conversation.patientAlias}: ` : ""}{conversation.clinicalSummary}</p>
+            )}
+            <div className="mt-4 grid gap-2">
+              {conversation.messages.slice(-3).map((message) => (
+                <p key={message.id} className="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+                  <span className="font-semibold text-deep">{message.sender?.name ?? "Sistema"}:</span> {message.body}
+                </p>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-3">
+              <input value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Responder conversación" className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 outline-none" />
+              <button onClick={() => props.onSend(conversation.id)} className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-3 font-semibold text-white"><Send className="h-4 w-4" /> Enviar</button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DoctorReviewPanel({
+  reviews,
+  reply,
+  setReply,
+  onReply
+}: {
+  reviews: ReviewSummary | null;
+  reply: string;
+  setReply: (value: string) => void;
+  onReply: (id: string) => void;
+}) {
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Opiniones recibidas</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">{(reviews?.average ?? 0).toFixed(1)} promedio</h2>
+          <p className="mt-1 text-sm text-slate-600">{reviews?.total ?? 0} opiniones de pacientes</p>
+        </div>
+        <div className="text-amber-500">★★★★★</div>
+      </div>
+      <div className="mt-5 grid gap-4">
+        {(reviews?.reviews ?? []).length === 0 && <EmptyState text="Aún no tienes opiniones publicadas." />}
+        {(reviews?.reviews ?? []).slice(0, 6).map((review) => (
+          <article key={review.id} className="rounded-3xl bg-slate-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-deep">{review.patientName}</p>
+                <p className="mt-1 text-sm text-amber-600">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</p>
+              </div>
+              <Badge value={review.status} />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{review.comment}</p>
+            {review.doctorReply ? (
+              <p className="mt-3 rounded-2xl bg-white p-3 text-sm leading-6 text-slate-600">Tu respuesta: {review.doctorReply}</p>
+            ) : (
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Responder opinión" className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 outline-none" />
+                <button onClick={() => onReply(review.id)} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Responder</button>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MetricMini({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-3xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold text-deep">{value}</p></div>;
+}
+
+function AppointmentList({
+  appointments,
+  onAccept,
+  onComplete,
+  onNoShow,
+  onCancel
+}: {
+  appointments: Appointment[];
+  onAccept: (id: string) => void;
+  onComplete: (id: string) => void;
+  onNoShow: (id: string) => void;
+  onCancel: (id: string) => void;
+}) {
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Citas clínicas</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Tickets de pacientes</h2>
+        </div>
+        <Calendar className="h-8 w-8 text-medical" />
+      </div>
+      <div className="mt-5 grid gap-4">
+        {appointments.length === 0 && <EmptyState text="No hay citas asignadas." />}
+        {appointments.map((appointment) => (
+          <article key={appointment.id} className="rounded-3xl bg-slate-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-deep">{appointment.patient.user.name}</h3>
+                <p className="mt-1 text-slate-600">{dateTime(appointment.availabilitySlot.startsAt)}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Duración aproximada: {durationLabel(appointment.availabilitySlot.startsAt, appointment.availabilitySlot.endsAt)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge value={appointment.status} />
+                <Badge value={appointment.payments[0]?.status ?? "PENDING"} />
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <MetricMini label="Pago" value={appointment.payments[0]?.provider ?? "PENDIENTE"} />
+              <MetricMini label="Importe" value={money(appointment.payments[0]?.amountCents ?? 0)} />
+              <MetricMini label="Especialidad" value={appointment.doctor.specialty.name} />
+            </div>
+            {appointment.cancellationReason && <p className="mt-3 text-sm text-red-600">Motivo: {appointment.cancellationReason}</p>}
+            {!["COMPLETED", "CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(appointment.status) && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(appointment.status) && (
+                  <button onClick={() => onAccept(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">Aceptar cita</button>
+                )}
+                {["ACCEPTED", "CONFIRMED"].includes(appointment.status) && (
+                  <>
+                    <button onClick={() => onComplete(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">Completar cita</button>
+                    <button onClick={() => onNoShow(appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 font-semibold text-amber-700">Paciente no llegó</button>
+                  </>
+                )}
+                <button onClick={() => onCancel(appointment.id)} className="rounded-full border border-silver px-4 py-2 font-semibold text-deep">Solicitar cancelación</button>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return <div className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">{icon}<p className="mt-5 text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p><p className="mt-2 text-4xl font-semibold text-deep">{value}</p></div>;
+}
+
+function ErrorState({ message }: { message: string }) {
+  return <div className="mt-8 rounded-3xl border border-red-100 bg-red-50 p-5 text-red-700">{message}</div>;
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="rounded-3xl bg-slate-50 p-5 text-slate-600">{text}</div>;
+}
