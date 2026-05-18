@@ -423,6 +423,20 @@ export default function VitaeonPlatform() {
     setAuthOpen(true);
   }
 
+  function chooseAuthAudience(audience: AuthAudience, mode: "login" | "register" = "register") {
+    setError("");
+    setAuthAudience(audience);
+    setAuthMode(mode);
+    setAuthForm((current) => ({ ...current, role: audience }));
+  }
+
+  function toggleAuthMode() {
+    setError("");
+    setAuthMode((current) => current === "login" ? "register" : "login");
+    setAuthAudience((current) => current ?? "PATIENT");
+    setAuthForm((current) => ({ ...current, role: current.role || "PATIENT" }));
+  }
+
   async function openRepresentatives() {
     setRepresentativesOpen(true);
     if (representatives.length > 0) return;
@@ -462,6 +476,14 @@ export default function VitaeonPlatform() {
 
   async function submitAuth() {
     setError("");
+    if (!authForm.email.trim() || !authForm.password.trim()) {
+      setError("Ingresa tu correo y contraseña para continuar.");
+      return;
+    }
+    if (authMode === "register" && !authForm.name.trim()) {
+      setError("Ingresa tu nombre completo para crear tu cuenta.");
+      return;
+    }
     const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
     const body =
       authMode === "login"
@@ -776,26 +798,48 @@ export default function VitaeonPlatform() {
       {authOpen && (
         <Modal title={authAudience ? (authAudience === "DOCTOR" ? "Acceso médico" : "Acceso paciente") : "Elige cómo entrar"} onClose={() => setAuthOpen(false)}>
           {!authAudience ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <button onClick={() => { setAuthAudience("PATIENT"); setAuthMode("register"); setAuthForm({ ...authForm, role: "PATIENT" }); }} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Paciente</p>
-                <h3 className="mt-3 text-2xl font-semibold text-deep">Crear cuenta frecuente</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Agenda, guarda favoritos y consulta tickets desde tu panel.</p>
-              </button>
-              <button onClick={() => { setAuthAudience("DOCTOR"); setAuthMode("register"); setAuthForm({ ...authForm, role: "DOCTOR" }); }} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Médico</p>
-                <h3 className="mt-3 text-2xl font-semibold text-deep">Unirme a VITAEON</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Revisa suscripciones, verificación y cómo funciona la red.</p>
+            <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <button type="button" onClick={() => chooseAuthAudience("PATIENT", "register")} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Paciente</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-deep">Crear cuenta frecuente</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">Agenda, guarda favoritos y consulta tickets desde tu panel.</p>
+                </button>
+                <button type="button" onClick={() => chooseAuthAudience("DOCTOR", "register")} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Médico</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-deep">Unirme a VITAEON</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">Revisa suscripciones, verificación y cómo funciona la red.</p>
+                </button>
+              </div>
+              <button type="button" onClick={() => chooseAuthAudience("PATIENT", "login")} className="rounded-full border border-silver bg-white px-6 py-4 text-sm font-semibold text-deep transition hover:-translate-y-0.5 hover:shadow-premium">
+                Ya tengo una cuenta
               </button>
             </div>
           ) : (
           <div className="grid gap-4">
+            <div className="grid grid-cols-2 rounded-full bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => { setError(""); setAuthMode("register"); }}
+                className={`rounded-full px-4 py-3 text-sm font-semibold transition ${authMode === "register" ? "bg-white text-deep shadow-sm" : "text-slate-500"}`}
+              >
+                Registrarme
+              </button>
+              <button
+                type="button"
+                onClick={() => { setError(""); setAuthMode("login"); }}
+                className={`rounded-full px-4 py-3 text-sm font-semibold transition ${authMode === "login" ? "bg-white text-deep shadow-sm" : "text-slate-500"}`}
+              >
+                Ya tengo cuenta
+              </button>
+            </div>
             {authAudience === "DOCTOR" && (
               <div className="rounded-[1.5rem] bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Suscripciones médicas</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {doctorSubscriptionPlans.map((plan) => (
                     <button
+                      type="button"
                       key={plan.title}
                       onClick={() => setAuthForm({ ...authForm, medal: plan.medal })}
                       className={`rounded-[1.35rem] text-left transition hover:-translate-y-0.5 ${authForm.medal === plan.medal ? "ring-4 ring-medical/15" : ""}`}
@@ -821,8 +865,9 @@ export default function VitaeonPlatform() {
             )}
             <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" />
             <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" />
-            <button onClick={submitAuth} className="rounded-full bg-black px-6 py-4 font-semibold text-white">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
-            <button onClick={() => setAuthMode(authMode === "login" ? "register" : "login")} className="text-sm font-semibold text-medical">
+            {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
+            <button type="button" onClick={submitAuth} className="rounded-full bg-black px-6 py-4 font-semibold text-white">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
+            <button type="button" onClick={toggleAuthMode} className="text-sm font-semibold text-medical">
               {authMode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
             </button>
             {authMode === "login" && (
@@ -830,7 +875,7 @@ export default function VitaeonPlatform() {
                 Recuperar contraseña
               </a>
             )}
-            <button onClick={() => setAuthAudience(null)} className="text-sm font-semibold text-slate-500">
+            <button type="button" onClick={() => { setError(""); setAuthAudience(null); }} className="text-sm font-semibold text-slate-500">
               Cambiar tipo de acceso
             </button>
           </div>
