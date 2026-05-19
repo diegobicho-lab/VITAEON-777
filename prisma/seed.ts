@@ -79,36 +79,34 @@ async function main() {
 
   await prisma.doctor.deleteMany({ where: { slug: { in: legacyDemoDoctorSlugs } } });
   await prisma.user.deleteMany({ where: { email: { in: legacyDemoEmails } } });
-  await Promise.all(
-    legacyDemoHospitals.map((name) =>
-      prisma.hospital.deleteMany({ where: { name, doctors: { none: {} } } })
-    )
-  );
+  for (const name of legacyDemoHospitals) {
+    await prisma.hospital.deleteMany({ where: { name, doctors: { none: {} } } });
+  }
 
-  const createdSpecialties = await Promise.all(
-    specialtyNames.map((name) =>
-      prisma.specialty.upsert({
-        where: { name },
-        update: {
-          description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
-        },
-        create: {
-          name,
-          description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
-        }
-      })
-    )
-  );
+  const createdSpecialties = [];
+  for (const name of specialtyNames) {
+    const specialty = await prisma.specialty.upsert({
+      where: { name },
+      update: {
+        description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
+      },
+      create: {
+        name,
+        description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
+      }
+    });
+    createdSpecialties.push(specialty);
+  }
 
-  const createdHospitals = await Promise.all(
-    leonHospitals.map((name) =>
-      prisma.hospital.upsert({
-        where: { name },
-        update: { city: "León, Guanajuato" },
-        create: { name, city: "León, Guanajuato" }
-      })
-    )
-  );
+  const createdHospitals = [];
+  for (const name of leonHospitals) {
+    const hospital = await prisma.hospital.upsert({
+      where: { name },
+      update: { city: "León, Guanajuato" },
+      create: { name, city: "León, Guanajuato" }
+    });
+    createdHospitals.push(hospital);
+  }
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
