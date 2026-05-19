@@ -168,6 +168,21 @@ type Ticket = {
   discountLabel?: string | null;
 };
 
+function ticketPaymentLabel(ticket: Ticket) {
+  if (ticket.paymentMethod === "CASH") return "Pago pendiente en efectivo";
+  return ticket.paymentStatus === "PAID" ? "Pago en línea confirmado" : "Pago en línea registrado";
+}
+
+function ticketConfirmationMessage(ticket: Ticket) {
+  if (ticket.paymentMethod === "CASH") {
+    return "Tu cita fue registrada correctamente. El pago aparece como pendiente en efectivo.";
+  }
+  if (ticket.paymentStatus === "PAID") {
+    return "Tu pago en línea quedó confirmado. La cita está pendiente de aceptación médica.";
+  }
+  return "Tu cita fue registrada correctamente con pago en línea. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.";
+}
+
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
@@ -547,7 +562,7 @@ export default function VitaeonPlatform() {
       });
 
       const payment = appointment.payments[0];
-      setTicket({
+      const nextTicket: Ticket = {
         appointmentId: appointment.id,
         patient: user.name,
         doctor: selectedDoctor.name,
@@ -562,14 +577,19 @@ export default function VitaeonPlatform() {
         originalAmountCents: appointment.originalAmountCents,
         discountCents: appointment.discountCents,
         discountLabel: appointment.discountLabel
-      });
+      };
+      setTicket(nextTicket);
 
       if (paymentMethod === "STRIPE") {
-        const paymentIntent = await clientApi<{ clientSecret: string }>("/api/payments", {
-          method: "POST",
-          body: JSON.stringify({ appointmentId: appointment.id, provider: "STRIPE" })
-        });
-        setClientSecret(paymentIntent.clientSecret);
+        try {
+          const paymentIntent = await clientApi<{ clientSecret: string }>("/api/payments", {
+            method: "POST",
+            body: JSON.stringify({ appointmentId: appointment.id, provider: "STRIPE" })
+          });
+          setClientSecret(paymentIntent.clientSecret);
+        } catch {
+          setClientSecret("");
+        }
       }
 
       setDoctors((current) => current.map((doctor) => (
@@ -727,12 +747,10 @@ export default function VitaeonPlatform() {
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
                 <h2 className="mt-3 text-4xl font-semibold text-deep">
-                  {ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "Ticket de cita creado correctamente." : "Pago confirmado. Cita pendiente de aceptación médica."}
+                  Cita creada correctamente.
                 </h2>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  {ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID"
-                    ? "Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas."
-                    : "Tu pago fue confirmado. El médico recibirá la solicitud para aceptar la cita desde su panel."}
+                  Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
                 </p>
               </div>
               <CheckCircle2 className={`h-10 w-10 ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-600" : "text-emerald-600"}`} />
@@ -744,7 +762,7 @@ export default function VitaeonPlatform() {
               <Summary label="Paciente" value={ticket.patient} />
               <Summary label="Fecha y hora" value={dateTime(ticket.startsAt)} />
               <Summary label="Duración aproximada" value={`${Math.max(0, Math.round((new Date(ticket.endsAt).getTime() - new Date(ticket.startsAt).getTime()) / 60_000))} minutos`} />
-              <Summary label="Pago" value={ticket.paymentMethod === "CASH" ? "Efectivo pendiente" : "Stripe"} />
+              <Summary label="Pago" value={ticketPaymentLabel(ticket)} />
               <Summary label="Estado de cita" value={publicStatus(ticket.appointmentStatus)} />
               <Summary label="Estado de pago" value={publicStatus(ticket.paymentStatus)} />
               {ticket.discountCents ? <Summary label="Descuento" value={`-${money(ticket.discountCents)}`} /> : null}
@@ -756,12 +774,10 @@ export default function VitaeonPlatform() {
               </p>
             )}
             <p className={`mt-6 rounded-3xl p-5 text-sm font-semibold ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}>
-              {ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID"
-                ? "Tu cita fue registrada correctamente. El pago aparece como pendiente."
-                : "Tu pago quedó registrado correctamente. La cita está pendiente de aceptación médica."}
+              {ticketConfirmationMessage(ticket)}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && (
+              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && clientSecret && (
                 <a href="#stripe-payment" className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5">
                   Pagar ahora
                 </a>
@@ -1500,7 +1516,7 @@ function DoctorDetail(props: {
       </button>
       {props.bookingStatus === "success" && (
         <p className="mt-4 rounded-3xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
-          Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas.
+          Cita creada correctamente. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
         </p>
       )}
       <p className="mt-4 text-sm leading-6 text-slate-500">
