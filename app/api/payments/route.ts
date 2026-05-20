@@ -1,4 +1,5 @@
 import { PaymentProvider } from "@prisma/client";
+import type Stripe from "stripe";
 import { ok, fail } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -87,6 +88,14 @@ export async function POST(request: Request) {
     },
     include: {
       payments: true,
+      doctor: {
+        select: {
+          id: true,
+          stripeAccountId: true,
+          chargesEnabled: true,
+          payoutsEnabled: true
+        }
+      },
       availabilitySlot: { include: { appointment: { select: { id: true } } } }
     }
   });
@@ -105,7 +114,7 @@ export async function POST(request: Request) {
   if (parsed.data.provider === "CASH") {
     const updated = await prisma.payment.update({
       where: { id: payment.id },
-      data: { provider: PaymentProvider.CASH, status: "PENDING" }
+      data: { provider: PaymentProvider.CASH, status: "PENDING", doctorId: appointment.doctor.id }
     });
     await auditLog({
       actorUserId: user.id,
@@ -127,7 +136,7 @@ export async function POST(request: Request) {
   if (payment.amountCents <= 0) {
     const paid = await prisma.payment.update({
       where: { id: payment.id },
-      data: { provider: PaymentProvider.STRIPE, status: "PAID" }
+      data: { provider: PaymentProvider.STRIPE, status: "PAID", doctorId: appointment.doctor.id }
     });
     await prisma.appointment.update({ where: { id: appointment.id }, data: { status: "PENDING_DOCTOR_ACCEPTANCE" } });
     await auditLog({
@@ -141,21 +150,48 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const intent = await stripe.paymentIntents.create({
+  if (!appointment.doctor.stripeAccountId || !appointment.doctor.chargesEnabled || !appointment.doctor.payoutsEnabled) {
+    return fail(
+      "DOCTOR_PAYOUT_ACCOUNT_REQUIRED",
+      "Para recibir pagos en línea primero configura tu cuenta de cobro.",
+      409
+    );
+  }
+
+  const platformFeePercentage = Number(process.env.STRIPE_PLATFORM_FEE_PERCENTAGE ?? "0");
+  const applicationFeeAmount = Number.isFinite(platformFeePercentage)
+    ? Math.max(0, Math.round(payment.amountCents * (platformFeePercentage / 100)))
+    : 0;
+
+  const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: payment.amountCents,
     currency: payment.currency,
     metadata: {
+      kind: "appointment_payment",
       appointmentId: appointment.id,
-      paymentId: payment.id
+      paymentId: payment.id,
+      doctorId: appointment.doctor.id,
+      patientUserId: user.id
     },
-    automatic_payment_methods: { enabled: true }
-  });
+    automatic_payment_methods: { enabled: true },
+    transfer_data: {
+      destination: appointment.doctor.stripeAccountId
+    }
+  };
+
+  if (applicationFeeAmount > 0) {
+    intentParams.application_fee_amount = applicationFeeAmount;
+  }
+
+  const intent = await stripe.paymentIntents.create(intentParams);
 
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       provider: PaymentProvider.STRIPE,
-      providerPaymentIntentId: intent.id
+      providerPaymentIntentId: intent.id,
+      doctorId: appointment.doctor.id,
+      transferStatus: "pending_destination_charge"
     }
   });
 

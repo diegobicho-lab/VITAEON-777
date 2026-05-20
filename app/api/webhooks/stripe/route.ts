@@ -29,7 +29,11 @@ export async function POST(request: Request) {
       const status = event.type === "payment_intent.succeeded" ? PaymentStatus.PAID : PaymentStatus.FAILED;
       const payment = await prisma.payment.update({
         where: { id: paymentId },
-        data: { status }
+        data: {
+          status,
+          providerPaymentIntentId: intent.id,
+          transferStatus: status === PaymentStatus.PAID ? "paid_destination_charge" : "failed"
+        }
       });
       if (status === PaymentStatus.PAID) {
         await prisma.appointment.updateMany({
@@ -101,7 +105,9 @@ export async function POST(request: Request) {
         where: { id: session.metadata.paymentId },
         data: {
           status,
-          providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : null
+          providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+          providerCustomerId: typeof session.customer === "string" ? session.customer : null,
+          providerSubscriptionId: typeof session.subscription === "string" ? session.subscription : null
         }
       });
 
@@ -147,6 +153,80 @@ export async function POST(request: Request) {
         entityType: "SubscriptionPayment",
         entityId: payment.id,
         metadata: { status, stripeEvent: event.id, plan }
+      });
+    }
+  }
+
+  if (event.type === "account.updated") {
+    const account = event.data.object as Stripe.Account;
+    const externalAccounts = account.external_accounts as Stripe.ApiList<Stripe.ExternalAccount> | undefined;
+    const bank = externalAccounts?.data.find((item): item is Stripe.BankAccount => item.object === "bank_account");
+    const doctor = await prisma.doctor.findFirst({ where: { stripeAccountId: account.id } });
+
+    if (doctor) {
+      await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: {
+          stripeOnboardingCompleted: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled),
+          payoutsEnabled: Boolean(account.payouts_enabled),
+          chargesEnabled: Boolean(account.charges_enabled),
+          bankAccountLast4: bank?.last4 ?? doctor.bankAccountLast4
+        }
+      });
+
+      await auditLog({
+        action: "STRIPE_CONNECT_ACCOUNT_UPDATED",
+        entityType: "Doctor",
+        entityId: doctor.id,
+        metadata: {
+          stripeEvent: event.id,
+          chargesEnabled: Boolean(account.charges_enabled),
+          payoutsEnabled: Boolean(account.payouts_enabled)
+        }
+      });
+    }
+  }
+
+  if (
+    event.type === "customer.subscription.created" ||
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
+    const subscription = event.data.object as Stripe.Subscription;
+    const status =
+      event.type === "customer.subscription.deleted"
+        ? SubscriptionStatus.CANCELLED
+        : subscription.status === "active"
+          ? SubscriptionStatus.ACTIVE
+          : subscription.status === "past_due" || subscription.status === "unpaid"
+            ? SubscriptionStatus.FAILED
+            : SubscriptionStatus.PENDING;
+
+    const subscriptionLookup = [
+      { providerSubscriptionId: subscription.id },
+      ...(typeof subscription.customer === "string" ? [{ providerCustomerId: subscription.customer }] : [])
+    ];
+
+    const payment = await prisma.subscriptionPayment.findFirst({
+      where: {
+        OR: subscriptionLookup
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (payment) {
+      await prisma.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: {
+          providerSubscriptionId: subscription.id,
+          providerCustomerId: typeof subscription.customer === "string" ? subscription.customer : payment.providerCustomerId,
+          status: status === SubscriptionStatus.ACTIVE ? PaymentStatus.PAID : payment.status,
+          currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : payment.currentPeriodEnd
+        }
+      });
+      await prisma.doctor.updateMany({
+        where: { userId: payment.userId },
+        data: { subscriptionStatus: status }
       });
     }
   }

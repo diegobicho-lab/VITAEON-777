@@ -113,6 +113,7 @@ model Patient {
   welcomeDiscountAvailable Boolean        @default(true)
   welcomeDiscountUsedAt    DateTime?
   appointments             Appointment[]
+  cancellationRequests     CancellationRequest[]
   reviews                  DoctorReview[]
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt
@@ -150,6 +151,11 @@ model Doctor {
   whatsappUrl                 String?
   affiliateCodeLast4          String?
   affiliateDiscountEnabled    Boolean               @default(false)
+  stripeAccountId             String?               @unique
+  stripeOnboardingCompleted   Boolean               @default(false)
+  payoutsEnabled              Boolean               @default(false)
+  chargesEnabled              Boolean               @default(false)
+  bankAccountLast4            String?
   achievements                String[]              @default([])
   certifications              String[]              @default([])
   legalDeclarationAccepted    Boolean               @default(false)
@@ -162,6 +168,7 @@ model Doctor {
   verification                MedicalVerification?
   availabilitySlots           AvailabilitySlot[]
   appointments                Appointment[]
+  cancellationRequests        CancellationRequest[]
   conversationsCreated        MedicalConversation[] @relation("ConversationCreator")
   conversationsReceived       MedicalConversation[] @relation("ConversationRecipient")
   medicationSearchLogs        MedicationSearchLog[]
@@ -231,11 +238,16 @@ model SubscriptionPayment {
   provider          PaymentProvider @default(STRIPE)
   providerSessionId String?
   providerPaymentId String?
+  providerCustomerId String?
+  providerSubscriptionId String?
+  currentPeriodEnd DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
   @@index([userId, status, createdAt])
   @@index([providerSessionId])
+  @@index([providerCustomerId])
+  @@index([providerSubscriptionId])
 }
 
 model Appointment {
@@ -261,6 +273,7 @@ model Appointment {
   discountLabel       String?
   payments            Payment[]
   reviews             DoctorReview[]
+  cancellationRequests CancellationRequest[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
@@ -274,14 +287,37 @@ model Payment {
   appointment             Appointment     @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   provider                PaymentProvider
   providerPaymentIntentId String?
+  providerCheckoutSessionId String?
+  doctorId                String?
   amountCents             Int
   currency                String          @default("mxn")
   status                  PaymentStatus   @default(PENDING)
+  transferStatus          String?
   receiptUrl              String?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
 
   @@index([appointmentId, status])
+  @@index([providerCheckoutSessionId])
+  @@index([doctorId, status])
+}
+
+model CancellationRequest {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment  Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  doctorId      String
+  doctor        Doctor      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId     String
+  patient       Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  reason        String
+  status        String      @default("pendiente")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([appointmentId, status])
+  @@index([doctorId, status, createdAt])
+  @@index([patientId, status, createdAt])
 }
 
 model MedicalVerification {

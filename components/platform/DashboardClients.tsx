@@ -43,6 +43,11 @@ type DoctorProfile = {
   whatsappUrl?: string | null;
   affiliateCodeLast4?: string | null;
   affiliateDiscountEnabled: boolean;
+  stripeAccountId?: string | null;
+  stripeOnboardingCompleted: boolean;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  bankAccountLast4?: string | null;
   consultationPriceCents: number;
   consultationDurationMinutes: number;
   verificationStatus: string;
@@ -497,7 +502,7 @@ export function DoctorDashboardClient() {
   const [affiliateCode, setAffiliateCode] = useState("");
   const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
   const [reviewReply, setReviewReply] = useState("");
-  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "opiniones" | "notificaciones">("resumen");
+  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "notificaciones">("resumen");
   const [achievementsText, setAchievementsText] = useState("");
   const [certificationsText, setCertificationsText] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
@@ -511,9 +516,12 @@ export function DoctorDashboardClient() {
   const [repeatUntil, setRepeatUntil] = useState("");
   const [medicationQuery, setMedicationQuery] = useState("");
   const [medicationResult, setMedicationResult] = useState<MedicationResult | null>(null);
+  const [cancellationModal, setCancellationModal] = useState<Appointment | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const assistantEnabled = medal === "amatista";
+  const collaborationEnabled = medal === "amatista";
 
   function monthKey(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -521,11 +529,10 @@ export function DoctorDashboardClient() {
 
   async function load(month = calendarMonth) {
     setLoading(true);
-    const [doctor, appointmentData, agendaData, conversationData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
+    const [doctor, appointmentData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
       clientApi<DoctorProfile>("/api/doctors/me"),
       clientApi<Appointment[]>("/api/appointments"),
       clientApi<DoctorAgenda>(`/api/doctor-agenda?month=${monthKey(month)}`),
-      clientApi<MedicalConversation[]>("/api/doctor-conversations"),
       clientApi<Array<{ id: string; name: string; specialty: string; hospital: string }>>("/api/doctors"),
       clientApi<SpecialtyOption[]>("/api/specialties"),
       clientApi<HospitalOption[]>("/api/hospitals"),
@@ -561,16 +568,18 @@ export function DoctorDashboardClient() {
     setPrice(String(Math.round(doctor.consultationPriceCents / 100)));
     setAppointments(appointmentData);
     setAgenda(agendaData);
-    setConversations(conversationData);
     setDoctorOptions(doctorData.filter((item) => item.id !== doctor.id));
     setSpecialties(specialtyData);
     setHospitals(hospitalData);
     setNotifications(notificationData);
     setDoctorReviews(reviewData);
     if (doctor.medal === "amatista") {
+      const conversationData = await clientApi<MedicalConversation[]>("/api/doctor-conversations").catch(() => []);
+      setConversations(conversationData);
       const secretary = await clientApi<SecretarySummary>("/api/doctor-assistant").catch(() => null);
       setSecretarySummary(secretary);
     } else {
+      setConversations([]);
       setSecretarySummary(null);
     }
     setLoading(false);
@@ -664,14 +673,48 @@ export function DoctorDashboardClient() {
     await load();
   }
 
-  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION") {
+  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION", reason?: string) {
     await clientApi(`/api/appointments/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
         action,
-        cancellationReason: action === "REQUEST_CANCELLATION" ? "Cancelación solicitada por médico desde agenda clínica." : undefined
+        cancellationReason: action === "REQUEST_CANCELLATION" ? reason || "Cancelación solicitada por médico desde agenda clínica." : undefined
       })
     });
+    if (action === "REQUEST_CANCELLATION") {
+      setMessage("Solicitud de cancelación enviada correctamente.");
+    }
+    await load();
+  }
+
+  function openCancellationRequest(appointment: Appointment) {
+    setCancellationModal(appointment);
+    setCancellationReason("");
+    setMessage("");
+  }
+
+  async function submitCancellationRequest() {
+    if (!cancellationModal) return;
+    const reason = cancellationReason.trim();
+    if (reason.length < 6) {
+      setMessage("Escribe un motivo de cancelación claro antes de enviar la solicitud.");
+      return;
+    }
+    await updateAppointment(cancellationModal.id, "REQUEST_CANCELLATION", reason);
+    setCancellationModal(null);
+    setCancellationReason("");
+  }
+
+  async function startConnectOnboarding() {
+    setMessage("");
+    const response = await clientApi<{ url: string }>("/api/stripe/connect/onboarding", { method: "POST" });
+    window.location.href = response.url;
+  }
+
+  async function refreshConnectStatus() {
+    setMessage("");
+    await clientApi("/api/stripe/connect/status");
+    setMessage("Estado de cobros actualizado.");
     await load();
   }
 
@@ -772,6 +815,10 @@ export function DoctorDashboardClient() {
 
   async function createConversation() {
     setMessage("");
+    if (!collaborationEnabled) {
+      setMessage("La colaboración médica es una función premium incluida únicamente en el Plan Amatista.");
+      return;
+    }
     await clientApi("/api/doctor-conversations", {
       method: "POST",
       body: JSON.stringify({
@@ -793,6 +840,10 @@ export function DoctorDashboardClient() {
 
   async function sendConversationMessage(conversationId: string) {
     if (!chatMessage.trim()) return;
+    if (!collaborationEnabled) {
+      setMessage("La colaboración médica es una función premium incluida únicamente en el Plan Amatista.");
+      return;
+    }
     await clientApi(`/api/doctor-conversations/${conversationId}/messages`, {
       method: "POST",
       body: JSON.stringify({ body: chatMessage })
@@ -807,6 +858,7 @@ export function DoctorDashboardClient() {
     ["disponibilidad", "Disponibilidad"],
     ["perfil", "Perfil profesional"],
     ["suscripcion", "Suscripción"],
+    ["cobros", "Cobros"],
     ["opiniones", "Opiniones"],
     ["notificaciones", "Notificaciones"]
   ] as const;
@@ -924,7 +976,10 @@ export function DoctorDashboardClient() {
               onAcceptAppointment={(id) => updateAppointment(id, "ACCEPT")}
               onCompleteAppointment={(id) => updateAppointment(id, "COMPLETE")}
               onNoShowAppointment={(id) => updateAppointment(id, "MARK_NO_SHOW")}
-              onCancelAppointment={(id) => updateAppointment(id, "REQUEST_CANCELLATION")}
+              onCancelAppointment={(id) => {
+                const appointment = appointments.find((item) => item.id === id);
+                if (appointment) openCancellationRequest(appointment);
+              }}
             />
           )}
 
@@ -934,7 +989,7 @@ export function DoctorDashboardClient() {
               onAccept={(id) => updateAppointment(id, "ACCEPT")}
               onComplete={(id) => updateAppointment(id, "COMPLETE")}
               onNoShow={(id) => updateAppointment(id, "MARK_NO_SHOW")}
-              onCancel={(id) => updateAppointment(id, "REQUEST_CANCELLATION")}
+              onCancel={openCancellationRequest}
             />
           )}
 
@@ -968,6 +1023,64 @@ export function DoctorDashboardClient() {
               <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                 Los pagos de Diamante y Amatista se procesan en Stripe con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
               </p>
+            </section>
+          )}
+
+          {activeSection === "cobros" && (
+            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Cobros y cuenta bancaria</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Recibe pagos de citas en línea</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Los pagos de citas se envían al médico mediante Stripe Connect. Las suscripciones médicas se procesan por separado en la cuenta principal de VITAEON.
+                  </p>
+                </div>
+                <CreditCard className="h-8 w-8 text-medical" />
+              </div>
+              <div className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-3xl bg-slate-50 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Estado de cuenta</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-deep">
+                    {!profile?.stripeAccountId
+                      ? "Cuenta no configurada"
+                      : profile.chargesEnabled && profile.payoutsEnabled
+                        ? "Cuenta activa para recibir pagos"
+                        : "Configuración pendiente"}
+                  </h3>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge value={profile?.chargesEnabled ? "COBROS ACTIVOS" : "COBROS PENDIENTES"} />
+                    <Badge value={profile?.payoutsEnabled ? "PAGOS ACTIVOS" : "PAGOS PENDIENTES"} />
+                    {profile?.bankAccountLast4 && <Badge value={`BANCO ****${profile.bankAccountLast4}`} />}
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      onClick={() => startConnectOnboarding().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir Stripe Connect."))}
+                      className="rounded-full bg-black px-5 py-3 font-semibold text-white"
+                    >
+                      {profile?.stripeAccountId ? "Actualizar datos de cobro" : "Configurar cuenta de cobro"}
+                    </button>
+                    {profile?.stripeAccountId && (
+                      <button
+                        onClick={() => refreshConnectStatus().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible actualizar el estado."))}
+                        className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep"
+                      >
+                        Actualizar estado
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-silver bg-white p-5">
+                  <ShieldCheck className="h-7 w-7 text-medical" />
+                  <h3 className="mt-4 text-xl font-semibold text-deep">Seguridad financiera</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    Tus datos bancarios son gestionados de forma segura mediante Stripe. VITAEON no almacena tu información bancaria completa ni datos de tarjetas.
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    Si tu cuenta aún está pendiente, los pacientes verán un aviso antes de intentar pagar en línea.
+                  </p>
+                </div>
+              </div>
             </section>
           )}
 
@@ -1056,7 +1169,38 @@ export function DoctorDashboardClient() {
             <div className="grid gap-6">
               <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} secretary={secretarySummary} notifications={notifications} />
               <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} />
-              <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} />
+              <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar Amatista."))} />
+            </div>
+          )}
+          {cancellationModal && (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-deep/35 px-4 backdrop-blur-sm">
+              <div className="w-full max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Solicitud de cancelación</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-deep">{cancellationModal.patient.user.name}</h3>
+                    <p className="mt-1 text-sm text-slate-600">{dateTime(cancellationModal.availabilitySlot.startsAt)} · {cancellationModal.doctor.specialty.name}</p>
+                  </div>
+                  <button onClick={() => setCancellationModal(null)} className="rounded-full bg-slate-50 px-4 py-2 font-semibold text-deep">Cerrar</button>
+                </div>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(event) => setCancellationReason(event.target.value)}
+                  placeholder="Motivo de cancelación para revisión administrativa"
+                  className="mt-5 min-h-32 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none"
+                />
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Esta acción crea una solicitud pendiente. Administración revisará el caso antes de aplicar cualquier devolución.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="rounded-full bg-black px-5 py-3 font-semibold text-white">
+                    Enviar solicitud
+                  </button>
+                  <button onClick={() => setCancellationModal(null)} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1841,6 +1985,8 @@ function MedicalChatPanel(props: {
   setChatMessage: (value: string) => void;
   onCreate: () => void;
   onSend: (id: string) => void;
+  locked: boolean;
+  onUpgrade: () => void;
 }) {
   return (
     <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
@@ -1849,20 +1995,34 @@ function MedicalChatPanel(props: {
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Colaboración médica</p>
           <h2 className="mt-2 text-2xl font-semibold text-deep">Chat para derivaciones y coordinación</h2>
         </div>
-        <MessageCircle className="h-8 w-8 text-medical" />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {props.locked && <Badge value="Disponible exclusivamente en Plan Amatista" />}
+          <MessageCircle className="h-8 w-8 text-medical" />
+        </div>
       </div>
+      {props.locked && (
+        <div className="mt-5 rounded-3xl border border-amber-100 bg-amber-50 p-5">
+          <p className="font-semibold text-amber-800">Función premium Amatista</p>
+          <p className="mt-2 text-sm leading-6 text-amber-700">
+            La colaboración médica es una función premium incluida únicamente en el Plan Amatista.
+          </p>
+          <button onClick={props.onUpgrade} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">
+            Mejorar a Amatista
+          </button>
+        </div>
+      )}
       <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
-        <select value={props.recipientDoctorId} onChange={(event) => props.setRecipientDoctorId(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none">
+        <select disabled={props.locked} value={props.recipientDoctorId} onChange={(event) => props.setRecipientDoctorId(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55">
           <option value="">Seleccionar médico destinatario</option>
           {props.doctors.map((doctor) => (
             <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.specialty} · {doctor.hospital}</option>
           ))}
         </select>
-        <input value={props.conversationTitle} onChange={(event) => props.setConversationTitle(event.target.value)} placeholder="Título de la conversación" className="rounded-3xl bg-white px-4 py-3 outline-none" />
-        <input value={props.patientAlias} onChange={(event) => props.setPatientAlias(event.target.value)} placeholder="Alias del paciente, sin exponer datos innecesarios" className="rounded-3xl bg-white px-4 py-3 outline-none" />
-        <textarea value={props.clinicalSummary} onChange={(event) => props.setClinicalSummary(event.target.value)} placeholder="Resumen clínico breve para la derivación" className="min-h-24 rounded-3xl bg-white px-4 py-3 outline-none" />
-        <textarea value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Mensaje inicial o respuesta" className="min-h-20 rounded-3xl bg-white px-4 py-3 outline-none" />
-        <button onClick={props.onCreate} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Crear conversación</button>
+        <input disabled={props.locked} value={props.conversationTitle} onChange={(event) => props.setConversationTitle(event.target.value)} placeholder="Título de la conversación" className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
+        <input disabled={props.locked} value={props.patientAlias} onChange={(event) => props.setPatientAlias(event.target.value)} placeholder="Alias del paciente, sin exponer datos innecesarios" className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
+        <textarea disabled={props.locked} value={props.clinicalSummary} onChange={(event) => props.setClinicalSummary(event.target.value)} placeholder="Resumen clínico breve para la derivación" className="min-h-24 rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
+        <textarea disabled={props.locked} value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Mensaje inicial o respuesta" className="min-h-20 rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
+        <button disabled={props.locked} onClick={props.onCreate} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Crear conversación</button>
       </div>
       <div className="mt-5 grid gap-4">
         {props.conversations.length === 0 && <EmptyState text="Aún no hay conversaciones médicas." />}
@@ -1889,8 +2049,8 @@ function MedicalChatPanel(props: {
               ))}
             </div>
             <div className="mt-4 flex gap-3">
-              <input value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Responder conversación" className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 outline-none" />
-              <button onClick={() => props.onSend(conversation.id)} className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-3 font-semibold text-white"><Send className="h-4 w-4" /> Enviar</button>
+              <input disabled={props.locked} value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Responder conversación" className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 outline-none disabled:opacity-55" />
+              <button disabled={props.locked} onClick={() => props.onSend(conversation.id)} className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-3 font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" /> Enviar</button>
             </div>
           </article>
         ))}
@@ -1962,7 +2122,7 @@ function AppointmentList({
   onAccept: (id: string) => void;
   onComplete: (id: string) => void;
   onNoShow: (id: string) => void;
-  onCancel: (id: string) => void;
+  onCancel: (appointment: Appointment) => void;
 }) {
   return (
     <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
@@ -2007,7 +2167,7 @@ function AppointmentList({
                     <button onClick={() => onNoShow(appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 font-semibold text-amber-700">Paciente no llegó</button>
                   </>
                 )}
-                <button onClick={() => onCancel(appointment.id)} className="rounded-full border border-silver px-4 py-2 font-semibold text-deep">Solicitar cancelación</button>
+                <button onClick={() => onCancel(appointment)} className="rounded-full border border-silver px-4 py-2 font-semibold text-deep">Solicitar cancelación</button>
               </div>
             )}
           </article>

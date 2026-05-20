@@ -10,6 +10,10 @@ function canAccessDoctorTools(role: string) {
   return role === "DOCTOR" || role === "ADMIN" || role === "STAFF";
 }
 
+function hasAmatistaAccess(doctor: { medal: string }) {
+  return doctor.medal === "amatista";
+}
+
 async function getDoctorForUser(userId: string) {
   return prisma.doctor.findUnique({ where: { userId } });
 }
@@ -60,6 +64,13 @@ export async function POST(request: Request) {
 
   const doctor = await getDoctorForUser(user.id);
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (!hasAmatistaAccess(doctor)) {
+    return fail(
+      "AMATISTA_PLAN_REQUIRED",
+      "La colaboración médica es una función premium incluida únicamente en el Plan Amatista.",
+      403
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = medicalConversationCreateSchema.safeParse(body);

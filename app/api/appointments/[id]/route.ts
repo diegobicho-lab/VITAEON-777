@@ -197,8 +197,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ((action === "COMPLETE" || action === "MARK_NO_SHOW") && user.role !== "DOCTOR" && !isAdmin) {
     return fail("FORBIDDEN", "Solo el médico de la cita puede cerrar la atención.", 403);
   }
-  if ((action === "REQUEST_RESCHEDULE" || action === "REQUEST_CANCELLATION") && user.role !== "PATIENT" && !isAdmin) {
+  if (action === "REQUEST_RESCHEDULE" && user.role !== "PATIENT" && !isAdmin) {
     return fail("FORBIDDEN", "Solo el paciente dueño de la cita puede solicitar este cambio.", 403);
+  }
+  if (action === "REQUEST_CANCELLATION" && user.role !== "PATIENT" && user.role !== "DOCTOR" && !isAdmin) {
+    return fail("FORBIDDEN", "Solo el paciente o el médico de la cita pueden solicitar cancelación.", 403);
   }
   if (action === "MARK_REFUND_PENDING" && !isAdmin) {
     return fail("FORBIDDEN", "Solo administración puede marcar reembolso pendiente manualmente.", 403);
@@ -317,6 +320,39 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (action === "REQUEST_CANCELLATION") {
+      if (user.role === "DOCTOR" && !isAdmin) {
+        const reason = parsed.data.cancellationReason ?? "Cancelación solicitada por médico desde agenda clínica.";
+        title = "Solicitud de cancelación enviada";
+        patientMessage = `El médico solicitó cancelar tu cita con ${appointment.doctor.fullName}. Administración revisará el caso antes de cualquier cambio final.`;
+        doctorMessage = "Solicitud de cancelación enviada correctamente.";
+        notifyAdmin = true;
+
+        await tx.cancellationRequest.create({
+          data: {
+            appointmentId: appointment.id,
+            doctorId: appointment.doctorId,
+            patientId: appointment.patientId,
+            reason,
+            status: "pendiente"
+          }
+        });
+
+        return tx.appointment.update({
+          where: { id: appointment.id },
+          data: {
+            status: AppointmentStatus.CANCELLATION_REQUESTED,
+            cancellationReason: reason,
+            cancellationRequestedAt: new Date()
+          },
+          include: {
+            patient: { include: { user: true } },
+            doctor: { include: { user: { select: { id: true, email: true } }, specialty: true, hospital: true } },
+            availabilitySlot: true,
+            payments: true
+          }
+        });
+      }
+
       const nextStatus = payment.hasPaidOnline ? AppointmentStatus.REFUND_PENDING : AppointmentStatus.CANCELLED;
       title = payment.hasPaidOnline ? "Cancelación solicitada con reembolso pendiente" : "Cita cancelada";
       patientMessage = payment.hasPaidOnline
@@ -324,6 +360,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         : `Tu cita con ${appointment.doctor.fullName} fue cancelada.`;
       doctorMessage = `${appointment.patient.user.name} solicitó cancelar su cita.`;
       notifyAdmin = payment.hasPaidOnline;
+
+      await tx.cancellationRequest.create({
+        data: {
+          appointmentId: appointment.id,
+          doctorId: appointment.doctorId,
+          patientId: appointment.patientId,
+          reason: parsed.data.cancellationReason ?? "Cancelación solicitada desde panel.",
+          status: payment.hasPaidOnline ? "reembolso_pendiente" : "pendiente"
+        }
+      });
 
       const saved = await tx.appointment.update({
         where: { id: appointment.id },

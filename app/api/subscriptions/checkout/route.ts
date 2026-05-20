@@ -110,7 +110,11 @@ export async function POST(request: Request) {
 
   await prisma.subscriptionPayment.update({
     where: { id: payment.id },
-    data: { providerSessionId: session.id }
+    data: {
+      providerSessionId: session.id,
+      providerCustomerId: typeof session.customer === "string" ? session.customer : null,
+      providerSubscriptionId: typeof session.subscription === "string" ? session.subscription : null
+    }
   });
   await prisma.doctor.update({
     where: { id: doctor.id },

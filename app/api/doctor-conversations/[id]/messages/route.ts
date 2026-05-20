@@ -20,11 +20,26 @@ async function canAccessConversation(userId: string, role: string, conversationI
   return Boolean(conversation);
 }
 
+async function hasAmatistaAccess(userId: string, role: string) {
+  if (role === "ADMIN" || role === "STAFF") return true;
+  if (role !== "DOCTOR") return false;
+  const doctor = await prisma.doctor.findUnique({ where: { userId }, select: { medal: true } });
+  return doctor?.medal === "amatista";
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver mensajes médicos.", 401);
 
   const { id } = await params;
+  if (!(await hasAmatistaAccess(user.id, user.role))) {
+    return fail(
+      "AMATISTA_PLAN_REQUIRED",
+      "La colaboración médica es una función premium incluida únicamente en el Plan Amatista.",
+      403
+    );
+  }
+
   if (!(await canAccessConversation(user.id, user.role, id))) {
     return fail("FORBIDDEN", "No tienes acceso a esta conversación médica.", 403);
   }
@@ -46,6 +61,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para enviar mensajes médicos.", 401);
 
   const { id } = await params;
+  if (!(await hasAmatistaAccess(user.id, user.role))) {
+    return fail(
+      "AMATISTA_PLAN_REQUIRED",
+      "La colaboración médica es una función premium incluida únicamente en el Plan Amatista.",
+      403
+    );
+  }
+
   if (!(await canAccessConversation(user.id, user.role, id))) {
     return fail("FORBIDDEN", "No tienes acceso a esta conversación médica.", 403);
   }

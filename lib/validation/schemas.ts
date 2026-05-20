@@ -194,6 +194,11 @@ export const subscriptionCheckoutSchema = z.object({
   plan: z.enum(["oro", "diamante", "amatista"])
 });
 
+export const cancellationRequestSchema = z.object({
+  appointmentId: z.string().min(1),
+  reason: z.string().trim().min(6).max(600)
+});
+
 export const medicationSearchSchema = z.object({
   query: z.string().min(2).max(120)
 });
