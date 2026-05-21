@@ -10,6 +10,13 @@ type Appointment = {
   id: string;
   status: string;
   cancellationReason?: string | null;
+  refundRequested?: boolean;
+  refundReason?: string | null;
+  doctorRefundDecision?: string | null;
+  reschedulePreferred?: boolean;
+  previousStartTime?: string | null;
+  previousEndTime?: string | null;
+  rescheduledAt?: string | null;
   originalAmountCents?: number;
   discountCents?: number;
   discountLabel?: string | null;
@@ -327,6 +334,7 @@ const appointmentLabels: Record<string, string> = {
   PENDING_DOCTOR_ACCEPTANCE: "Pendiente de aceptación médica",
   ACCEPTED: "Aceptada por el médico",
   CONFIRMED: "Confirmada",
+  RESCHEDULED: "Reagendada",
   COMPLETED: "Completada",
   NO_SHOW: "El médico marcó que el paciente no asistió",
   RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
@@ -445,7 +453,7 @@ export function PatientDashboardClient() {
               {appointment.status === "NO_SHOW" && (
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Solicitar reagendar</button>
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelar cita</button>
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
                 </div>
               )}
               {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
@@ -673,16 +681,23 @@ export function DoctorDashboardClient() {
     await load();
   }
 
-  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION", reason?: string) {
+  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION" | "APPROVE_REFUND" | "REJECT_REFUND", reason?: string) {
     await clientApi(`/api/appointments/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
         action,
-        cancellationReason: action === "REQUEST_CANCELLATION" ? reason || "Cancelación solicitada por médico desde agenda clínica." : undefined
+        cancellationReason: action === "REQUEST_CANCELLATION" ? reason || "Cancelación solicitada por médico desde agenda clínica." : undefined,
+        refundReason: action === "APPROVE_REFUND" || action === "REJECT_REFUND" ? reason : undefined
       })
     });
     if (action === "REQUEST_CANCELLATION") {
       setMessage("Solicitud de cancelación enviada correctamente.");
+    } else if (action === "APPROVE_REFUND") {
+      setMessage("Devolución aprobada correctamente.");
+    } else if (action === "REJECT_REFUND") {
+      setMessage("Solicitud de devolución marcada como no aprobada.");
+    } else if (action === "ACCEPT") {
+      setMessage("Cita aceptada o reagendada al horario disponible más cercano.");
     }
     await load();
   }
@@ -990,6 +1005,8 @@ export function DoctorDashboardClient() {
               onComplete={(id) => updateAppointment(id, "COMPLETE")}
               onNoShow={(id) => updateAppointment(id, "MARK_NO_SHOW")}
               onCancel={openCancellationRequest}
+              onApproveRefund={(appointment) => updateAppointment(appointment.id, "APPROVE_REFUND", appointment.refundReason ?? appointment.cancellationReason ?? "Devolución aprobada por médico.")}
+              onRejectRefund={(appointment) => updateAppointment(appointment.id, "REJECT_REFUND", appointment.refundReason ?? appointment.cancellationReason ?? "Devolución no aprobada por médico.")}
             />
           )}
 
@@ -1190,7 +1207,7 @@ export function DoctorDashboardClient() {
                   className="mt-5 min-h-32 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none"
                 />
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Esta acción crea una solicitud pendiente. Administración revisará el caso antes de aplicar cualquier devolución.
+                  Esta acción crea una solicitud pendiente. Primero se intentará reagendar; una devolución queda como segunda opción de revisión, sin mezclar pagos de suscripciones.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="rounded-full bg-black px-5 py-3 font-semibold text-white">
@@ -1793,7 +1810,7 @@ function DoctorAgendaPanel({
                           {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(slot.appointment.status) && (
                             <button onClick={() => slot.appointment && onAcceptAppointment(slot.appointment.id)} className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">Aceptar cita</button>
                           )}
-                          {["ACCEPTED", "CONFIRMED"].includes(slot.appointment.status) && (
+                          {["ACCEPTED", "CONFIRMED", "RESCHEDULED"].includes(slot.appointment.status) && (
                             <>
                               <button onClick={() => slot.appointment && onCompleteAppointment(slot.appointment.id)} className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">Completar cita</button>
                               <button onClick={() => slot.appointment && onNoShowAppointment(slot.appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">Paciente no llegó</button>
@@ -2116,13 +2133,17 @@ function AppointmentList({
   onAccept,
   onComplete,
   onNoShow,
-  onCancel
+  onCancel,
+  onApproveRefund,
+  onRejectRefund
 }: {
   appointments: Appointment[];
   onAccept: (id: string) => void;
   onComplete: (id: string) => void;
   onNoShow: (id: string) => void;
   onCancel: (appointment: Appointment) => void;
+  onApproveRefund: (appointment: Appointment) => void;
+  onRejectRefund: (appointment: Appointment) => void;
 }) {
   return (
     <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
@@ -2156,12 +2177,25 @@ function AppointmentList({
               <MetricMini label="Especialidad" value={appointment.doctor.specialty.name} />
             </div>
             {appointment.cancellationReason && <p className="mt-3 text-sm text-red-600">Motivo: {appointment.cancellationReason}</p>}
-            {!["COMPLETED", "CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(appointment.status) && (
+            {appointment.reschedulePreferred && <p className="mt-3 text-sm text-slate-600">Prioridad sugerida: reagendar antes de cancelar o devolver.</p>}
+            {appointment.refundRequested && appointment.doctorRefundDecision !== "approved" && (
+              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-800">Solicitud de devolución pendiente de decisión médica</p>
+                {appointment.refundReason && <p className="mt-1 text-sm text-amber-700">{appointment.refundReason}</p>}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => onApproveRefund(appointment)} className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">Aprobar devolución</button>
+                  <button onClick={() => onRejectRefund(appointment)} className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800">No aprobar devolución</button>
+                </div>
+              </div>
+            )}
+            {!["COMPLETED", "CANCELLED", "REFUNDED"].includes(appointment.status) && (
               <div className="mt-4 flex flex-wrap gap-3">
                 {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(appointment.status) && (
-                  <button onClick={() => onAccept(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">Aceptar cita</button>
+                  <button onClick={() => onAccept(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">
+                    {appointment.status === "RESCHEDULE_REQUESTED" ? "Aceptar y asignar horario cercano" : "Aceptar cita"}
+                  </button>
                 )}
-                {["ACCEPTED", "CONFIRMED"].includes(appointment.status) && (
+                {["ACCEPTED", "CONFIRMED", "RESCHEDULED"].includes(appointment.status) && (
                   <>
                     <button onClick={() => onComplete(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">Completar cita</button>
                     <button onClick={() => onNoShow(appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 font-semibold text-amber-700">Paciente no llegó</button>

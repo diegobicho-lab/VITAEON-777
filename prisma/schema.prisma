@@ -23,6 +23,7 @@ enum AppointmentStatus {
   COMPLETED
   NO_SHOW
   RESCHEDULE_REQUESTED
+  RESCHEDULED
   CANCELLATION_REQUESTED
   REFUND_PENDING
   REFUNDED
@@ -268,6 +269,14 @@ model Appointment {
   rescheduleRequestedAt DateTime?
   cancellationRequestedAt DateTime?
   refundRequestedAt   DateTime?
+  cancellationRequested Boolean          @default(false)
+  reschedulePreferred Boolean            @default(false)
+  refundRequested     Boolean            @default(false)
+  refundReason        String?
+  doctorRefundDecision String?
+  previousStartTime   DateTime?
+  previousEndTime     DateTime?
+  rescheduledAt       DateTime?
   originalAmountCents Int               @default(0)
   discountCents       Int               @default(0)
   discountLabel       String?
@@ -287,12 +296,16 @@ model Payment {
   appointment             Appointment     @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   provider                PaymentProvider
   providerPaymentIntentId String?
+  providerChargeId        String?
   providerCheckoutSessionId String?
   doctorId                String?
   amountCents             Int
   currency                String          @default("mxn")
   status                  PaymentStatus   @default(PENDING)
   transferStatus          String?
+  refundId                String?
+  refundedAt              DateTime?
+  refundedAmountCents     Int?
   receiptUrl              String?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt

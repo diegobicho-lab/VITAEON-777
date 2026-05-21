@@ -32,6 +32,7 @@ export async function POST(request: Request) {
         data: {
           status,
           providerPaymentIntentId: intent.id,
+          providerChargeId: typeof intent.latest_charge === "string" ? intent.latest_charge : null,
           transferStatus: status === PaymentStatus.PAID ? "paid_destination_charge" : "failed"
         }
       });
@@ -91,6 +92,53 @@ export async function POST(request: Request) {
         entityType: "Payment",
         entityId: payment.id,
         metadata: { status, stripeEvent: event.id }
+      });
+    }
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+    const refund = charge.refunds?.data[0];
+    const payment = await prisma.payment.findFirst({
+      where: {
+        OR: [
+          { providerChargeId: charge.id },
+          ...(paymentIntentId ? [{ providerPaymentIntentId: paymentIntentId }] : [])
+        ]
+      }
+    });
+
+    if (payment) {
+      const fullyRefunded = charge.amount_refunded >= payment.amountCents;
+      const updated = await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: fullyRefunded ? PaymentStatus.REFUNDED : payment.status,
+          providerChargeId: charge.id,
+          refundId: refund?.id ?? payment.refundId,
+          refundedAt: refund ? new Date(refund.created * 1000) : new Date(),
+          refundedAmountCents: charge.amount_refunded,
+          transferStatus: fullyRefunded ? "refunded" : "partially_refunded"
+        }
+      });
+
+      if (fullyRefunded) {
+        await prisma.appointment.update({
+          where: { id: updated.appointmentId },
+          data: {
+            status: AppointmentStatus.REFUNDED,
+            refundRequested: true,
+            doctorRefundDecision: "approved"
+          }
+        });
+      }
+
+      await auditLog({
+        action: "STRIPE_WEBHOOK_CHARGE_REFUNDED",
+        entityType: "Payment",
+        entityId: payment.id,
+        metadata: { stripeEvent: event.id, chargeId: charge.id, amountRefunded: charge.amount_refunded }
       });
     }
   }

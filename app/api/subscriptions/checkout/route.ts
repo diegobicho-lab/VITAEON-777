@@ -1,4 +1,5 @@
 import { MedicalMedal, PaymentProvider, PaymentStatus, SubscriptionStatus } from "@prisma/client";
+import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -69,7 +70,6 @@ export async function POST(request: Request) {
 
   const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const platformOwnerRef = process.env.VITAEON_PLATFORM_OWNER_REF ?? "vitaeon-primary-stripe-account";
-  const stripe = getStripe();
   const payment = await prisma.subscriptionPayment.create({
     data: {
       userId: user.id,
@@ -80,33 +80,48 @@ export async function POST(request: Request) {
     }
   });
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer_email: user.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "mxn",
-          unit_amount: amountCents,
-          product_data: {
-            name: `VITAEON Plan ${planLabels[parsed.data.plan]}`,
-            description: "Suscripción médica VITAEON"
-          }
-        },
-        quantity: 1
+  let session: Stripe.Checkout.Session;
+  try {
+    const stripe = getStripe();
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: user.email,
+      line_items: [
+        {
+          price_data: {
+            currency: "mxn",
+            unit_amount: amountCents,
+            product_data: {
+              name: `VITAEON Plan ${planLabels[parsed.data.plan]}`,
+              description: "Suscripción médica VITAEON"
+            }
+          },
+          quantity: 1
+        }
+      ],
+      success_url: `${appUrl}/dashboard/doctor?subscription=success`,
+      cancel_url: `${appUrl}/dashboard/doctor?subscription=cancelled`,
+      metadata: {
+        kind: "doctor_subscription",
+        paymentId: payment.id,
+        userId: user.id,
+        doctorId: doctor.id,
+        plan: parsed.data.plan,
+        platformOwnerRef
       }
-    ],
-    success_url: `${appUrl}/dashboard/doctor?subscription=success`,
-    cancel_url: `${appUrl}/dashboard/doctor?subscription=cancelled`,
-    metadata: {
-      kind: "doctor_subscription",
-      paymentId: payment.id,
-      userId: user.id,
-      doctorId: doctor.id,
-      plan: parsed.data.plan,
-      platformOwnerRef
-    }
-  });
+    });
+  } catch (error) {
+    console.error("[Stripe subscription checkout error]", error);
+    await prisma.subscriptionPayment.update({
+      where: { id: payment.id },
+      data: { status: PaymentStatus.FAILED }
+    });
+    return fail(
+      "STRIPE_SUBSCRIPTION_CHECKOUT_FAILED",
+      "No pudimos abrir el checkout de suscripción. Revisa que Stripe esté configurado correctamente o intenta de nuevo.",
+      502
+    );
+  }
 
   await prisma.subscriptionPayment.update({
     where: { id: payment.id },

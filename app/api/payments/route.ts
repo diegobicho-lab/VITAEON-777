@@ -149,7 +149,6 @@ export async function POST(request: Request) {
     return ok({ payment: paid, message: "Cita confirmada sin cargo." });
   }
 
-  const stripe = getStripe();
   if (!appointment.doctor.stripeAccountId || !appointment.doctor.chargesEnabled || !appointment.doctor.payoutsEnabled) {
     return fail(
       "DOCTOR_PAYOUT_ACCOUNT_REQUIRED",
@@ -183,7 +182,18 @@ export async function POST(request: Request) {
     intentParams.application_fee_amount = applicationFeeAmount;
   }
 
-  const intent = await stripe.paymentIntents.create(intentParams);
+  let intent: Stripe.PaymentIntent;
+  try {
+    const stripe = getStripe();
+    intent = await stripe.paymentIntents.create(intentParams);
+  } catch (error) {
+    console.error("[Stripe appointment payment error]", error);
+    return fail(
+      "STRIPE_APPOINTMENT_PAYMENT_FAILED",
+      "No pudimos iniciar el pago en línea. Revisa que Stripe esté configurado correctamente o intenta de nuevo.",
+      502
+    );
+  }
 
   await prisma.payment.update({
     where: { id: payment.id },

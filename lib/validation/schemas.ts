@@ -42,6 +42,8 @@ export const appointmentUpdateSchema = z
         "REQUEST_RESCHEDULE",
         "REQUEST_CANCELLATION",
         "MARK_REFUND_PENDING",
+        "APPROVE_REFUND",
+        "REJECT_REFUND",
         "CANCEL"
       ])
       .optional(),
@@ -54,11 +56,13 @@ export const appointmentUpdateSchema = z
         "PENDING_DOCTOR_ACCEPTANCE",
         "NO_SHOW",
         "RESCHEDULE_REQUESTED",
+        "RESCHEDULED",
         "CANCELLATION_REQUESTED",
         "REFUND_PENDING"
       ])
       .optional(),
     cancellationReason: z.string().min(3).max(600).optional(),
+    refundReason: z.string().min(3).max(600).optional(),
     availabilitySlotId: z.string().min(1).optional()
   })
   .refine((value) => Boolean(value.action || value.status || value.availabilitySlotId), {

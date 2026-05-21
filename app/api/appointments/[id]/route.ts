@@ -1,10 +1,13 @@
-import { AppointmentStatus, PaymentStatus, Role } from "@prisma/client";
+import { AppointmentStatus, PaymentProvider, PaymentStatus, Role } from "@prisma/client";
+import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
+import { findNextAvailableSlot } from "@/lib/appointments/reschedule";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createManyNotifications } from "@/lib/notifications/notifications";
+import { getStripe } from "@/lib/payments/stripe";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText } from "@/lib/security/crypto";
 import { appointmentUpdateSchema } from "@/lib/validation/schemas";
@@ -16,6 +19,8 @@ type AppointmentAction =
   | "REQUEST_RESCHEDULE"
   | "REQUEST_CANCELLATION"
   | "MARK_REFUND_PENDING"
+  | "APPROVE_REFUND"
+  | "REJECT_REFUND"
   | "CANCEL";
 
 const terminalStatuses = new Set<AppointmentStatus>([
@@ -49,6 +54,18 @@ function paymentSummary(payments: Array<{ status: PaymentStatus; amountCents: nu
     totalCents: payments[0]?.amountCents ?? 0,
     status: payments[0]?.status ?? PaymentStatus.PENDING
   };
+}
+
+function latestStripePayment(
+  payments: Array<{
+    id: string;
+    provider: PaymentProvider;
+    status: PaymentStatus;
+    providerPaymentIntentId: string | null;
+    amountCents: number;
+  }>
+) {
+  return payments.find((item) => item.provider === PaymentProvider.STRIPE && item.status === PaymentStatus.PAID);
 }
 
 async function notifyAppointmentChange(input: {
@@ -206,6 +223,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (action === "MARK_REFUND_PENDING" && !isAdmin) {
     return fail("FORBIDDEN", "Solo administración puede marcar reembolso pendiente manualmente.", 403);
   }
+  if ((action === "APPROVE_REFUND" || action === "REJECT_REFUND") && user.role !== "DOCTOR" && !isAdmin) {
+    return fail("FORBIDDEN", "Solo el médico de la cita o administración pueden resolver la devolución.", 403);
+  }
 
   const payment = paymentSummary(appointment.payments);
   let title = "Cita actualizada";
@@ -226,25 +246,36 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         acceptedAt: new Date()
       };
 
-      if (appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED && parsed.data.availabilitySlotId) {
-        const nextSlot = await tx.availabilitySlot.findFirst({
-          where: {
-            id: parsed.data.availabilitySlotId,
-            doctorId: appointment.doctorId,
-            isActive: true,
-            startsAt: { gte: new Date() },
-            appointment: null
-          }
-        });
+      if (appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED) {
+        const nextSlot = parsed.data.availabilitySlotId
+          ? await tx.availabilitySlot.findFirst({
+              where: {
+                id: parsed.data.availabilitySlotId,
+                doctorId: appointment.doctorId,
+                isActive: true,
+                startsAt: { gte: new Date() },
+                appointment: null
+              }
+            })
+          : await findNextAvailableSlot(tx, appointment.doctorId, new Date());
         if (!nextSlot) throw new Error("SLOT_UNAVAILABLE");
         data.availabilitySlotId = nextSlot.id;
+        data.status = AppointmentStatus.RESCHEDULED;
         data.requestedSlotId = null;
         data.rescheduleRequestedAt = null;
+        data.reschedulePreferred = false;
+        data.previousStartTime = appointment.availabilitySlot.startsAt;
+        data.previousEndTime = appointment.availabilitySlot.endsAt;
+        data.rescheduledAt = new Date();
       }
 
-      title = "Cita aceptada por el médico";
-      patientMessage = `Tu cita con ${appointment.doctor.fullName} fue aceptada por el médico.`;
-      doctorMessage = `Aceptaste la cita de ${appointment.patient.user.name}.`;
+      title = appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED ? "Cita reagendada" : "Cita aceptada por el médico";
+      patientMessage = appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED
+        ? `La cita con ${appointment.doctor.fullName} fue reagendada al horario disponible más cercano.`
+        : `Tu cita con ${appointment.doctor.fullName} fue aceptada por el médico.`;
+      doctorMessage = appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED
+        ? `La cita de ${appointment.patient.user.name} fue reagendada al horario disponible más cercano.`
+        : `Aceptaste la cita de ${appointment.patient.user.name}.`;
 
       return tx.appointment.update({
         where: { id: appointment.id },
@@ -308,7 +339,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         data: {
           status: AppointmentStatus.RESCHEDULE_REQUESTED,
           requestedSlotId: parsed.data.availabilitySlotId ?? null,
-          rescheduleRequestedAt: new Date()
+          rescheduleRequestedAt: new Date(),
+          reschedulePreferred: true,
+          refundRequested: false,
+          doctorRefundDecision: "pending"
         },
         include: {
           patient: { include: { user: true } },
@@ -342,7 +376,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           data: {
             status: AppointmentStatus.CANCELLATION_REQUESTED,
             cancellationReason: reason,
-            cancellationRequestedAt: new Date()
+            cancellationRequestedAt: new Date(),
+            cancellationRequested: true,
+            reschedulePreferred: true,
+            refundRequested: false,
+            doctorRefundDecision: "pending"
           },
           include: {
             patient: { include: { user: true } },
@@ -353,12 +391,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         });
       }
 
-      const nextStatus = payment.hasPaidOnline ? AppointmentStatus.REFUND_PENDING : AppointmentStatus.CANCELLED;
-      title = payment.hasPaidOnline ? "Cancelación solicitada con reembolso pendiente" : "Cita cancelada";
+      const reason = parsed.data.cancellationReason ?? "Cancelación solicitada desde panel.";
+      title = payment.hasPaidOnline ? "Solicitud de cancelación recibida" : "Solicitud de cancelación recibida";
       patientMessage = payment.hasPaidOnline
-        ? `Solicitaste cancelar tu cita con ${appointment.doctor.fullName}. El reembolso queda pendiente de revisión administrativa.`
-        : `Tu cita con ${appointment.doctor.fullName} fue cancelada.`;
-      doctorMessage = `${appointment.patient.user.name} solicitó cancelar su cita.`;
+        ? `Solicitaste cancelar tu cita con ${appointment.doctor.fullName}. Primero intentaremos reagendar; si procede devolución, el médico revisará el pago de esta cita.`
+        : `Solicitaste cancelar tu cita con ${appointment.doctor.fullName}. Primero intentaremos reagendar.`;
+      doctorMessage = `${appointment.patient.user.name} solicitó cancelar su cita. Prioriza reagendar; la devolución es una segunda opción si procede.`;
       notifyAdmin = payment.hasPaidOnline;
 
       await tx.cancellationRequest.create({
@@ -366,18 +404,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           appointmentId: appointment.id,
           doctorId: appointment.doctorId,
           patientId: appointment.patientId,
-          reason: parsed.data.cancellationReason ?? "Cancelación solicitada desde panel.",
-          status: payment.hasPaidOnline ? "reembolso_pendiente" : "pendiente"
+          reason,
+          status: payment.hasPaidOnline ? "reembolso_solicitado" : "pendiente"
         }
       });
 
       const saved = await tx.appointment.update({
         where: { id: appointment.id },
         data: {
-          status: nextStatus,
-          cancellationReason: parsed.data.cancellationReason ?? "Cancelación solicitada desde panel.",
+          status: AppointmentStatus.CANCELLATION_REQUESTED,
+          cancellationReason: reason,
           cancellationRequestedAt: new Date(),
-          refundRequestedAt: payment.hasPaidOnline ? new Date() : null
+          cancellationRequested: true,
+          reschedulePreferred: true,
+          refundRequested: payment.hasPaidOnline,
+          refundReason: payment.hasPaidOnline ? reason : null,
+          refundRequestedAt: payment.hasPaidOnline ? new Date() : null,
+          doctorRefundDecision: payment.hasPaidOnline ? "pending" : null
         },
         include: {
           patient: { include: { user: true } },
@@ -386,13 +429,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           payments: true
         }
       });
-
-      if (nextStatus === AppointmentStatus.CANCELLED) {
-        await tx.payment.updateMany({
-          where: { appointmentId: appointment.id, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.FAILED }
-        });
-      }
 
       return saved;
     }
@@ -405,7 +441,108 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       return tx.appointment.update({
         where: { id: appointment.id },
-        data: { status: AppointmentStatus.REFUND_PENDING, refundRequestedAt: new Date() },
+        data: {
+          status: AppointmentStatus.REFUND_PENDING,
+          refundRequestedAt: new Date(),
+          refundRequested: true,
+          refundReason: parsed.data.refundReason ?? parsed.data.cancellationReason ?? appointment.cancellationReason,
+          doctorRefundDecision: "pending"
+        },
+        include: {
+          patient: { include: { user: true } },
+          doctor: { include: { user: { select: { id: true, email: true } }, specialty: true, hospital: true } },
+          availabilitySlot: true,
+          payments: true
+        }
+      });
+    }
+
+    if (action === "APPROVE_REFUND") {
+      const stripePayment = latestStripePayment(appointment.payments);
+      const reason = parsed.data.refundReason ?? parsed.data.cancellationReason ?? appointment.refundReason ?? appointment.cancellationReason ?? "Devolución aprobada por médico.";
+
+      title = "Devolución aprobada";
+      patientMessage = payment.hasPaidOnline
+        ? `El médico aprobó la devolución de tu cita con ${appointment.doctor.fullName}. El proceso queda registrado en Stripe.`
+        : `El médico aprobó la devolución o acuerdo fuera de plataforma para tu cita con ${appointment.doctor.fullName}.`;
+      doctorMessage = `Aprobaste la devolución de la cita de ${appointment.patient.user.name}.`;
+      notifyAdmin = true;
+
+      if (payment.hasPaidOnline) {
+        if (!stripePayment?.providerPaymentIntentId) throw new Error("PAYMENT_INTENT_REQUIRED");
+        let refund: Stripe.Refund;
+        try {
+          refund = await getStripe().refunds.create({
+            payment_intent: stripePayment.providerPaymentIntentId,
+            amount: stripePayment.amountCents,
+            metadata: {
+              kind: "appointment_refund",
+              appointmentId: appointment.id,
+              paymentId: stripePayment.id,
+              doctorId: appointment.doctorId
+            }
+          });
+        } catch (caught) {
+          console.error("[Stripe refund error]", caught);
+          throw new Error("STRIPE_REFUND_FAILED");
+        }
+
+        await tx.payment.update({
+          where: { id: stripePayment.id },
+          data: {
+            status: PaymentStatus.REFUNDED,
+            refundId: refund.id,
+            refundedAt: new Date(),
+            refundedAmountCents: refund.amount,
+            transferStatus: "refunded"
+          }
+        });
+      }
+
+      await tx.cancellationRequest.updateMany({
+        where: { appointmentId: appointment.id, status: { in: ["pendiente", "reembolso_solicitado", "reembolso_pendiente"] } },
+        data: { status: payment.hasPaidOnline ? "reembolso_aprobado" : "devolucion_fuera_de_plataforma" }
+      });
+
+      return tx.appointment.update({
+        where: { id: appointment.id },
+        data: {
+          status: payment.hasPaidOnline ? AppointmentStatus.REFUNDED : AppointmentStatus.CANCELLED,
+          refundRequested: true,
+          refundReason: reason,
+          refundRequestedAt: appointment.refundRequestedAt ?? new Date(),
+          doctorRefundDecision: "approved",
+          cancellationRequested: true,
+          cancellationRequestedAt: appointment.cancellationRequestedAt ?? new Date()
+        },
+        include: {
+          patient: { include: { user: true } },
+          doctor: { include: { user: { select: { id: true, email: true } }, specialty: true, hospital: true } },
+          availabilitySlot: true,
+          payments: true
+        }
+      });
+    }
+
+    if (action === "REJECT_REFUND") {
+      title = "Devolución no aprobada";
+      patientMessage = `El médico revisó la solicitud de devolución de tu cita con ${appointment.doctor.fullName}. Puedes coordinar reagendamiento desde tu panel.`;
+      doctorMessage = `Marcaste como no aprobada la devolución de la cita de ${appointment.patient.user.name}.`;
+      notifyAdmin = true;
+
+      await tx.cancellationRequest.updateMany({
+        where: { appointmentId: appointment.id, status: { in: ["pendiente", "reembolso_solicitado", "reembolso_pendiente"] } },
+        data: { status: "reembolso_rechazado" }
+      });
+
+      return tx.appointment.update({
+        where: { id: appointment.id },
+        data: {
+          status: AppointmentStatus.CANCELLATION_REQUESTED,
+          refundRequested: true,
+          refundReason: parsed.data.refundReason ?? parsed.data.cancellationReason ?? appointment.refundReason,
+          doctorRefundDecision: "rejected"
+        },
         include: {
           patient: { include: { user: true } },
           doctor: { include: { user: { select: { id: true, email: true } }, specialty: true, hospital: true } },
@@ -446,11 +583,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "SLOT_UNAVAILABLE") return fail("SLOT_UNAVAILABLE", "El nuevo horario ya no está disponible.", 409);
+      if (error.message === "PAYMENT_INTENT_REQUIRED") {
+        return fail("PAYMENT_INTENT_REQUIRED", "No encontramos el pago en línea necesario para procesar devolución.", 409);
+      }
+      if (error.message === "STRIPE_REFUND_FAILED") {
+        return fail("STRIPE_REFUND_FAILED", "No pudimos procesar la devolución en Stripe. Revisa la configuración o inténtalo de nuevo.", 502);
+      }
       if (error.message === "APPOINTMENT_CLOSED") return fail("APPOINTMENT_CLOSED", "Esta cita ya está cerrada.", 409);
       if (error.message === "RESCHEDULE_NOT_ALLOWED") {
         return fail("RESCHEDULE_NOT_ALLOWED", "Esta cita aún no permite solicitar reagendamiento.", 409);
       }
     }
+    console.error("[Appointment update error]", error);
     return fail("APPOINTMENT_UPDATE_FAILED", "No fue posible actualizar la cita.", 500);
   }
 

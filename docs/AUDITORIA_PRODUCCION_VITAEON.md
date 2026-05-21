@@ -643,3 +643,50 @@ Pendiente antes de público:
 - Storage privado real con URLs firmadas.
 - Revisión legal formal.
 - Pruebas de penetración.
+
+## Ajuste Cobros, Reagendado y Devoluciones 2026-05-20
+
+Pendientes cerrados:
+
+- El flujo “Cobros y cuenta bancaria” ahora captura errores reales de Stripe Connect en backend con logs controlados y devuelve mensajes claros al médico.
+- El onboarding de Stripe Connect crea o reutiliza `stripeAccountId`, genera Account Link y no expone claves secretas al frontend.
+- El estado de Stripe Connect ahora captura errores de Stripe y mantiene mensajes amables si la configuración falla.
+- Los pagos de citas en línea mantienen separación de suscripciones: las citas usan PaymentIntent con destino al médico; las suscripciones se quedan en la cuenta principal de VITAEON.
+- Las cancelaciones ahora priorizan reagendar antes de devolver dinero.
+- Las solicitudes con pago en línea quedan como solicitud de devolución pendiente de decisión médica, sin mezclar ingresos de suscripción.
+- Se agregó aprobación/rechazo de devolución por médico; si existe PaymentIntent pagado, se prepara reembolso sobre ese pago de cita.
+- El reagendado aceptado por médico puede asignar automáticamente el horario disponible más cercano.
+- El webhook de Stripe ahora contempla `charge.refunded` y actualiza pagos/citas reembolsadas.
+- Se creó `docs/beta/STRIPE_SETUP_STATUS.md` con variables, webhook, separación de cobros y pendientes de configuración.
+
+Archivos modificados:
+
+- `app/api/appointments/[id]/route.ts`
+- `app/api/payments/route.ts`
+- `app/api/stripe/connect/onboarding/route.ts`
+- `app/api/stripe/connect/status/route.ts`
+- `app/api/subscriptions/checkout/route.ts`
+- `app/api/webhooks/stripe/route.ts`
+- `components/platform/DashboardClients.tsx`
+- `lib/validation/schemas.ts`
+- `prisma/schema.prisma`
+
+Archivos creados:
+
+- `lib/appointments/reschedule.ts`
+- `prisma/migrations/20260520013000_refund_reschedule_controls/migration.sql`
+- `docs/beta/STRIPE_SETUP_STATUS.md`
+
+Validación ejecutada:
+
+- `npx prisma generate`: correcto.
+- `npm run typecheck`: correcto.
+- `npm run lint`: correcto.
+- `npm run build`: correcto.
+
+Pendientes externos:
+
+- Configurar `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_URL` y `STRIPE_PLATFORM_FEE_PERCENTAGE` en Vercel.
+- Registrar el webhook de Stripe con los eventos documentados.
+- Completar onboarding Connect de cada médico antes de cobrar citas en línea.
+- Pasar de pagos únicos de planes a Billing recurrente si se desea suscripción mensual automática.

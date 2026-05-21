@@ -32,40 +32,49 @@ export async function GET() {
   const limit = await rateLimitByIp("stripe-connect:status", { limit: 20, windowMs: 60_000 });
   if (!limit.allowed) return fail("RATE_LIMITED", "Demasiadas consultas de estado. Intenta de nuevo en un momento.", 429);
 
-  const stripe = getStripe();
-  const account = await stripe.accounts.retrieve(doctor.stripeAccountId, { expand: ["external_accounts"] });
-  const payload = {
-    stripeOnboardingCompleted: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled),
-    payoutsEnabled: Boolean(account.payouts_enabled),
-    chargesEnabled: Boolean(account.charges_enabled),
-    bankAccountLast4: bankLast4(account)
-  };
+  try {
+    const stripe = getStripe();
+    const account = await stripe.accounts.retrieve(doctor.stripeAccountId, { expand: ["external_accounts"] });
+    const payload = {
+      stripeOnboardingCompleted: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled),
+      payoutsEnabled: Boolean(account.payouts_enabled),
+      chargesEnabled: Boolean(account.charges_enabled),
+      bankAccountLast4: bankLast4(account)
+    };
 
-  const updated = await prisma.doctor.update({
-    where: { id: doctor.id },
-    data: payload,
-    select: {
-      stripeAccountId: true,
-      stripeOnboardingCompleted: true,
-      payoutsEnabled: true,
-      chargesEnabled: true,
-      bankAccountLast4: true
-    }
-  });
+    const updated = await prisma.doctor.update({
+      where: { id: doctor.id },
+      data: payload,
+      select: {
+        stripeAccountId: true,
+        stripeOnboardingCompleted: true,
+        payoutsEnabled: true,
+        chargesEnabled: true,
+        bankAccountLast4: true
+      }
+    });
 
-  await auditLog({
-    actorUserId: user.id,
-    action: "REFRESH_STRIPE_CONNECT_STATUS",
-    entityType: "Doctor",
-    entityId: doctor.id,
-    metadata: { payoutsEnabled: updated.payoutsEnabled, chargesEnabled: updated.chargesEnabled }
-  });
+    await auditLog({
+      actorUserId: user.id,
+      action: "REFRESH_STRIPE_CONNECT_STATUS",
+      entityType: "Doctor",
+      entityId: doctor.id,
+      metadata: { payoutsEnabled: updated.payoutsEnabled, chargesEnabled: updated.chargesEnabled }
+    });
 
-  return ok({
-    ...updated,
-    statusLabel:
-      updated.chargesEnabled && updated.payoutsEnabled
-        ? "Cuenta activa para recibir pagos"
-        : "Configuración pendiente"
-  });
+    return ok({
+      ...updated,
+      statusLabel:
+        updated.chargesEnabled && updated.payoutsEnabled
+          ? "Cuenta activa para recibir pagos"
+          : "Configuración pendiente"
+    });
+  } catch (error) {
+    console.error("[Stripe Connect status error]", error);
+    return fail(
+      "STRIPE_CONNECT_STATUS_FAILED",
+      "No pudimos consultar el estado de tu cuenta de cobro. Revisa Stripe o intenta de nuevo.",
+      502
+    );
+  }
 }

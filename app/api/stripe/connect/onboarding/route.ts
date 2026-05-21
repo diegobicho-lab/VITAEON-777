@@ -20,47 +20,56 @@ export async function POST() {
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "Primero completa tu perfil médico.", 409);
 
-  const stripe = getStripe();
-  let stripeAccountId = doctor.stripeAccountId;
+  try {
+    const stripe = getStripe();
+    let stripeAccountId = doctor.stripeAccountId;
 
-  if (!stripeAccountId) {
-    const accountParams: Stripe.AccountCreateParams = {
-      type: "express",
-      country: "MX",
-      email: user.email,
-      business_type: "individual",
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true }
-      },
-      metadata: {
-        doctorId: doctor.id,
-        userId: user.id,
-        platform: "VITAEON"
-      }
-    };
-    const account = await stripe.accounts.create(accountParams);
-    stripeAccountId = account.id;
-    await prisma.doctor.update({
-      where: { id: doctor.id },
-      data: { stripeAccountId, stripeOnboardingCompleted: false, payoutsEnabled: false, chargesEnabled: false }
+    if (!stripeAccountId) {
+      const accountParams: Stripe.AccountCreateParams = {
+        type: "express",
+        country: "MX",
+        email: user.email,
+        business_type: "individual",
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true }
+        },
+        metadata: {
+          doctorId: doctor.id,
+          userId: user.id,
+          platform: "VITAEON"
+        }
+      };
+      const account = await stripe.accounts.create(accountParams);
+      stripeAccountId = account.id;
+      await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: { stripeAccountId, stripeOnboardingCompleted: false, payoutsEnabled: false, chargesEnabled: false }
+      });
+    }
+
+    const link = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${appUrl()}/dashboard/doctor?stripe_connect=refresh`,
+      return_url: `${appUrl()}/dashboard/doctor?stripe_connect=return`,
+      type: "account_onboarding"
     });
+
+    await auditLog({
+      actorUserId: user.id,
+      action: "CREATE_STRIPE_CONNECT_ONBOARDING_LINK",
+      entityType: "Doctor",
+      entityId: doctor.id,
+      metadata: { stripeAccountId }
+    });
+
+    return ok({ url: link.url });
+  } catch (error) {
+    console.error("[Stripe Connect onboarding error]", error);
+    return fail(
+      "STRIPE_CONNECT_ONBOARDING_FAILED",
+      "No pudimos abrir la configuración de cobro. Revisa que Stripe esté configurado correctamente o intenta de nuevo.",
+      502
+    );
   }
-
-  const link = await stripe.accountLinks.create({
-    account: stripeAccountId,
-    refresh_url: `${appUrl()}/dashboard/doctor?stripe_connect=refresh`,
-    return_url: `${appUrl()}/dashboard/doctor?stripe_connect=return`,
-    type: "account_onboarding"
-  });
-
-  await auditLog({
-    actorUserId: user.id,
-    action: "CREATE_STRIPE_CONNECT_ONBOARDING_LINK",
-    entityType: "Doctor",
-    entityId: doctor.id,
-    metadata: { stripeAccountId }
-  });
-
-  return ok({ url: link.url });
 }
