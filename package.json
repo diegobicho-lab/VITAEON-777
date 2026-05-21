@@ -5,7 +5,8 @@
   "description": "VITAEON premium medical platform built with Next.js, TypeScript, Prisma, secure APIs and production-ready architecture.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
