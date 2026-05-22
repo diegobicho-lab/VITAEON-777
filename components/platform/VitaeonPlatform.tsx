@@ -314,6 +314,7 @@ export default function VitaeonPlatform() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [reason, setReason] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [welcomeDiscount, setWelcomeDiscount] = useState<WelcomeDiscountQuote | null>(null);
@@ -534,12 +535,19 @@ export default function VitaeonPlatform() {
   async function startOnlinePayment(appointmentId: string) {
     setPaymentError("");
     setClientSecret("");
+    setPaymentLoading(true);
     try {
       const paymentIntent = await clientApi<{ clientSecret: string }>("/api/payments", {
         method: "POST",
         body: JSON.stringify({ appointmentId, provider: "STRIPE" })
       });
+      if (!paymentIntent.clientSecret) {
+        throw new Error("Stripe no devolvió el formulario de pago para esta cita.");
+      }
       setClientSecret(paymentIntent.clientSecret);
+      window.setTimeout(() => {
+        document.getElementById("stripe-payment")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 180);
       return true;
     } catch (caught) {
       const message = caught instanceof Error
@@ -548,6 +556,8 @@ export default function VitaeonPlatform() {
       console.error("[Appointment online payment error]", caught);
       setPaymentError(message);
       return false;
+    } finally {
+      setPaymentLoading(false);
     }
   }
 
@@ -560,10 +570,12 @@ export default function VitaeonPlatform() {
       openAuth("PATIENT");
       return;
     }
+    const selectedPaymentMethod = paymentMethod;
     setBookingStatus("creating");
     setError("");
     setClientSecret("");
     setPaymentError("");
+    setPaymentLoading(false);
     try {
       const appointment = await clientApi<{
         id: string;
@@ -578,7 +590,7 @@ export default function VitaeonPlatform() {
         body: JSON.stringify({
           doctorId: selectedDoctor.id,
           availabilitySlotId: selectedSlot.id,
-          paymentMethod: paymentMethod === "CASH" ? "CASH" : "ONLINE",
+          paymentMethod: selectedPaymentMethod === "CASH" ? "CASH" : "ONLINE",
           reason: reason || undefined
         })
       });
@@ -593,7 +605,7 @@ export default function VitaeonPlatform() {
         startsAt: appointment.availabilitySlot.startsAt,
         endsAt: appointment.availabilitySlot.endsAt,
         appointmentStatus: "PENDING_DOCTOR_ACCEPTANCE",
-        paymentMethod,
+        paymentMethod: selectedPaymentMethod,
         paymentStatus: payment?.status ?? "PENDING",
         amountCents: payment?.amountCents ?? selectedDoctor.priceCents,
         originalAmountCents: appointment.originalAmountCents,
@@ -601,8 +613,12 @@ export default function VitaeonPlatform() {
         discountLabel: appointment.discountLabel
       };
       setTicket(nextTicket);
+      setBookingStatus("success");
+      window.setTimeout(() => {
+        document.getElementById("appointment-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
 
-      if (paymentMethod === "STRIPE") await startOnlinePayment(appointment.id);
+      if (selectedPaymentMethod === "STRIPE") void startOnlinePayment(appointment.id);
 
       setDoctors((current) => current.map((doctor) => (
         doctor.id === selectedDoctor.id
@@ -613,7 +629,6 @@ export default function VitaeonPlatform() {
         ? { ...current, availability: current.availability.filter((slot) => slot.id !== selectedSlot.id) }
         : current);
       setSelectedSlotId("");
-      setBookingStatus("success");
     } catch (caught) {
       setBookingStatus("error");
       setError(caught instanceof Error ? caught.message : "No fue posible crear la cita.");
@@ -754,7 +769,7 @@ export default function VitaeonPlatform() {
         </section>
 
         {ticket && (
-          <section className={`mx-auto mt-12 max-w-7xl rounded-[2rem] border bg-white p-8 shadow-premium ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "border-amber-100" : "border-emerald-100"}`}>
+          <section id="appointment-ticket" className={`mx-auto mt-12 max-w-7xl scroll-mt-32 rounded-[2rem] border bg-white p-8 shadow-premium ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "border-amber-100" : "border-emerald-100"}`}>
             <div className="flex items-start justify-between gap-6">
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
@@ -788,6 +803,26 @@ export default function VitaeonPlatform() {
             <p className={`mt-6 rounded-3xl p-5 text-sm font-semibold ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}>
               {ticketConfirmationMessage(ticket)}
             </p>
+            {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && (
+              <div className="mt-5 rounded-[1.5rem] border border-silver bg-slate-50 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Pago seguro en línea</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-deep">
+                      {paymentLoading ? "Preparando Stripe" : clientSecret && stripePromise ? "Formulario de pago listo" : "Continúa con tu pago"}
+                    </h3>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                      {paymentLoading
+                        ? "Estamos preparando el formulario seguro para que puedas pagar esta cita."
+                        : clientSecret && stripePromise
+                          ? "Completa el pago en el formulario seguro de Stripe que aparece abajo."
+                          : "Tu cita ya fue creada. Para confirmar el pago en línea, abre el formulario seguro de Stripe."}
+                    </p>
+                  </div>
+                  {paymentLoading ? <Loader2 className="h-7 w-7 animate-spin text-medical" /> : <CreditCard className="h-7 w-7 text-medical" />}
+                </div>
+              </div>
+            )}
             {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && paymentError && (
               <p className="mt-4 rounded-3xl border border-amber-100 bg-amber-50 p-5 text-sm font-semibold leading-6 text-amber-800">
                 {paymentError}
@@ -799,18 +834,23 @@ export default function VitaeonPlatform() {
               </p>
             )}
             <div className="mt-5 flex flex-wrap gap-3">
+              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && paymentLoading && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3 font-semibold text-slate-600">
+                  <Loader2 className="h-5 w-5 animate-spin" /> Preparando pago
+                </span>
+              )}
               {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && clientSecret && (
                 <a href="#stripe-payment" className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5">
-                  Pagar ahora
+                  Abrir formulario de pago
                 </a>
               )}
-              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && !clientSecret && (
+              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && !clientSecret && !paymentLoading && (
                 <button
                   type="button"
                   onClick={() => startOnlinePayment(ticket.appointmentId)}
                   className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5"
                 >
-                  Reintentar pago en línea
+                  Pagar en línea
                 </button>
               )}
               <a href="/dashboard/patient" className="inline-flex rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700">
@@ -818,7 +858,7 @@ export default function VitaeonPlatform() {
               </a>
             </div>
             {clientSecret && stripePromise && (
-              <div id="stripe-payment" className="mt-6">
+              <div id="stripe-payment" className="mt-6 scroll-mt-32">
               <Elements stripe={stripePromise} options={{ clientSecret }}>
                 <StripePaymentForm onPaid={() => setTicket((current) => current ? { ...current, paymentStatus: "PAID", appointmentStatus: "PENDING_DOCTOR_ACCEPTANCE" } : current)} />
               </Elements>
