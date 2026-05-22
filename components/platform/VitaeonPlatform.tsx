@@ -314,6 +314,7 @@ export default function VitaeonPlatform() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [reason, setReason] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [paymentError, setPaymentError] = useState("");
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [welcomeDiscount, setWelcomeDiscount] = useState<WelcomeDiscountQuote | null>(null);
   const [reviews, setReviews] = useState<ReviewSummary | null>(null);
@@ -530,6 +531,26 @@ export default function VitaeonPlatform() {
     setUser(null);
   }
 
+  async function startOnlinePayment(appointmentId: string) {
+    setPaymentError("");
+    setClientSecret("");
+    try {
+      const paymentIntent = await clientApi<{ clientSecret: string }>("/api/payments", {
+        method: "POST",
+        body: JSON.stringify({ appointmentId, provider: "STRIPE" })
+      });
+      setClientSecret(paymentIntent.clientSecret);
+      return true;
+    } catch (caught) {
+      const message = caught instanceof Error
+        ? caught.message
+        : "No pudimos abrir el pago en línea. Intenta de nuevo.";
+      console.error("[Appointment online payment error]", caught);
+      setPaymentError(message);
+      return false;
+    }
+  }
+
   async function createAppointment() {
     if (!selectedDoctor || !selectedSlot) {
       setError("Selecciona un médico y un horario disponible antes de confirmar la cita.");
@@ -542,6 +563,7 @@ export default function VitaeonPlatform() {
     setBookingStatus("creating");
     setError("");
     setClientSecret("");
+    setPaymentError("");
     try {
       const appointment = await clientApi<{
         id: string;
@@ -580,17 +602,7 @@ export default function VitaeonPlatform() {
       };
       setTicket(nextTicket);
 
-      if (paymentMethod === "STRIPE") {
-        try {
-          const paymentIntent = await clientApi<{ clientSecret: string }>("/api/payments", {
-            method: "POST",
-            body: JSON.stringify({ appointmentId: appointment.id, provider: "STRIPE" })
-          });
-          setClientSecret(paymentIntent.clientSecret);
-        } catch {
-          setClientSecret("");
-        }
-      }
+      if (paymentMethod === "STRIPE") await startOnlinePayment(appointment.id);
 
       setDoctors((current) => current.map((doctor) => (
         doctor.id === selectedDoctor.id
@@ -776,11 +788,30 @@ export default function VitaeonPlatform() {
             <p className={`mt-6 rounded-3xl p-5 text-sm font-semibold ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}>
               {ticketConfirmationMessage(ticket)}
             </p>
+            {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && paymentError && (
+              <p className="mt-4 rounded-3xl border border-amber-100 bg-amber-50 p-5 text-sm font-semibold leading-6 text-amber-800">
+                {paymentError}
+              </p>
+            )}
+            {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && clientSecret && !stripePromise && (
+              <p className="mt-4 rounded-3xl border border-amber-100 bg-amber-50 p-5 text-sm font-semibold leading-6 text-amber-800">
+                El formulario de pago seguro no está disponible porque falta configurar la clave pública de Stripe.
+              </p>
+            )}
             <div className="mt-5 flex flex-wrap gap-3">
               {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && clientSecret && (
                 <a href="#stripe-payment" className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5">
                   Pagar ahora
                 </a>
+              )}
+              {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && !clientSecret && (
+                <button
+                  type="button"
+                  onClick={() => startOnlinePayment(ticket.appointmentId)}
+                  className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5"
+                >
+                  Reintentar pago en línea
+                </button>
               )}
               <a href="/dashboard/patient" className="inline-flex rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700">
                 Ver mi panel
@@ -1512,7 +1543,7 @@ function DoctorDetail(props: {
         className={`mt-6 flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 font-semibold text-white transition disabled:opacity-80 ${props.bookingStatus === "success" ? "bg-emerald-600" : "bg-black hover:bg-deep"}`}
       >
         {props.bookingStatus === "creating" ? <Loader2 className="h-5 w-5 animate-spin" /> : props.bookingStatus === "success" ? <CheckCircle2 className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
-        {props.bookingStatus === "success" ? "Cita creada correctamente" : props.user ? "Crear cita" : "Inicia sesión para agendar"}
+        {props.bookingStatus === "success" ? "Cita creada correctamente" : props.user ? (props.paymentMethod === "STRIPE" ? "Crear cita y continuar al pago" : "Crear cita") : "Inicia sesión para agendar"}
       </button>
       {props.bookingStatus === "success" && (
         <p className="mt-4 rounded-3xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
