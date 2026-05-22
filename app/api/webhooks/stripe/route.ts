@@ -27,13 +27,19 @@ export async function POST(request: Request) {
     const paymentId = intent.metadata.paymentId;
     if (paymentId) {
       const status = event.type === "payment_intent.succeeded" ? PaymentStatus.PAID : PaymentStatus.FAILED;
+      const payoutMode = intent.metadata.payoutMode;
       const payment = await prisma.payment.update({
         where: { id: paymentId },
         data: {
           status,
           providerPaymentIntentId: intent.id,
           providerChargeId: typeof intent.latest_charge === "string" ? intent.latest_charge : null,
-          transferStatus: status === PaymentStatus.PAID ? "paid_destination_charge" : "failed"
+          transferStatus:
+            status === PaymentStatus.PAID
+              ? payoutMode === "platform_pending_doctor_connect"
+                ? "paid_platform_pending_manual_payout"
+                : "paid_destination_charge"
+              : "failed"
         }
       });
       if (status === PaymentStatus.PAID) {

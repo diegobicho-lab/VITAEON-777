@@ -149,12 +149,18 @@ export async function POST(request: Request) {
     return ok({ payment: paid, message: "Cita confirmada sin cargo." });
   }
 
-  if (!appointment.doctor.stripeAccountId || !appointment.doctor.chargesEnabled || !appointment.doctor.payoutsEnabled) {
-    return fail(
-      "DOCTOR_PAYOUT_ACCOUNT_REQUIRED",
-      "Para recibir pagos en línea primero configura tu cuenta de cobro.",
-      409
-    );
+  const doctorCanReceiveDestinationCharge = Boolean(
+    appointment.doctor.stripeAccountId &&
+    appointment.doctor.chargesEnabled &&
+    appointment.doctor.payoutsEnabled
+  );
+
+  if (!doctorCanReceiveDestinationCharge) {
+    console.error("[Stripe appointment payment warning]", {
+      appointmentId: appointment.id,
+      doctorId: appointment.doctor.id,
+      reason: "Doctor does not have an active Stripe Connect account. Payment will be collected by the platform and marked for manual payout review."
+    });
   }
 
   const platformFeePercentage = Number(process.env.STRIPE_PLATFORM_FEE_PERCENTAGE ?? "0");
@@ -170,15 +176,19 @@ export async function POST(request: Request) {
       appointmentId: appointment.id,
       paymentId: payment.id,
       doctorId: appointment.doctor.id,
-      patientUserId: user.id
+      patientUserId: user.id,
+      payoutMode: doctorCanReceiveDestinationCharge ? "stripe_connect_destination" : "platform_pending_doctor_connect"
     },
-    automatic_payment_methods: { enabled: true },
-    transfer_data: {
-      destination: appointment.doctor.stripeAccountId
-    }
+    automatic_payment_methods: { enabled: true }
   };
 
-  if (applicationFeeAmount > 0) {
+  if (doctorCanReceiveDestinationCharge && appointment.doctor.stripeAccountId) {
+    intentParams.transfer_data = {
+      destination: appointment.doctor.stripeAccountId
+    };
+  }
+
+  if (doctorCanReceiveDestinationCharge && applicationFeeAmount > 0) {
     intentParams.application_fee_amount = applicationFeeAmount;
   }
 
@@ -201,7 +211,7 @@ export async function POST(request: Request) {
       provider: PaymentProvider.STRIPE,
       providerPaymentIntentId: intent.id,
       doctorId: appointment.doctor.id,
-      transferStatus: "pending_destination_charge"
+      transferStatus: doctorCanReceiveDestinationCharge ? "pending_destination_charge" : "pending_manual_payout_doctor_connect"
     }
   });
 
@@ -210,7 +220,11 @@ export async function POST(request: Request) {
     action: "CREATE_STRIPE_PAYMENT_INTENT",
     entityType: "Payment",
     entityId: payment.id,
-    metadata: { appointmentId: appointment.id, stripePaymentIntentId: intent.id }
+    metadata: {
+      appointmentId: appointment.id,
+      stripePaymentIntentId: intent.id,
+      payoutMode: doctorCanReceiveDestinationCharge ? "stripe_connect_destination" : "platform_pending_doctor_connect"
+    }
   });
 
   return ok({ clientSecret: intent.client_secret });
