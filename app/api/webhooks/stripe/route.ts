@@ -186,28 +186,65 @@ export async function POST(request: Request) {
 
       const doctor = await prisma.doctor.findUnique({ where: { userId: payment.userId } });
       if (doctor) {
-        await prisma.doctor.update({
-          where: { id: doctor.id },
-          data: {
-            medal: isPaid ? MedicalMedal[plan] : doctor.medal,
-            subscriptionStatus: isPaid ? SubscriptionStatus.ACTIVE : SubscriptionStatus.FAILED
+        if (isPaid) {
+          await prisma.doctor.update({
+            where: { id: doctor.id },
+            data: {
+              medal: MedicalMedal[plan],
+              subscriptionStatus: SubscriptionStatus.ACTIVE
+            }
+          });
+        } else {
+          const latestPaidSubscription = await prisma.subscriptionPayment.findFirst({
+            where: {
+              userId: payment.userId,
+              status: PaymentStatus.PAID,
+              amountCents: { gt: 0 }
+            },
+            orderBy: { updatedAt: "desc" }
+          });
+
+          if (!latestPaidSubscription && doctor.subscriptionStatus === SubscriptionStatus.PENDING) {
+            await prisma.doctor.update({
+              where: { id: doctor.id },
+              data: { subscriptionStatus: SubscriptionStatus.FAILED }
+            });
           }
+        }
+      }
+
+      const shouldNotifySubscriptionFailure =
+        !isPaid &&
+        !(await prisma.subscriptionPayment.findFirst({
+          where: {
+            userId: payment.userId,
+            status: PaymentStatus.PAID,
+            amountCents: { gt: 0 }
+          }
+        }));
+
+      if (isPaid || shouldNotifySubscriptionFailure) {
+        await prisma.notification.create({
+          data: {
+            userId: payment.userId,
+            type: isPaid ? "subscription_paid" : "subscription_failed",
+            title: isPaid ? "Suscripción médica activa" : "Suscripción no completada",
+            message: isPaid
+              ? `Tu plan ${plan} quedó activo dentro de VITAEON.`
+              : "No pudimos confirmar el pago de tu suscripción médica."
+          }
+        });
+      } else {
+        await auditLog({
+          action: "STRIPE_WEBHOOK_IGNORED_STALE_SUBSCRIPTION_FAILURE",
+          entityType: "SubscriptionPayment",
+          entityId: payment.id,
+          metadata: { stripeEvent: event.id, plan }
         });
       }
 
-      await prisma.notification.create({
-        data: {
-          userId: payment.userId,
-          type: isPaid ? "subscription_paid" : "subscription_failed",
-          title: isPaid ? "Suscripción médica activa" : "Suscripción no completada",
-          message: isPaid
-            ? `Tu plan ${plan} quedó activo dentro de VITAEON.`
-            : "No pudimos confirmar el pago de tu suscripción médica."
-        }
-      });
-
       const subscriptionUser = await prisma.user.findUnique({ where: { id: payment.userId }, select: { email: true } });
-      if (subscriptionUser) {
+      if (subscriptionUser && (isPaid || shouldNotifySubscriptionFailure)) {
         await sendTransactionalEmail({
           to: subscriptionUser.email,
           subject: isPaid ? "Suscripción médica activa en VITAEON" : "Suscripción médica no completada",

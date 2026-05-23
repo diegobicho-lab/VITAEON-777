@@ -1,3 +1,4 @@
+import { PaymentStatus, SubscriptionStatus } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -21,12 +22,35 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user || user.role !== "DOCTOR") return fail("FORBIDDEN", "Solo médicos pueden ver este perfil.", 403);
 
-  const doctor = await prisma.doctor.findUnique({
+  let doctor = await prisma.doctor.findUnique({
     where: { userId: user.id },
     include: doctorInclude
   });
 
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+
+  if (doctor.subscriptionStatus === SubscriptionStatus.FAILED || doctor.subscriptionStatus === SubscriptionStatus.PENDING) {
+    const latestPaidSubscription = await prisma.subscriptionPayment.findFirst({
+      where: {
+        userId: user.id,
+        status: PaymentStatus.PAID,
+        amountCents: { gt: 0 }
+      },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    if (latestPaidSubscription) {
+      doctor = await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: {
+          medal: latestPaidSubscription.plan,
+          subscriptionStatus: SubscriptionStatus.ACTIVE
+        },
+        include: doctorInclude
+      });
+    }
+  }
+
   return ok(doctor);
 }
 
