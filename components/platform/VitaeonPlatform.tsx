@@ -635,6 +635,29 @@ export default function VitaeonPlatform() {
     }
   }
 
+  async function confirmOnlinePayment(appointmentId: string, paymentIntentId?: string) {
+    setPaymentError("");
+    const result = await clientApi<{
+      appointment: {
+        status: string;
+        paymentStatus: string;
+        acceptedAutomatically: boolean;
+        acceptedReason?: string | null;
+      };
+    }>("/api/payments/confirm", {
+      method: "POST",
+      body: JSON.stringify({ appointmentId, paymentIntentId })
+    });
+
+    setTicket((current) => current
+      ? {
+          ...current,
+          paymentStatus: result.appointment.paymentStatus,
+          appointmentStatus: result.appointment.status
+        }
+      : current);
+  }
+
   async function submitReview() {
     if (!selectedDoctor) return;
     setReviewMessage("");
@@ -860,7 +883,7 @@ export default function VitaeonPlatform() {
             {clientSecret && stripePromise && (
               <div id="stripe-payment" className="mt-6 scroll-mt-32">
               <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <StripePaymentForm onPaid={() => setTicket((current) => current ? { ...current, paymentStatus: "PAID", appointmentStatus: "ACCEPTED" } : current)} />
+                <StripePaymentForm onPaid={(paymentIntentId) => confirmOnlinePayment(ticket.appointmentId, paymentIntentId)} />
               </Elements>
               </div>
             )}

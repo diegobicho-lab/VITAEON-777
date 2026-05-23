@@ -25,17 +25,24 @@ export async function POST(request: Request) {
   if (event.type === "payment_intent.succeeded" || event.type === "payment_intent.payment_failed") {
     const intent = event.data.object as Stripe.PaymentIntent;
     const paymentId = intent.metadata.paymentId;
-    if (paymentId) {
+    const appointmentId = intent.metadata.appointmentId;
+    if (paymentId || appointmentId) {
       const status = event.type === "payment_intent.succeeded" ? PaymentStatus.PAID : PaymentStatus.FAILED;
       const payoutMode = intent.metadata.payoutMode;
-      const existingPayment = await prisma.payment.findUnique({
-        where: { id: paymentId },
+      const existingPayment = await prisma.payment.findFirst({
+        where: {
+          OR: [
+            ...(paymentId ? [{ id: paymentId }] : []),
+            { providerPaymentIntentId: intent.id },
+            ...(appointmentId ? [{ appointmentId }] : [])
+          ]
+        },
         select: { id: true, status: true, appointmentId: true }
       });
       if (!existingPayment) return ok({ received: true });
       const shouldNotify = existingPayment.status !== status;
       const payment = await prisma.payment.update({
-        where: { id: paymentId },
+        where: { id: existingPayment.id },
         data: {
           status,
           providerPaymentIntentId: intent.id,
@@ -52,7 +59,7 @@ export async function POST(request: Request) {
         await prisma.appointment.updateMany({
           where: {
             id: payment.appointmentId,
-            status: { in: [AppointmentStatus.PENDING, AppointmentStatus.PENDING_DOCTOR_ACCEPTANCE] }
+            status: { in: [AppointmentStatus.PENDING, AppointmentStatus.PENDING_DOCTOR_ACCEPTANCE, AppointmentStatus.CONFIRMED] }
           },
           data: {
             status: AppointmentStatus.ACCEPTED,

@@ -3,7 +3,7 @@
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useState } from "react";
 
-export function StripePaymentForm({ onPaid }: { onPaid: () => void }) {
+export function StripePaymentForm({ onPaid }: { onPaid: (paymentIntentId?: string) => Promise<void> | void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
@@ -25,9 +25,15 @@ export function StripePaymentForm({ onPaid }: { onPaid: () => void }) {
       return;
     }
 
-    setStatus("success");
     setMessage("Pago recibido. Estamos actualizando tu cita como pagada y aceptada automáticamente.");
-    onPaid();
+    try {
+      await onPaid(result.paymentIntent?.id);
+      setStatus("success");
+      setMessage("Pago confirmado. Tu cita quedó pagada y aceptada automáticamente.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Tu pago fue recibido, pero no pudimos actualizar tu cita todavía. Intenta actualizar en unos segundos.");
+    }
   }
 
   return (
