@@ -28,6 +28,12 @@ export async function POST(request: Request) {
     if (paymentId) {
       const status = event.type === "payment_intent.succeeded" ? PaymentStatus.PAID : PaymentStatus.FAILED;
       const payoutMode = intent.metadata.payoutMode;
+      const existingPayment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        select: { id: true, status: true, appointmentId: true }
+      });
+      if (!existingPayment) return ok({ received: true });
+      const shouldNotify = existingPayment.status !== status;
       const payment = await prisma.payment.update({
         where: { id: paymentId },
         data: {
@@ -48,7 +54,13 @@ export async function POST(request: Request) {
             id: payment.appointmentId,
             status: { in: [AppointmentStatus.PENDING, AppointmentStatus.PENDING_DOCTOR_ACCEPTANCE] }
           },
-          data: { status: AppointmentStatus.PENDING_DOCTOR_ACCEPTANCE }
+          data: {
+            status: AppointmentStatus.ACCEPTED,
+            acceptedAt: new Date(),
+            acceptedByDoctor: true,
+            acceptedAutomatically: true,
+            acceptedReason: "Pago en línea confirmado"
+          }
         });
       }
 
@@ -61,7 +73,7 @@ export async function POST(request: Request) {
         }
       });
 
-      if (appointment) {
+      if (appointment && shouldNotify) {
         const startsAt = new Intl.DateTimeFormat("es-MX", {
           dateStyle: "full",
           timeStyle: "short",
@@ -73,12 +85,12 @@ export async function POST(request: Request) {
             subject: status === PaymentStatus.PAID ? "Pago confirmado en VITAEON" : "No se pudo confirmar tu pago",
             text:
               status === PaymentStatus.PAID
-                ? `Tu pago fue confirmado. Tu cita con ${appointment.doctor.fullName} queda pendiente de aceptación médica para ${startsAt}.`
+                ? `Tu pago fue confirmado. Tu cita con ${appointment.doctor.fullName} quedó aceptada automáticamente para ${startsAt}.`
                 : `No pudimos confirmar el pago de tu cita con ${appointment.doctor.fullName}.`,
             html: emailShell(
               status === PaymentStatus.PAID ? "Pago confirmado" : "Pago no confirmado",
               status === PaymentStatus.PAID
-                ? `<p>Tu pago fue confirmado. Tu cita con <strong>${appointment.doctor.fullName}</strong> queda pendiente de aceptación médica.</p><p><strong>Fecha:</strong> ${startsAt}</p>`
+                ? `<p>Tu pago fue confirmado. Tu cita con <strong>${appointment.doctor.fullName}</strong> quedó aceptada automáticamente.</p><p><strong>Fecha:</strong> ${startsAt}</p>`
                 : `<p>No pudimos confirmar el pago de tu cita con <strong>${appointment.doctor.fullName}</strong>.</p><p>Consulta tu panel para intentarlo de nuevo.</p>`
             )
           }),

@@ -243,7 +243,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const data: Record<string, unknown> = {
         status: AppointmentStatus.ACCEPTED,
-        acceptedAt: new Date()
+        acceptedAt: new Date(),
+        acceptedByDoctor: true,
+        acceptedAutomatically: false,
+        acceptedReason: "Aceptada por el médico"
       };
 
       if (appointment.status === AppointmentStatus.RESCHEDULE_REQUESTED) {

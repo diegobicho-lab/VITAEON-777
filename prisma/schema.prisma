@@ -264,6 +264,9 @@ model Appointment {
   cancellationReason  String?
   requestedSlotId     String?
   acceptedAt          DateTime?
+  acceptedByDoctor    Boolean           @default(false)
+  acceptedAutomatically Boolean         @default(false)
+  acceptedReason      String?
   completedAt         DateTime?
   noShowAt            DateTime?
   rescheduleRequestedAt DateTime?

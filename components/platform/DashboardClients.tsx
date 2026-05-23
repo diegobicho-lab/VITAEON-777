@@ -9,6 +9,9 @@ import { clientApi } from "@/services/client/api";
 type Appointment = {
   id: string;
   status: string;
+  acceptedByDoctor?: boolean;
+  acceptedAutomatically?: boolean;
+  acceptedReason?: string | null;
   cancellationReason?: string | null;
   refundRequested?: boolean;
   refundReason?: string | null;
@@ -330,9 +333,9 @@ function buildTimePreview(startTime: string, endTime: string, durationMinutes: 4
 }
 
 const appointmentLabels: Record<string, string> = {
-  PENDING: "Pendiente",
-  PENDING_DOCTOR_ACCEPTANCE: "Pendiente de aceptación médica",
-  ACCEPTED: "Aceptada por el médico",
+  PENDING: "Esperando confirmación",
+  PENDING_DOCTOR_ACCEPTANCE: "Esperando aceptación médica",
+  ACCEPTED: "Cita aceptada",
   CONFIRMED: "Confirmada",
   RESCHEDULED: "Reagendada",
   COMPLETED: "Completada",
@@ -342,7 +345,7 @@ const appointmentLabels: Record<string, string> = {
   REFUND_PENDING: "Reembolso pendiente de revisión",
   CANCELLED: "Cancelada",
   REFUNDED: "Reembolsada",
-  PAID: "Pagado",
+  PAID: "Pago confirmado",
   FAILED: "Fallido",
   PENDING_PAYMENT: "Pago pendiente",
   VERIFIED: "Médico verificado",
@@ -441,6 +444,11 @@ export function PatientDashboardClient() {
                 <p className="mt-1 text-sm text-slate-600">Estado de cita: {readableStatus(appointment.status)}</p>
                 <p className="mt-1 text-sm text-slate-600">Pago: {appointment.payments[0]?.provider ?? "PENDING"} · {money(appointment.payments[0]?.amountCents ?? 0)}</p>
                 <p className="mt-1 text-sm text-slate-600">Estado de pago: {readableStatus(appointment.payments[0]?.status ?? "PENDING")}</p>
+                {appointment.acceptedAutomatically && (
+                  <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    Pago confirmado. Tu cita fue aceptada automáticamente por confirmación en línea.
+                  </p>
+                )}
                 {appointment.discountCents ? (
                   <p className="mt-1 text-sm font-semibold text-emerald-700">
                     {appointment.discountLabel}: -{money(appointment.discountCents)}
@@ -2178,6 +2186,11 @@ function AppointmentList({
             </div>
             {appointment.cancellationReason && <p className="mt-3 text-sm text-red-600">Motivo: {appointment.cancellationReason}</p>}
             {appointment.reschedulePreferred && <p className="mt-3 text-sm text-slate-600">Prioridad sugerida: reagendar antes de cancelar o devolver.</p>}
+            {appointment.acceptedAutomatically && (
+              <p className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                Cita pagada y aceptada automáticamente por pago en línea.
+              </p>
+            )}
             {appointment.refundRequested && appointment.doctorRefundDecision !== "approved" && (
               <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
                 <p className="text-sm font-semibold text-amber-800">Solicitud de devolución pendiente de decisión médica</p>

@@ -21,12 +21,12 @@ export function StripePaymentForm({ onPaid }: { onPaid: () => void }) {
 
     if (result.error) {
       setStatus("error");
-      setMessage(result.error.message ?? "No fue posible confirmar el pago.");
+      setMessage(result.error.message ?? "No pudimos confirmar el pago todavía. Intenta actualizar en unos segundos.");
       return;
     }
 
     setStatus("success");
-    setMessage("Pago procesado. La confirmación definitiva se valida por webhook.");
+    setMessage("Pago recibido. Estamos actualizando tu cita como pagada y aceptada automáticamente.");
     onPaid();
   }
 
@@ -39,7 +39,7 @@ export function StripePaymentForm({ onPaid }: { onPaid: () => void }) {
         disabled={!stripe || status === "loading"}
         className="mt-5 w-full rounded-full bg-black px-6 py-4 font-semibold text-white transition hover:bg-deep disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {status === "loading" ? "Procesando pago..." : "Confirmar pago seguro"}
+        {status === "loading" ? "Procesando pago..." : "Continuar con pago seguro"}
       </button>
       {message && (
         <p className={`mt-3 text-sm ${status === "error" ? "text-red-600" : "text-medical"}`}>{message}</p>

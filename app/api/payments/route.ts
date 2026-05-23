@@ -1,4 +1,4 @@
-import { PaymentProvider } from "@prisma/client";
+import { AppointmentStatus, PaymentProvider } from "@prisma/client";
 import type Stripe from "stripe";
 import { ok, fail } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
@@ -138,7 +138,16 @@ export async function POST(request: Request) {
       where: { id: payment.id },
       data: { provider: PaymentProvider.STRIPE, status: "PAID", doctorId: appointment.doctor.id }
     });
-    await prisma.appointment.update({ where: { id: appointment.id }, data: { status: "PENDING_DOCTOR_ACCEPTANCE" } });
+    await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: {
+        status: AppointmentStatus.ACCEPTED,
+        acceptedAt: new Date(),
+        acceptedByDoctor: true,
+        acceptedAutomatically: true,
+        acceptedReason: "Pago en línea confirmado"
+      }
+    });
     await auditLog({
       actorUserId: user.id,
       action: "CONFIRM_ZERO_AMOUNT_PAYMENT",

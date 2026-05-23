@@ -178,9 +178,9 @@ function ticketConfirmationMessage(ticket: Ticket) {
     return "Tu cita fue registrada correctamente. El pago aparece como pendiente en efectivo.";
   }
   if (ticket.paymentStatus === "PAID") {
-    return "Tu pago en línea quedó confirmado. La cita está pendiente de aceptación médica.";
+    return "Tu pago en línea quedó confirmado. Tu cita fue aceptada automáticamente por confirmación de pago.";
   }
-  return "Tu cita fue registrada correctamente con pago en línea. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.";
+  return "Tu ticket de consulta está listo. Revisa el resumen y continúa con el pago seguro para confirmar tu cita.";
 }
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -257,9 +257,9 @@ function dateTime(value: string) {
 }
 
 const publicStatusLabels: Record<string, string> = {
-  PENDING: "Pendiente",
-  PENDING_DOCTOR_ACCEPTANCE: "Pendiente de aceptación médica",
-  ACCEPTED: "Aceptada por el médico",
+  PENDING: "Esperando confirmación",
+  PENDING_DOCTOR_ACCEPTANCE: "Esperando aceptación médica",
+  ACCEPTED: "Cita aceptada",
   CONFIRMED: "Confirmada",
   COMPLETED: "Completada",
   NO_SHOW: "El médico marcó que el paciente no asistió",
@@ -268,7 +268,7 @@ const publicStatusLabels: Record<string, string> = {
   REFUND_PENDING: "Reembolso pendiente de revisión",
   CANCELLED: "Cancelada",
   REFUNDED: "Reembolsada",
-  PAID: "Pagado",
+  PAID: "Pago confirmado",
   FAILED: "Fallido"
 };
 
@@ -774,10 +774,10 @@ export default function VitaeonPlatform() {
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
                 <h2 className="mt-3 text-4xl font-semibold text-deep">
-                  Cita creada correctamente.
+                  Tu ticket de consulta está listo.
                 </h2>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
+                  Revisa con calma los detalles de tu consulta. Desde aquí puedes continuar al pago seguro y después consultar tu ticket en el panel del paciente.
                 </p>
               </div>
               <CheckCircle2 className={`h-10 w-10 ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-600" : "text-emerald-600"}`} />
@@ -809,14 +809,14 @@ export default function VitaeonPlatform() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Pago seguro en línea</p>
                     <h3 className="mt-2 text-2xl font-semibold text-deep">
-                      {paymentLoading ? "Preparando Stripe" : clientSecret && stripePromise ? "Formulario de pago listo" : "Continúa con tu pago"}
+                      {paymentLoading ? "Preparando pago seguro" : clientSecret && stripePromise ? "Pago seguro listo" : "Continúa con pago seguro"}
                     </h3>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                       {paymentLoading
-                        ? "Estamos preparando el formulario seguro para que puedas pagar esta cita."
+                        ? "Estamos preparando una experiencia de pago protegida para tu consulta."
                         : clientSecret && stripePromise
-                          ? "Completa el pago en el formulario seguro de Stripe que aparece abajo."
-                          : "Tu cita ya fue creada. Para confirmar el pago en línea, abre el formulario seguro de Stripe."}
+                          ? "Completa el pago en el formulario protegido que aparece abajo. Al confirmarse, tu cita quedará pagada y aceptada automáticamente."
+                          : "Tu ticket ya fue creado. Para confirmar el pago en línea, abre el formulario seguro de Stripe."}
                     </p>
                   </div>
                   {paymentLoading ? <Loader2 className="h-7 w-7 animate-spin text-medical" /> : <CreditCard className="h-7 w-7 text-medical" />}
@@ -841,7 +841,7 @@ export default function VitaeonPlatform() {
               )}
               {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && clientSecret && (
                 <a href="#stripe-payment" className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5">
-                  Abrir formulario de pago
+                  Continuar con pago seguro
                 </a>
               )}
               {ticket.paymentMethod === "STRIPE" && ticket.paymentStatus !== "PAID" && !clientSecret && !paymentLoading && (
@@ -850,7 +850,7 @@ export default function VitaeonPlatform() {
                   onClick={() => startOnlinePayment(ticket.appointmentId)}
                   className="inline-flex rounded-full bg-black px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5"
                 >
-                  Pagar en línea
+                  Continuar con pago seguro
                 </button>
               )}
               <a href="/dashboard/patient" className="inline-flex rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700">
@@ -860,7 +860,7 @@ export default function VitaeonPlatform() {
             {clientSecret && stripePromise && (
               <div id="stripe-payment" className="mt-6 scroll-mt-32">
               <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <StripePaymentForm onPaid={() => setTicket((current) => current ? { ...current, paymentStatus: "PAID", appointmentStatus: "PENDING_DOCTOR_ACCEPTANCE" } : current)} />
+                <StripePaymentForm onPaid={() => setTicket((current) => current ? { ...current, paymentStatus: "PAID", appointmentStatus: "ACCEPTED" } : current)} />
               </Elements>
               </div>
             )}
