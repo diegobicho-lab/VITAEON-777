@@ -7,6 +7,33 @@ import { getStripe } from "@/lib/payments/stripe";
 import { auditLog } from "@/lib/audit/audit";
 import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 
+function stripeObjectId(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "id" in value && typeof (value as { id?: unknown }).id === "string") {
+    return (value as { id: string }).id;
+  }
+  return null;
+}
+
+function stripeSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
+  const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end;
+  return typeof periodEnd === "number" ? new Date(periodEnd * 1000) : undefined;
+}
+
+function invoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const direct = stripeObjectId((invoice as Stripe.Invoice & { subscription?: unknown }).subscription);
+  const parent = (invoice as Stripe.Invoice & { parent?: { subscription_details?: { subscription?: unknown } } }).parent?.subscription_details?.subscription;
+  return direct ?? stripeObjectId(parent);
+}
+
+function invoicePaymentIntentId(invoice: Stripe.Invoice) {
+  return stripeObjectId((invoice as Stripe.Invoice & { payment_intent?: unknown }).payment_intent);
+}
+
+function invoiceCustomerId(invoice: Stripe.Invoice) {
+  return stripeObjectId((invoice as Stripe.Invoice & { customer?: unknown }).customer);
+}
+
 export async function POST(request: Request) {
   const stripe = getStripe();
   const headerList = await headers();
@@ -168,6 +195,50 @@ export async function POST(request: Request) {
     }
   }
 
+  if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = invoiceSubscriptionId(invoice);
+    if (subscriptionId) {
+      const payment = await prisma.subscriptionPayment.findFirst({
+        where: { providerSubscriptionId: subscriptionId },
+        orderBy: { createdAt: "desc" }
+      });
+
+      if (payment) {
+        const paid = event.type === "invoice.paid";
+        let currentPeriodEnd = payment.currentPeriodEnd;
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          currentPeriodEnd = stripeSubscriptionPeriodEnd(subscription) ?? currentPeriodEnd;
+        } catch (error) {
+          console.error("[Stripe subscription period lookup error]", error);
+        }
+
+        await prisma.subscriptionPayment.update({
+          where: { id: payment.id },
+          data: {
+            status: paid ? PaymentStatus.PAID : PaymentStatus.FAILED,
+            providerPaymentId: invoicePaymentIntentId(invoice) ?? payment.providerPaymentId,
+            providerCustomerId: invoiceCustomerId(invoice) ?? payment.providerCustomerId,
+            currentPeriodEnd
+          }
+        });
+
+        await prisma.doctor.updateMany({
+          where: { userId: payment.userId },
+          data: { subscriptionStatus: paid ? SubscriptionStatus.ACTIVE : SubscriptionStatus.FAILED }
+        });
+
+        await auditLog({
+          action: paid ? "STRIPE_WEBHOOK_SUBSCRIPTION_RENEWED" : "STRIPE_WEBHOOK_SUBSCRIPTION_RENEWAL_FAILED",
+          entityType: "SubscriptionPayment",
+          entityId: payment.id,
+          metadata: { stripeEvent: event.id, subscriptionId }
+        });
+      }
+    }
+  }
+
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.expired") {
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.metadata?.kind === "doctor_subscription" && session.metadata.paymentId) {
@@ -325,18 +396,20 @@ export async function POST(request: Request) {
     });
 
     if (payment) {
+      const plan = subscription.metadata?.plan as keyof typeof MedicalMedal | undefined;
+      const planMedal = plan && MedicalMedal[plan] ? MedicalMedal[plan] : null;
       await prisma.subscriptionPayment.update({
         where: { id: payment.id },
         data: {
           providerSubscriptionId: subscription.id,
           providerCustomerId: typeof subscription.customer === "string" ? subscription.customer : payment.providerCustomerId,
           status: status === SubscriptionStatus.ACTIVE ? PaymentStatus.PAID : payment.status,
-          currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : payment.currentPeriodEnd
+          currentPeriodEnd: stripeSubscriptionPeriodEnd(subscription) ?? payment.currentPeriodEnd
         }
       });
       await prisma.doctor.updateMany({
         where: { userId: payment.userId },
-        data: { subscriptionStatus: status }
+        data: planMedal && status === SubscriptionStatus.ACTIVE ? { subscriptionStatus: status, medal: planMedal } : { subscriptionStatus: status }
       });
     }
   }

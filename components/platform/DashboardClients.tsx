@@ -356,14 +356,14 @@ const doctorPlans = [
   {
     id: "diamante",
     name: "Diamante",
-    price: "$250 MXN",
-    description: "Todo Oro, con prioridad sobre perfiles Oro y mayor presencia en resultados."
+    price: "$250 MXN / quincena",
+    description: "Todo Oro, con prioridad sobre perfiles Oro, mayor presencia en resultados y renovación cada 14 días."
   },
   {
     id: "amatista",
     name: "Amatista",
-    price: "$399 MXN",
-    description: "Prioridad máxima, agenda personalizada y calendario asistido por IA."
+    price: "$399 MXN / quincena",
+    description: "Prioridad máxima, agenda personalizada, calendario asistido por IA y renovación cada 14 días."
   }
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 
@@ -1518,7 +1518,7 @@ export function DoctorDashboardClient() {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Suscripción médica</p>
                   <h2 className="mt-2 text-2xl font-semibold text-deep">Plan activo: {planLabels[medal]}</h2>
-                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Diamante/Amatista con checkout seguro.</p>
+                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Diamante/Amatista con renovación quincenal segura.</p>
                 </div>
                 <CreditCard className="h-8 w-8 text-medical" />
               </div>
@@ -1540,7 +1540,7 @@ export function DoctorDashboardClient() {
                 ))}
               </div>
               <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                Los pagos de Diamante y Amatista se procesan en Stripe con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
+                Las renovaciones quincenales de Diamante y Amatista se procesan en Stripe Billing con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
               </p>
             </section>
           )}

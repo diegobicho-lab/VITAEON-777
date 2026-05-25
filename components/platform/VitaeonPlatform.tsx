@@ -123,30 +123,32 @@ const doctorSubscriptionPlans: Array<{
   {
     medal: "diamante",
     title: "Diamante",
-    price: "$250 MXN",
+    price: "$250 MXN / quincena",
     tone: "Plan profesional",
-    description: "Presencia profesional intermedia con prioridad sobre perfiles Oro en resultados.",
+    description: "Presencia profesional intermedia con prioridad sobre perfiles Oro y renovación automática cada 14 días.",
     benefits: [
       "Todo lo del plan Oro",
       "Prioridad en resultados dentro de su especialidad",
       "Aparece por encima de médicos con plan Oro",
-      "Mayor visibilidad en la página"
+      "Mayor visibilidad en la página",
+      "Renovación quincenal con Stripe"
     ]
   },
   {
     medal: "amatista",
     title: "Amatista",
-    price: "$399 MXN",
+    price: "$399 MXN / quincena",
     tone: "Más exclusivo",
     recommended: true,
-    description: "El plan premium para máxima presencia, agenda organizada y prioridad superior.",
+    description: "El plan premium para máxima presencia, agenda organizada, prioridad superior y renovación cada 14 días.",
     benefits: [
       "Todo lo del plan Diamante",
       "Prioridad superior a Diamante",
       "Aparece primero dentro de su especialidad",
       "Agenda médica personalizada",
       "Calendario asistido por IA",
-      "Mejor visibilidad en sugerencias"
+      "Mejor visibilidad en sugerencias",
+      "Renovación quincenal con Stripe"
     ]
   }
 ];
@@ -187,61 +189,113 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
 
-const aiRoutes = [
+type AiRoute = {
+  specialty: string;
+  keywords: string[];
+  reason: string;
+  questions?: string[];
+};
+
+const aiRoutes: AiRoute[] = [
   {
     specialty: "Nutrición",
-    keywords: ["dieta", "nutricion", "nutrición", "peso", "bajar de peso", "alimentacion", "alimentación"],
-    reason: "Nutrición ayuda a crear una ruta segura para hábitos, peso, metabolismo y bienestar sostenido."
+    keywords: ["dieta", "nutricion", "nutrición", "peso", "bajar de peso", "obesidad", "alimentacion", "alimentación", "plan alimenticio", "comer mejor"],
+    reason: "Nutrición ayuda a ordenar hábitos, peso, composición corporal y bienestar metabólico con seguimiento personalizado.",
+    questions: ["¿Buscas bajar de peso, controlar laboratorio o mejorar hábitos?", "¿Hay diabetes, presión alta o tiroides?"]
   },
   {
     specialty: "Endocrinología",
-    keywords: ["diabetes", "glucosa", "azucar", "azúcar", "tiroides", "hormonal", "metabolismo"],
-    reason: "Endocrinología valora metabolismo, diabetes, tiroides y alteraciones hormonales con enfoque especializado."
+    keywords: ["diabetes", "glucosa", "azucar", "azúcar", "tiroides", "hormonal", "metabolismo", "resistencia a la insulina", "colesterol", "trigliceridos", "triglicéridos"],
+    reason: "Endocrinología valora metabolismo, diabetes, tiroides, resistencia a la insulina y alteraciones hormonales.",
+    questions: ["¿Tienes glucosa elevada, cambios de peso o estudios hormonales alterados?"]
   },
   {
     specialty: "Cardiología",
-    keywords: ["pecho", "palpit", "corazon", "corazón", "presion", "presión", "hipertension", "hipertensión"],
-    reason: "Los síntomas cardiovasculares requieren valoración prioritaria. Si hay dolor intenso, falta de aire o desmayo, busca urgencias reales."
+    keywords: ["pecho", "dolor de pecho", "palpit", "corazon", "corazón", "presion", "presión", "hipertension", "hipertensión", "falta de aire", "desmayo"],
+    reason: "Cardiología es clave para dolor torácico, palpitaciones, presión alta o síntomas relacionados con corazón y circulación.",
+    questions: ["Si el dolor de pecho es intenso, con falta de aire o desmayo, busca urgencias reales."]
   },
   {
     specialty: "Neurología",
-    keywords: ["migra", "cabeza", "mareo", "temblor", "hormigueo", "memoria", "espalda", "columna"],
-    reason: "Los síntomas neurológicos se benefician de una ruta diagnóstica estructurada."
+    keywords: ["migra", "migraña", "cabeza", "mareo", "temblor", "hormigueo", "memoria", "convulsion", "convulsión", "debilidad", "ciatica", "ciática"],
+    reason: "Neurología orienta dolor de cabeza persistente, mareos, hormigueo, temblores, convulsiones o síntomas nerviosos.",
+    questions: ["¿El síntoma inició de forma súbita o se acompaña de debilidad?"]
   },
   {
     specialty: "Traumatología",
-    keywords: ["cadera", "rodilla", "fractura", "trauma", "hueso", "dolor de espalda", "columna"],
-    reason: "Traumatología y Ortopedia valoran dolor articular, lesiones, cadera, rodilla, columna y movilidad."
+    keywords: ["cadera", "rodilla", "hombro", "tobillo", "fractura", "trauma", "hueso", "dolor de espalda", "columna", "lesion", "lesión", "esguince"],
+    reason: "Traumatología y Ortopedia valoran dolor articular, lesiones, cadera, rodilla, columna, fracturas y movilidad.",
+    questions: ["¿Hubo golpe, caída o limitación para caminar o mover la articulación?"]
   },
   {
     specialty: "Medicina de Rehabilitación",
-    keywords: ["rehabilitacion", "rehabilitación", "espalda", "columna", "dolor muscular", "movilidad"],
-    reason: "Rehabilitación ayuda cuando hay dolor, pérdida de movilidad o recuperación funcional."
+    keywords: ["rehabilitacion", "rehabilitación", "espalda", "columna", "dolor muscular", "movilidad", "terapia fisica", "terapia física", "recuperacion", "recuperación"],
+    reason: "Rehabilitación ayuda cuando hay dolor persistente, pérdida de movilidad o recuperación funcional después de lesión."
   },
   {
     specialty: "Dermatología",
-    keywords: ["piel", "lunar", "acne", "acné", "mancha", "comezon", "comezón"],
-    reason: "Los cambios de piel deben revisarse con criterio clínico y tecnología dermatológica."
+    keywords: ["piel", "lunar", "acne", "acné", "mancha", "comezon", "comezón", "roncha", "cabello", "uñas"],
+    reason: "Dermatología atiende acné, manchas, lunares, comezón, lesiones de piel, cabello y uñas."
   },
   {
     specialty: "Gastroenterología",
-    keywords: ["estomago", "estómago", "gastritis", "reflujo", "colon", "abdomen"],
-    reason: "Los síntomas digestivos suelen requerir evaluación especializada y plan de seguimiento."
+    keywords: ["estomago", "estómago", "gastritis", "reflujo", "colon", "abdomen", "diarrea", "estreñimiento", "higado", "hígado", "nausea", "náusea"],
+    reason: "Gastroenterología orienta dolor abdominal, reflujo, gastritis, colon, diarrea, estreñimiento y síntomas digestivos."
   },
   {
     specialty: "Ginecología",
-    keywords: ["embarazo", "gine", "menstruacion", "menstruación", "control prenatal"],
-    reason: "Ginecología orienta embarazo, salud femenina, control prenatal y síntomas ginecológicos."
+    keywords: ["embarazo", "gine", "menstruacion", "menstruación", "control prenatal", "ovario", "flujo", "colico", "cólico"],
+    reason: "Ginecología orienta embarazo, salud femenina, control prenatal, menstruación y síntomas ginecológicos."
   },
   {
     specialty: "Psicología",
-    keywords: ["ansiedad", "estres", "estrés", "terapia", "emocional"],
-    reason: "Psicología puede acompañar ansiedad, estrés y bienestar emocional con intervención clínica."
+    keywords: ["ansiedad", "estres", "estrés", "terapia", "emocional", "duelo", "pareja", "tristeza", "panico", "pánico"],
+    reason: "Psicología acompaña ansiedad, estrés, duelo, cambios emocionales y bienestar mental con intervención clínica."
   },
   {
     specialty: "Psiquiatría",
-    keywords: ["ansiedad", "depresion", "depresión", "insomnio", "panico", "pánico"],
-    reason: "La salud mental requiere atención profesional, confidencial y con acompañamiento continuo."
+    keywords: ["ansiedad", "depresion", "depresión", "insomnio", "panico", "pánico", "medicamento psiquiatrico", "medicamento psiquiátrico"],
+    reason: "Psiquiatría es útil cuando los síntomas emocionales son intensos, persistentes o requieren valoración médica especializada."
+  },
+  {
+    specialty: "Medicina Interna",
+    keywords: ["cansancio", "fatiga", "revision", "revisión", "chequeo", "laboratorio", "varios sintomas", "varios síntomas", "presion", "presión", "diabetes", "dolor general"],
+    reason: "Medicina Interna integra síntomas generales, enfermedades crónicas, estudios de laboratorio y dirige la ruta hacia otros especialistas."
+  },
+  {
+    specialty: "Neumología",
+    keywords: ["tos", "asma", "bronquitis", "neumonia", "neumonía", "respirar", "falta de aire", "pulmon"],
+    reason: "Neumología valora tos persistente, asma, bronquitis, falta de aire y enfermedades respiratorias."
+  },
+  {
+    specialty: "Oftalmología",
+    keywords: ["ojo", "ojos", "vista", "vision", "visión", "lentes", "ver borroso"],
+    reason: "Oftalmología atiende visión borrosa, dolor ocular, cambios visuales y salud de los ojos."
+  },
+  {
+    specialty: "Otorrinolaringología",
+    keywords: ["oido", "oído", "garganta", "nariz", "sinusitis", "ronquera", "amigdalas", "amígdalas"],
+    reason: "Otorrinolaringología orienta síntomas de oído, nariz, garganta, sinusitis y ronquera."
+  },
+  {
+    specialty: "Urología",
+    keywords: ["orina", "urinaria", "prostata", "próstata", "vejiga", "piedra", "calculo", "cálculo"],
+    reason: "Urología atiende síntomas urinarios, próstata, vejiga, cálculos y salud urológica."
+  },
+  {
+    specialty: "Nefrología",
+    keywords: ["riñon", "riñón", "renal", "creatinina", "proteina en orina", "proteína en orina"],
+    reason: "Nefrología valora riñón, función renal, creatinina alterada y problemas urinarios relacionados con riñón."
+  },
+  {
+    specialty: "Pediatría",
+    keywords: ["niño", "niña", "bebe", "bebé", "vacunas", "fiebre niño", "pediatria", "pediatría"],
+    reason: "Pediatría atiende salud infantil, vacunas, fiebre, crecimiento y seguimiento de niñas y niños."
+  },
+  {
+    specialty: "Reumatología",
+    keywords: ["articulaciones", "artritis", "reuma", "dolor articular", "lupus", "inflamacion", "inflamación"],
+    reason: "Reumatología valora dolor e inflamación articular, artritis y enfermedades autoinmunes."
   }
 ];
 
@@ -276,13 +330,40 @@ function publicStatus(value: string) {
   return publicStatusLabels[value] ?? value;
 }
 
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function suggestSpecialty(symptom: string) {
-  const cleanSymptom = symptom.toLowerCase();
-  return aiRoutes.find((route) => route.keywords.some((keyword) => cleanSymptom.includes(keyword))) ?? {
+  const cleanSymptom = normalizeText(symptom);
+  const matches = aiRoutes
+    .map((route) => {
+      const score = route.keywords.reduce((total, keyword) => {
+        const cleanKeyword = normalizeText(keyword);
+        if (!cleanSymptom.includes(cleanKeyword)) return total;
+        return total + (cleanKeyword.includes(" ") ? 3 : 1);
+      }, 0);
+      return { ...route, score };
+    })
+    .filter((route) => route.score > 0)
+    .sort((a, b) => b.score - a.score || a.specialty.localeCompare(b.specialty, "es"));
+
+  const fallback = {
     specialty: "Medicina Interna",
     keywords: [],
-    reason: "Cuando el síntoma es general, Medicina Interna ayuda a ordenar la ruta clínica inicial."
+    reason: "Cuando el síntoma es general, Medicina Interna ayuda a ordenar una valoración integral y definir si necesitas otro especialista.",
+    questions: ["Puedes escribir síntomas, servicio, órgano afectado o una frase común como “me duele la cadera”."],
+    score: 0
   };
+  const primary = matches[0] ?? fallback;
+  const alternatives = matches.filter((route) => route.specialty !== primary.specialty).slice(0, 3);
+  const redFlag = /dolor.*pecho|pecho.*dolor|falta de aire|desmayo|convulsion|convulsion|sangrado abundante|debilidad.*brazo|emergencia|urgencia/.test(cleanSymptom)
+    ? "Si hay dolor intenso, falta de aire, desmayo, sangrado abundante o síntomas súbitos, busca atención de urgencias reales."
+    : "";
+  return { primary, alternatives, redFlag };
 }
 
 export default function VitaeonPlatform() {
@@ -1160,8 +1241,12 @@ function PlanCard({ plan }: { plan: (typeof doctorSubscriptionPlans)[number] }) 
 
 function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Specialty[]; onSpecialtySelect: (id: string) => void }) {
   const [symptom, setSymptom] = useState("");
-  const suggestion = suggestSpecialty(symptom);
-  const matchedSpecialty = specialties.find((specialty) => specialty.name === suggestion.specialty);
+  const orientation = suggestSpecialty(symptom);
+  const matchedSpecialty = specialties.find((specialty) => specialty.name === orientation.primary.specialty);
+  const alternativeMatches = orientation.alternatives.map((route) => ({
+    route,
+    specialty: specialties.find((specialty) => specialty.name === route.specialty)
+  }));
 
   return (
     <div className="ai-orientation-card premium-card grid gap-8 rounded-[2rem] p-7 lg:grid-cols-[0.72fr_1fr] lg:items-center">
@@ -1185,8 +1270,35 @@ function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Spe
           />
         </label>
         <div className="mt-4 rounded-3xl bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-deep">Especialidad sugerida: {suggestion.specialty}</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{suggestion.reason}</p>
+          <p className="text-sm font-semibold text-deep">Especialidad sugerida: {orientation.primary.specialty}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{orientation.primary.reason}</p>
+          {orientation.redFlag && (
+            <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">
+              {orientation.redFlag}
+            </p>
+          )}
+          {alternativeMatches.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-slate-400">También podrías considerar</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {alternativeMatches.map(({ route, specialty }) =>
+                  specialty ? (
+                    <button
+                      key={route.specialty}
+                      onClick={() => onSpecialtySelect(specialty.id)}
+                      className="rounded-full border border-silver bg-slate-50 px-4 py-2 text-xs font-semibold text-deep transition hover:-translate-y-0.5 hover:bg-white"
+                    >
+                      {route.specialty}
+                    </button>
+                  ) : (
+                    <span key={route.specialty} className="rounded-full border border-silver bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500">
+                      {route.specialty}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          )}
           {matchedSpecialty && (
             <button onClick={() => onSpecialtySelect(matchedSpecialty.id)} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white">
               Ver especialistas recomendados <ChevronRight className="h-4 w-4" />

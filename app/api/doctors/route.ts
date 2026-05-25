@@ -10,16 +10,22 @@ const medalPriority = {
 };
 
 const patientLanguageMap: Array<{ keys: string[]; terms: string[] }> = [
-  { keys: ["dieta", "bajar de peso", "peso", "nutricion", "nutrición"], terms: ["Nutrición", "Endocrinología", "Medicina Interna", "metabolismo"] },
-  { keys: ["cadera", "rodilla", "fractura", "trauma", "ortopedia"], terms: ["Traumatología", "Ortopedia", "Medicina de Rehabilitación"] },
-  { keys: ["espalda", "columna", "ciatica", "ciática"], terms: ["Traumatología", "Ortopedia", "Medicina de Rehabilitación", "Neurología", "columna"] },
-  { keys: ["diabetes", "glucosa", "azucar", "azúcar"], terms: ["Endocrinología", "Medicina Interna", "metabolismo"] },
-  { keys: ["presion", "presión", "hipertension", "hipertensión"], terms: ["Medicina Interna", "Cardiología"] },
-  { keys: ["pecho", "dolor de pecho", "palpitaciones"], terms: ["Cardiología", "Medicina Interna"] },
-  { keys: ["embarazo", "control prenatal"], terms: ["Ginecología", "Obstetricia"] },
-  { keys: ["ansiedad", "depresion", "depresión", "estres", "estrés"], terms: ["Psicología", "Psiquiatría"] },
-  { keys: ["acne", "acné", "piel", "manchas"], terms: ["Dermatología"] },
-  { keys: ["estomago", "estómago", "gastritis", "reflujo", "abdomen"], terms: ["Gastroenterología", "Medicina Interna"] }
+  { keys: ["dieta", "bajar de peso", "peso", "obesidad", "nutricion", "nutrición", "alimentacion", "alimentación", "plan alimenticio"], terms: ["Nutrición", "Endocrinología", "Medicina Interna", "metabolismo"] },
+  { keys: ["cadera", "rodilla", "hombro", "tobillo", "fractura", "esguince", "trauma", "ortopedia", "lesion", "lesión"], terms: ["Traumatología", "Ortopedia", "Medicina de Rehabilitación"] },
+  { keys: ["espalda", "columna", "ciatica", "ciática", "lumbalgia", "cuello"], terms: ["Traumatología", "Ortopedia", "Medicina de Rehabilitación", "Neurología", "columna"] },
+  { keys: ["diabetes", "glucosa", "azucar", "azúcar", "tiroides", "hormonal", "metabolismo"], terms: ["Endocrinología", "Medicina Interna"] },
+  { keys: ["presion", "presión", "hipertension", "hipertensión", "presión alta"], terms: ["Medicina Interna", "Cardiología"] },
+  { keys: ["pecho", "dolor de pecho", "palpitaciones", "falta de aire", "corazon", "corazón"], terms: ["Cardiología", "Medicina Interna", "Neumología"] },
+  { keys: ["embarazo", "control prenatal", "menstruacion", "menstruación", "ovario"], terms: ["Ginecología", "Obstetricia"] },
+  { keys: ["ansiedad", "depresion", "depresión", "estres", "estrés", "panico", "pánico", "insomnio"], terms: ["Psicología", "Psiquiatría"] },
+  { keys: ["acne", "acné", "piel", "manchas", "lunar", "cabello", "comezon", "comezón"], terms: ["Dermatología"] },
+  { keys: ["estomago", "estómago", "gastritis", "reflujo", "abdomen", "colon", "diarrea", "estreñimiento"], terms: ["Gastroenterología", "Medicina Interna"] },
+  { keys: ["tos", "asma", "bronquitis", "neumonia", "neumonía", "respirar"], terms: ["Neumología", "Medicina Interna"] },
+  { keys: ["orina", "urinaria", "prostata", "próstata", "riñon", "riñón"], terms: ["Urología", "Nefrología"] },
+  { keys: ["ojo", "ojos", "vista", "vision", "visión"], terms: ["Oftalmología"] },
+  { keys: ["oido", "oído", "garganta", "nariz", "sinusitis"], terms: ["Otorrinolaringología"] },
+  { keys: ["niño", "niña", "bebe", "bebé", "vacunas", "pediatria", "pediatría"], terms: ["Pediatría"] },
+  { keys: ["articulaciones", "artritis", "reuma", "dolor articular"], terms: ["Reumatología", "Medicina Interna"] }
 ];
 
 function expandSearchTerms(query?: string) {

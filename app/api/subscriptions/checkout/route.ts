@@ -83,32 +83,40 @@ export async function POST(request: Request) {
   let session: Stripe.Checkout.Session;
   try {
     const stripe = getStripe();
+    const subscriptionMetadata = {
+      kind: "doctor_subscription",
+      paymentId: payment.id,
+      userId: user.id,
+      doctorId: doctor.id,
+      plan: parsed.data.plan,
+      platformOwnerRef
+    };
     session = await stripe.checkout.sessions.create({
-      mode: "payment",
+      mode: "subscription",
       customer_email: user.email,
       line_items: [
         {
           price_data: {
             currency: "mxn",
             unit_amount: amountCents,
+            recurring: {
+              interval: "week",
+              interval_count: 2
+            },
             product_data: {
               name: `VITAEON Plan ${planLabels[parsed.data.plan]}`,
-              description: "Suscripción médica VITAEON"
+              description: "Suscripción médica VITAEON con renovación automática cada 14 días."
             }
           },
           quantity: 1
         }
       ],
+      subscription_data: {
+        metadata: subscriptionMetadata
+      },
       success_url: `${appUrl}/dashboard/doctor?subscription=success`,
       cancel_url: `${appUrl}/dashboard/doctor?subscription=cancelled`,
-      metadata: {
-        kind: "doctor_subscription",
-        paymentId: payment.id,
-        userId: user.id,
-        doctorId: doctor.id,
-        plan: parsed.data.plan,
-        platformOwnerRef
-      }
+      metadata: subscriptionMetadata
     });
   } catch (error) {
     console.error("[Stripe subscription checkout error]", error);
