@@ -11,7 +11,7 @@ const allowedTypes = new Map([
   ["image/webp", "webp"]
 ]);
 
-const allowedKinds = new Set(["profile", "office", "license"]);
+const allowedKinds = new Set(["profile", "office", "license", "prescription-header", "prescription-signature"]);
 const maxBytes = 3 * 1024 * 1024;
 
 export async function POST(request: Request) {

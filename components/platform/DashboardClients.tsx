@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, Loader2, MessageCircle, Pill, Send, ShieldCheck, Upload, Users, XCircle } from "lucide-react";
+import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Upload, Users, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -25,7 +25,7 @@ type Appointment = {
   discountLabel?: string | null;
   availabilitySlot: { startsAt: string; endsAt: string };
   doctor: { fullName: string; specialty: { name: string }; hospital: { name: string } };
-  patient: { user: { name: string; email: string } };
+  patient: { id: string; dateOfBirth?: string | null; user: { name: string; email: string } };
   payments: Array<{ status: string; provider: string; amountCents: number }>;
 };
 
@@ -275,6 +275,71 @@ type ReviewSummary = {
   }>;
 };
 
+type ClinicalHistoryRecord = {
+  id: string;
+  patientId: string;
+  appointmentId: string;
+  nonPathologicalHistory?: string | null;
+  pathologicalHistory?: string | null;
+  surgicalHistory?: string | null;
+  fractureHistory?: string | null;
+  gynecoObstetricHistory?: string | null;
+  currentCondition?: string | null;
+  physicalExam?: string | null;
+  labsAndImaging?: string | null;
+  plan?: string | null;
+  prognosis?: string | null;
+  healthStatus?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: { user: { name: string; email: string } };
+  appointment: { availabilitySlot: { startsAt: string; endsAt: string } };
+};
+
+type PrescriptionTemplateRecord = {
+  id: string;
+  doctorName: string;
+  specialty: string;
+  professionalLicense?: string | null;
+  phone?: string | null;
+  officeAddress?: string | null;
+  headerImageUrl?: string | null;
+  signatureImageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type PrescriptionTemplateResponse = {
+  template: PrescriptionTemplateRecord | null;
+  defaults: {
+    doctorName: string;
+    specialty: string;
+    professionalLicense: string;
+    phone: string;
+    officeAddress: string;
+  };
+};
+
+type PrescriptionRecord = {
+  id: string;
+  patientId: string;
+  appointmentId: string;
+  templateId?: string | null;
+  patientAge?: string | null;
+  diagnosis?: string | null;
+  medicationInstructions?: string | null;
+  dosage?: string | null;
+  frequency?: string | null;
+  duration?: string | null;
+  generalRecommendations?: string | null;
+  additionalNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: { user: { name: string; email: string } };
+  appointment: { availabilitySlot: { startsAt: string; endsAt: string } };
+  template?: PrescriptionTemplateRecord | null;
+};
+
 const planLabels = {
   oro: "Oro",
   diamante: "Diamante",
@@ -302,6 +367,46 @@ const doctorPlans = [
   }
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 
+const emptyClinicalForm = {
+  nonPathologicalHistory: "",
+  pathologicalHistory: "",
+  surgicalHistory: "",
+  fractureHistory: "",
+  gynecoObstetricHistory: "",
+  currentCondition: "",
+  physicalExam: "",
+  labsAndImaging: "",
+  plan: "",
+  prognosis: "",
+  healthStatus: ""
+};
+
+const emptyPrescriptionTemplateForm = {
+  doctorName: "",
+  specialty: "",
+  professionalLicense: "",
+  phone: "",
+  officeAddress: "",
+  headerImageUrl: "",
+  signatureImageUrl: ""
+};
+
+const emptyPrescriptionForm = {
+  id: "",
+  patientAge: "",
+  diagnosis: "",
+  medicationInstructions: "",
+  dosage: "",
+  frequency: "",
+  duration: "",
+  generalRecommendations: "",
+  additionalNotes: ""
+};
+
+type ClinicalFormState = typeof emptyClinicalForm;
+type PrescriptionTemplateFormState = typeof emptyPrescriptionTemplateForm;
+type PrescriptionFormState = typeof emptyPrescriptionForm;
+
 function dateTime(value: string) {
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
@@ -317,6 +422,61 @@ function shortTime(value: string | Date) {
 function durationLabel(startsAt: string, endsAt: string) {
   const minutes = Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000));
   return `${minutes} min`;
+}
+
+function escapeHtml(value = "") {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function printableText(value?: string | null) {
+  return escapeHtml(value || "Sin registro").replaceAll("\n", "<br />");
+}
+
+function openPrintWindow(title: string, body: string) {
+  const printWindow = window.open("", "_blank", "width=920,height=720");
+  if (!printWindow) return false;
+  printWindow.document.write(`<!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>${escapeHtml(title)}</title>
+        <style>
+          @page { size: A4; margin: 18mm; }
+          body { color: #082033; font-family: Arial, sans-serif; line-height: 1.55; margin: 0; }
+          h1 { font-size: 24px; margin: 0 0 8px; }
+          h2 { border-top: 1px solid #dce8ef; font-size: 15px; letter-spacing: .12em; margin: 24px 0 8px; padding-top: 14px; text-transform: uppercase; }
+          p { margin: 0 0 8px; }
+          .muted { color: #5b6b7f; }
+          .header { align-items: center; border-bottom: 1px solid #dce8ef; display: flex; gap: 18px; margin-bottom: 20px; padding-bottom: 16px; }
+          .header img { max-height: 86px; max-width: 220px; object-fit: contain; }
+          .grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .box { border: 1px solid #dce8ef; border-radius: 16px; padding: 14px; }
+          .signature { margin-top: 42px; max-height: 110px; max-width: 240px; object-fit: contain; }
+          @media print { button { display: none; } }
+        </style>
+      </head>
+      <body>${body}</body>
+    </html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  return true;
+}
+
+function calculateAgeLabel(dateOfBirth?: string | null) {
+  if (!dateOfBirth) return "";
+  const birth = new Date(dateOfBirth);
+  if (Number.isNaN(birth.getTime())) return "";
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
+  return age >= 0 ? `${age} años` : "";
 }
 
 function buildTimePreview(startTime: string, endTime: string, durationMinutes: 45 | 60) {
@@ -534,10 +694,27 @@ export function DoctorDashboardClient() {
   const [medicationResult, setMedicationResult] = useState<MedicationResult | null>(null);
   const [cancellationModal, setCancellationModal] = useState<Appointment | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [activeAmatistaTool, setActiveAmatistaTool] = useState<"historias" | "recetario" | null>(null);
+  const [clinicalHistories, setClinicalHistories] = useState<ClinicalHistoryRecord[]>([]);
+  const [clinicalSearch, setClinicalSearch] = useState("");
+  const [selectedClinicalAppointmentId, setSelectedClinicalAppointmentId] = useState("");
+  const [clinicalForm, setClinicalForm] = useState<ClinicalFormState>({ ...emptyClinicalForm });
+  const [clinicalLoading, setClinicalLoading] = useState(false);
+  const [clinicalStatus, setClinicalStatus] = useState("");
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
+  const [prescriptionSearch, setPrescriptionSearch] = useState("");
+  const [selectedPrescriptionAppointmentId, setSelectedPrescriptionAppointmentId] = useState("");
+  const [prescriptionTemplate, setPrescriptionTemplate] = useState<PrescriptionTemplateFormState>({ ...emptyPrescriptionTemplateForm });
+  const [prescriptionTemplateId, setPrescriptionTemplateId] = useState("");
+  const [prescriptionForm, setPrescriptionForm] = useState<PrescriptionFormState>({ ...emptyPrescriptionForm });
+  const [prescriptionLoading, setPrescriptionLoading] = useState(false);
+  const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const assistantEnabled = medal === "amatista";
   const collaborationEnabled = medal === "amatista";
+  const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
+  const activeDoctorAppointments = appointments.filter((appointment) => !["CANCELLED", "COMPLETED", "NO_SHOW", "REFUNDED"].includes(appointment.status));
 
   function monthKey(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -875,6 +1052,323 @@ export function DoctorDashboardClient() {
     await load();
   }
 
+  async function openAmatistaTool(tool: "historias" | "recetario") {
+    setMessage("");
+    if (!amatistaToolsEnabled) {
+      setMessage("Disponible exclusivamente para médicos con plan Amatista activo.");
+      return;
+    }
+    setActiveAmatistaTool(tool);
+    if (tool === "historias") await loadClinicalHistories();
+    if (tool === "recetario") await Promise.all([loadPrescriptionTemplate(), loadPrescriptions()]);
+  }
+
+  async function loadClinicalHistories(query = clinicalSearch) {
+    setClinicalLoading(true);
+    setClinicalStatus("");
+    try {
+      const records = await clientApi<ClinicalHistoryRecord[]>(`/api/clinical-histories?q=${encodeURIComponent(query)}`);
+      setClinicalHistories(records);
+      if (records.length === 0 && query.trim()) setClinicalStatus("No se encontraron historias clínicas para este paciente.");
+    } catch (error) {
+      setClinicalStatus(error instanceof Error ? error.message : "No fue posible cargar historias clínicas.");
+    } finally {
+      setClinicalLoading(false);
+    }
+  }
+
+  function selectClinicalAppointment(appointmentId: string) {
+    setSelectedClinicalAppointmentId(appointmentId);
+    const existing = clinicalHistories.find((history) => history.appointmentId === appointmentId);
+    if (existing) {
+      openClinicalHistory(existing);
+      return;
+    }
+    setClinicalForm({ ...emptyClinicalForm });
+    setClinicalStatus("Sin historia clínica");
+  }
+
+  function openClinicalHistory(history: ClinicalHistoryRecord) {
+    setSelectedClinicalAppointmentId(history.appointmentId);
+    setClinicalForm({
+      nonPathologicalHistory: history.nonPathologicalHistory ?? "",
+      pathologicalHistory: history.pathologicalHistory ?? "",
+      surgicalHistory: history.surgicalHistory ?? "",
+      fractureHistory: history.fractureHistory ?? "",
+      gynecoObstetricHistory: history.gynecoObstetricHistory ?? "",
+      currentCondition: history.currentCondition ?? "",
+      physicalExam: history.physicalExam ?? "",
+      labsAndImaging: history.labsAndImaging ?? "",
+      plan: history.plan ?? "",
+      prognosis: history.prognosis ?? "",
+      healthStatus: history.healthStatus ?? ""
+    });
+    setClinicalStatus(`Historia clínica guardada. Última actualización: ${dateTime(history.updatedAt)}`);
+  }
+
+  async function saveClinicalHistory() {
+    if (!selectedClinicalAppointmentId) {
+      setClinicalStatus("Selecciona un paciente con cita activa antes de guardar.");
+      return;
+    }
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    if (!appointment) {
+      setClinicalStatus("La cita seleccionada ya no está activa.");
+      return;
+    }
+    setClinicalLoading(true);
+    setClinicalStatus("");
+    try {
+      const saved = await clientApi<ClinicalHistoryRecord>("/api/clinical-histories", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: appointment.patient.id,
+          appointmentId: appointment.id,
+          ...clinicalForm
+        })
+      });
+      setClinicalStatus(`Historia clínica guardada. Última actualización: ${dateTime(saved.updatedAt)}`);
+      await loadClinicalHistories();
+    } catch (error) {
+      setClinicalStatus(error instanceof Error ? error.message : "No fue posible guardar la historia clínica.");
+    } finally {
+      setClinicalLoading(false);
+    }
+  }
+
+  function printClinicalHistory() {
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    if (!appointment) {
+      setClinicalStatus("Selecciona una historia clínica antes de imprimir.");
+      return;
+    }
+    const sections = [
+      ["Antecedentes personales no patológicos", clinicalForm.nonPathologicalHistory],
+      ["Antecedentes personales patológicos", clinicalForm.pathologicalHistory],
+      ["Antecedentes quirúrgicos", clinicalForm.surgicalHistory],
+      ["Antecedentes de fracturas", clinicalForm.fractureHistory],
+      ["Antecedentes ginecoobstétricos", clinicalForm.gynecoObstetricHistory],
+      ["Padecimiento actual", clinicalForm.currentCondition],
+      ["Exploración física", clinicalForm.physicalExam],
+      ["Estudios de laboratorio y gabinete", clinicalForm.labsAndImaging],
+      ["Plan", clinicalForm.plan],
+      ["Pronóstico", clinicalForm.prognosis],
+      ["Estado de salud", clinicalForm.healthStatus]
+    ];
+    const body = `
+      <div class="header">
+        <div>
+          <h1>Historia clínica orientada</h1>
+          <p class="muted">VITAEON · Documento privado del médico tratante</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="box"><strong>Paciente</strong><br />${escapeHtml(appointment.patient.user.name)}</div>
+        <div class="box"><strong>Cita</strong><br />${escapeHtml(dateTime(appointment.availabilitySlot.startsAt))}</div>
+        <div class="box"><strong>Médico</strong><br />${escapeHtml(profile?.fullName ?? "")}</div>
+        <div class="box"><strong>Especialidad</strong><br />${escapeHtml(profile?.specialty.name ?? "")}</div>
+      </div>
+      ${sections.map(([label, value]) => `<h2>${escapeHtml(label)}</h2><p>${printableText(value)}</p>`).join("")}
+    `;
+    openPrintWindow("Historia clínica VITAEON", body);
+  }
+
+  async function loadPrescriptionTemplate() {
+    setPrescriptionLoading(true);
+    setPrescriptionStatus("");
+    try {
+      const response = await clientApi<PrescriptionTemplateResponse>("/api/prescription-template");
+      setPrescriptionTemplateId(response.template?.id ?? "");
+      setPrescriptionTemplate({
+        doctorName: response.template?.doctorName ?? response.defaults.doctorName,
+        specialty: response.template?.specialty ?? response.defaults.specialty,
+        professionalLicense: response.template?.professionalLicense ?? response.defaults.professionalLicense,
+        phone: response.template?.phone ?? response.defaults.phone,
+        officeAddress: response.template?.officeAddress ?? response.defaults.officeAddress,
+        headerImageUrl: response.template?.headerImageUrl ?? "",
+        signatureImageUrl: response.template?.signatureImageUrl ?? ""
+      });
+    } catch (error) {
+      setPrescriptionStatus(error instanceof Error ? error.message : "No fue posible cargar el recetario.");
+    } finally {
+      setPrescriptionLoading(false);
+    }
+  }
+
+  async function loadPrescriptions(query = prescriptionSearch) {
+    setPrescriptionLoading(true);
+    setPrescriptionStatus("");
+    try {
+      const records = await clientApi<PrescriptionRecord[]>(`/api/prescriptions?q=${encodeURIComponent(query)}`);
+      setPrescriptions(records);
+      if (records.length === 0 && query.trim()) setPrescriptionStatus("No se encontraron recetas para este paciente.");
+    } catch (error) {
+      setPrescriptionStatus(error instanceof Error ? error.message : "No fue posible cargar recetas.");
+    } finally {
+      setPrescriptionLoading(false);
+    }
+  }
+
+  function selectPrescriptionAppointment(appointmentId: string) {
+    setSelectedPrescriptionAppointmentId(appointmentId);
+    const appointment = activeDoctorAppointments.find((item) => item.id === appointmentId);
+    const existing = prescriptions.find((prescription) => prescription.appointmentId === appointmentId);
+    if (existing) {
+      openPrescription(existing);
+      return;
+    }
+    setPrescriptionForm({
+      ...emptyPrescriptionForm,
+      patientAge: calculateAgeLabel(appointment?.patient.dateOfBirth)
+    });
+    setPrescriptionStatus("Receta nueva lista para edición.");
+  }
+
+  function openPrescription(prescription: PrescriptionRecord) {
+    setSelectedPrescriptionAppointmentId(prescription.appointmentId);
+    setPrescriptionForm({
+      id: prescription.id,
+      patientAge: prescription.patientAge ?? "",
+      diagnosis: prescription.diagnosis ?? "",
+      medicationInstructions: prescription.medicationInstructions ?? "",
+      dosage: prescription.dosage ?? "",
+      frequency: prescription.frequency ?? "",
+      duration: prescription.duration ?? "",
+      generalRecommendations: prescription.generalRecommendations ?? "",
+      additionalNotes: prescription.additionalNotes ?? ""
+    });
+    if (prescription.template) {
+      setPrescriptionTemplateId(prescription.template.id);
+      setPrescriptionTemplate({
+        doctorName: prescription.template.doctorName,
+        specialty: prescription.template.specialty,
+        professionalLicense: prescription.template.professionalLicense ?? "",
+        phone: prescription.template.phone ?? "",
+        officeAddress: prescription.template.officeAddress ?? "",
+        headerImageUrl: prescription.template.headerImageUrl ?? "",
+        signatureImageUrl: prescription.template.signatureImageUrl ?? ""
+      });
+    }
+    setPrescriptionStatus(`Receta guardada. Última actualización: ${dateTime(prescription.updatedAt)}`);
+  }
+
+  async function savePrescriptionTemplate() {
+    setPrescriptionLoading(true);
+    setPrescriptionStatus("");
+    try {
+      const saved = await clientApi<PrescriptionTemplateRecord>("/api/prescription-template", {
+        method: "POST",
+        body: JSON.stringify(prescriptionTemplate)
+      });
+      setPrescriptionTemplateId(saved.id);
+      setPrescriptionStatus("Configuración del recetario guardada.");
+    } catch (error) {
+      setPrescriptionStatus(error instanceof Error ? error.message : "No fue posible guardar el recetario.");
+    } finally {
+      setPrescriptionLoading(false);
+    }
+  }
+
+  async function uploadPrescriptionAsset(kind: "prescription-header" | "prescription-signature", file?: File) {
+    if (!file) return;
+    setPrescriptionStatus("");
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+    try {
+      const response = await clientApi<{ url: string }>("/api/uploads/images", {
+        method: "POST",
+        body: form
+      });
+      setPrescriptionTemplate({
+        ...prescriptionTemplate,
+        [kind === "prescription-header" ? "headerImageUrl" : "signatureImageUrl"]: response.url
+      });
+      setPrescriptionStatus("Imagen cargada. Guarda la configuración del recetario.");
+    } catch (error) {
+      setPrescriptionStatus(error instanceof Error ? error.message : "No fue posible subir la imagen.");
+    }
+  }
+
+  async function savePrescription() {
+    if (!selectedPrescriptionAppointmentId) {
+      setPrescriptionStatus("Selecciona un paciente con cita activa antes de guardar la receta.");
+      return;
+    }
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    if (!appointment) {
+      setPrescriptionStatus("La cita seleccionada ya no está activa.");
+      return;
+    }
+    setPrescriptionLoading(true);
+    setPrescriptionStatus("");
+    try {
+      const saved = await clientApi<PrescriptionRecord>("/api/prescriptions", {
+        method: "POST",
+        body: JSON.stringify({
+          ...prescriptionForm,
+          id: prescriptionForm.id || undefined,
+          patientId: appointment.patient.id,
+          appointmentId: appointment.id,
+          templateId: prescriptionTemplateId || undefined
+        })
+      });
+      setPrescriptionForm({
+        id: saved.id,
+        patientAge: saved.patientAge ?? "",
+        diagnosis: saved.diagnosis ?? "",
+        medicationInstructions: saved.medicationInstructions ?? "",
+        dosage: saved.dosage ?? "",
+        frequency: saved.frequency ?? "",
+        duration: saved.duration ?? "",
+        generalRecommendations: saved.generalRecommendations ?? "",
+        additionalNotes: saved.additionalNotes ?? ""
+      });
+      setPrescriptionStatus(`Receta guardada. Última actualización: ${dateTime(saved.updatedAt)}`);
+      await loadPrescriptions();
+    } catch (error) {
+      setPrescriptionStatus(error instanceof Error ? error.message : "No fue posible guardar la receta.");
+    } finally {
+      setPrescriptionLoading(false);
+    }
+  }
+
+  function printPrescription() {
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    if (!appointment) {
+      setPrescriptionStatus("Selecciona una receta antes de imprimir.");
+      return;
+    }
+    const body = `
+      <div class="header">
+        ${prescriptionTemplate.headerImageUrl ? `<img src="${escapeHtml(prescriptionTemplate.headerImageUrl)}" alt="Encabezado" />` : ""}
+        <div>
+          <h1>${escapeHtml(prescriptionTemplate.doctorName || profile?.fullName || "VITAEON")}</h1>
+          <p class="muted">${escapeHtml(prescriptionTemplate.specialty || profile?.specialty.name || "")}</p>
+          <p class="muted">Cédula: ${escapeHtml(prescriptionTemplate.professionalLicense || "No registrada")}</p>
+          <p class="muted">${escapeHtml(prescriptionTemplate.phone || "")} ${prescriptionTemplate.officeAddress ? `· ${escapeHtml(prescriptionTemplate.officeAddress)}` : ""}</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="box"><strong>Paciente</strong><br />${escapeHtml(appointment.patient.user.name)}</div>
+        <div class="box"><strong>Edad</strong><br />${escapeHtml(prescriptionForm.patientAge || "No registrada")}</div>
+        <div class="box"><strong>Fecha</strong><br />${escapeHtml(new Intl.DateTimeFormat("es-MX", { dateStyle: "long" }).format(new Date()))}</div>
+        <div class="box"><strong>Cita</strong><br />${escapeHtml(dateTime(appointment.availabilitySlot.startsAt))}</div>
+      </div>
+      <h2>Diagnóstico</h2><p>${printableText(prescriptionForm.diagnosis)}</p>
+      <h2>Medicamento / indicaciones</h2><p>${printableText(prescriptionForm.medicationInstructions)}</p>
+      <div class="grid">
+        <div class="box"><strong>Dosis</strong><br />${printableText(prescriptionForm.dosage)}</div>
+        <div class="box"><strong>Frecuencia</strong><br />${printableText(prescriptionForm.frequency)}</div>
+        <div class="box"><strong>Duración</strong><br />${printableText(prescriptionForm.duration)}</div>
+        <div class="box"><strong>Recomendaciones</strong><br />${printableText(prescriptionForm.generalRecommendations)}</div>
+      </div>
+      <h2>Notas adicionales</h2><p>${printableText(prescriptionForm.additionalNotes)}</p>
+      ${prescriptionTemplate.signatureImageUrl ? `<img class="signature" src="${escapeHtml(prescriptionTemplate.signatureImageUrl)}" alt="Firma" />` : "<p style=\"margin-top:56px\">______________________________<br />Firma del médico</p>"}
+    `;
+    openPrintWindow("Receta médica VITAEON", body);
+  }
+
   const sections = [
     ["resumen", "Resumen"],
     ["agenda", "Agenda clínica"],
@@ -1192,6 +1686,86 @@ export function DoctorDashboardClient() {
 
           {activeSection === "notificaciones" && (
             <div className="grid gap-6">
+              <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Herramientas clínicas Amatista</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-deep">Documentación médica privada</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                      Crea historias clínicas orientadas y recetas imprimibles para pacientes con cita activa, con acceso protegido por médico.
+                    </p>
+                  </div>
+                  {!amatistaToolsEnabled && <Badge value="Disponible exclusivamente en Plan Amatista" />}
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <button
+                    onClick={() => openAmatistaTool("historias").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir historias clínicas."))}
+                    className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-premium ${activeAmatistaTool === "historias" ? "border-medical bg-sky-50/50" : "border-silver bg-white"}`}
+                  >
+                    <FileText className="h-7 w-7 text-medical" />
+                    <p className="mt-4 font-semibold text-deep">Historias clínicas orientadas</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Crea, actualiza y busca historias clínicas privadas para pacientes con cita activa.</p>
+                    <span className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">Abrir historias clínicas</span>
+                  </button>
+                  <button
+                    onClick={() => openAmatistaTool("recetario").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir el recetario."))}
+                    className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-premium ${activeAmatistaTool === "recetario" ? "border-medical bg-sky-50/50" : "border-silver bg-white"}`}
+                  >
+                    <Printer className="h-7 w-7 text-medical" />
+                    <p className="mt-4 font-semibold text-deep">Recetario médico</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Configura tu recetario digital y genera recetas listas para imprimir.</p>
+                    <span className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">Abrir recetario</span>
+                  </button>
+                </div>
+                {!amatistaToolsEnabled && (
+                  <p className="mt-5 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
+                    Estas herramientas quedan visibles como referencia, pero solo pueden usarse con suscripción Amatista activa.
+                  </p>
+                )}
+              </section>
+
+              {activeAmatistaTool === "historias" && (
+                <AmatistaClinicalHistoryPanel
+                  appointments={activeDoctorAppointments}
+                  histories={clinicalHistories}
+                  search={clinicalSearch}
+                  setSearch={setClinicalSearch}
+                  selectedAppointmentId={selectedClinicalAppointmentId}
+                  form={clinicalForm}
+                  setForm={setClinicalForm}
+                  status={clinicalStatus}
+                  loading={clinicalLoading}
+                  onSearch={() => loadClinicalHistories()}
+                  onSelectAppointment={selectClinicalAppointment}
+                  onOpenHistory={openClinicalHistory}
+                  onSave={saveClinicalHistory}
+                  onPrint={printClinicalHistory}
+                />
+              )}
+
+              {activeAmatistaTool === "recetario" && (
+                <AmatistaPrescriptionPanel
+                  appointments={activeDoctorAppointments}
+                  prescriptions={prescriptions}
+                  search={prescriptionSearch}
+                  setSearch={setPrescriptionSearch}
+                  selectedAppointmentId={selectedPrescriptionAppointmentId}
+                  template={prescriptionTemplate}
+                  setTemplate={setPrescriptionTemplate}
+                  form={prescriptionForm}
+                  setForm={setPrescriptionForm}
+                  status={prescriptionStatus}
+                  loading={prescriptionLoading}
+                  onSearch={() => loadPrescriptions()}
+                  onSelectAppointment={selectPrescriptionAppointment}
+                  onOpenPrescription={openPrescription}
+                  onSaveTemplate={savePrescriptionTemplate}
+                  onUploadAsset={uploadPrescriptionAsset}
+                  onSave={savePrescription}
+                  onPrint={printPrescription}
+                />
+              )}
+
               <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} secretary={secretarySummary} notifications={notifications} />
               <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} />
               <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar Amatista."))} />
@@ -1842,6 +2416,348 @@ function DoctorAgendaPanel({
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const clinicalFields = [
+  ["nonPathologicalHistory", "Antecedentes personales no patológicos"],
+  ["pathologicalHistory", "Antecedentes personales patológicos"],
+  ["surgicalHistory", "Antecedentes quirúrgicos"],
+  ["fractureHistory", "Antecedentes de fracturas"],
+  ["gynecoObstetricHistory", "Antecedentes ginecoobstétricos (opcional)"],
+  ["currentCondition", "Padecimiento actual"],
+  ["physicalExam", "Exploración física"],
+  ["labsAndImaging", "Estudios de laboratorio y gabinete"],
+  ["plan", "Plan"],
+  ["prognosis", "Pronóstico"],
+  ["healthStatus", "Estado de salud"]
+] as const;
+
+function AmatistaClinicalHistoryPanel({
+  appointments,
+  histories,
+  search,
+  setSearch,
+  selectedAppointmentId,
+  form,
+  setForm,
+  status,
+  loading,
+  onSearch,
+  onSelectAppointment,
+  onOpenHistory,
+  onSave,
+  onPrint
+}: {
+  appointments: Appointment[];
+  histories: ClinicalHistoryRecord[];
+  search: string;
+  setSearch: (value: string) => void;
+  selectedAppointmentId: string;
+  form: ClinicalFormState;
+  setForm: (value: ClinicalFormState) => void;
+  status: string;
+  loading: boolean;
+  onSearch: () => void;
+  onSelectAppointment: (id: string) => void;
+  onOpenHistory: (history: ClinicalHistoryRecord) => void;
+  onSave: () => void;
+  onPrint: () => void;
+}) {
+  const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
+  const selectedHistory = histories.find((history) => history.appointmentId === selectedAppointmentId);
+
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Historias clínicas orientadas</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Registro clínico privado</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Cada historia queda ligada a una cita activa, a su paciente y solo al médico que la crea.
+          </p>
+        </div>
+        <Stethoscope className="h-8 w-8 text-medical" />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid gap-4">
+          <div className="rounded-3xl bg-slate-50 p-4">
+            <p className="font-semibold text-deep">Buscar historias guardadas</p>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <div className="flex min-w-0 flex-1 items-center gap-3 rounded-full bg-white px-4 py-3">
+                <Search className="h-5 w-5 text-slate-500" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar por nombre del paciente..."
+                  className="min-w-0 flex-1 bg-transparent outline-none"
+                />
+              </div>
+              <button onClick={onSearch} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">
+                {loading ? "Buscando..." : "Buscar"}
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {histories.map((history) => (
+                <article key={history.id} className="rounded-2xl bg-white p-4">
+                  <p className="font-semibold text-deep">{history.patient.user.name}</p>
+                  <p className="mt-1 text-sm text-slate-600">Cita: {dateTime(history.appointment.availabilitySlot.startsAt)}</p>
+                  <p className="mt-1 text-xs text-slate-500">Última actualización: {dateTime(history.updatedAt)}</p>
+                  <button onClick={() => onOpenHistory(history)} className="mt-3 rounded-full border border-silver px-4 py-2 text-sm font-semibold text-deep">Abrir historia</button>
+                </article>
+              ))}
+              {histories.length === 0 && (
+                <p className="rounded-2xl bg-white p-4 text-sm leading-6 text-slate-600">
+                  {status === "No se encontraron historias clínicas para este paciente." ? status : "Aún no hay historias clínicas guardadas."}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-4">
+            <p className="font-semibold text-deep">Paciente con cita activa</p>
+            <select
+              value={selectedAppointmentId}
+              onChange={(event) => onSelectAppointment(event.target.value)}
+              className="mt-3 w-full rounded-full bg-white px-4 py-3 outline-none"
+            >
+              <option value="">Seleccionar paciente...</option>
+              {appointments.map((appointment) => (
+                <option key={appointment.id} value={appointment.id}>
+                  {appointment.patient.user.name} · {dateTime(appointment.availabilitySlot.startsAt)}
+                </option>
+              ))}
+            </select>
+            {appointments.length === 0 && <p className="mt-3 text-sm text-slate-500">No hay citas activas disponibles para crear historias clínicas.</p>}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-silver bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-deep">{selectedAppointment?.patient.user.name ?? "Sin paciente seleccionado"}</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {selectedAppointment ? dateTime(selectedAppointment.availabilitySlot.startsAt) : "Selecciona una cita activa para empezar."}
+              </p>
+            </div>
+            <Badge value={selectedHistory ? "Historia clínica guardada" : "Sin historia clínica"} />
+          </div>
+
+          {status && <p className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-medical">{status}</p>}
+
+          <div className="mt-5 grid gap-4">
+            {clinicalFields.map(([field, label]) => (
+              <label key={field} className="block">
+                <span className="text-sm font-semibold text-deep">{label}</span>
+                <textarea
+                  value={form[field]}
+                  onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+                  className="mt-2 min-h-24 w-full rounded-3xl bg-slate-50 px-5 py-4 text-sm leading-6 outline-none"
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={onSave} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">
+              {selectedHistory ? "Actualizar historia clínica" : "Guardar historia clínica"}
+            </button>
+            <button onClick={onPrint} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Descargar / imprimir</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const prescriptionFields = [
+  ["diagnosis", "Diagnóstico"],
+  ["medicationInstructions", "Medicamento / indicaciones"],
+  ["dosage", "Dosis"],
+  ["frequency", "Frecuencia"],
+  ["duration", "Duración"],
+  ["generalRecommendations", "Recomendaciones generales"],
+  ["additionalNotes", "Notas adicionales"]
+] as const;
+
+function AmatistaPrescriptionPanel({
+  appointments,
+  prescriptions,
+  search,
+  setSearch,
+  selectedAppointmentId,
+  template,
+  setTemplate,
+  form,
+  setForm,
+  status,
+  loading,
+  onSearch,
+  onSelectAppointment,
+  onOpenPrescription,
+  onSaveTemplate,
+  onUploadAsset,
+  onSave,
+  onPrint
+}: {
+  appointments: Appointment[];
+  prescriptions: PrescriptionRecord[];
+  search: string;
+  setSearch: (value: string) => void;
+  selectedAppointmentId: string;
+  template: PrescriptionTemplateFormState;
+  setTemplate: (value: PrescriptionTemplateFormState) => void;
+  form: PrescriptionFormState;
+  setForm: (value: PrescriptionFormState) => void;
+  status: string;
+  loading: boolean;
+  onSearch: () => void;
+  onSelectAppointment: (id: string) => void;
+  onOpenPrescription: (prescription: PrescriptionRecord) => void;
+  onSaveTemplate: () => void;
+  onUploadAsset: (kind: "prescription-header" | "prescription-signature", file?: File) => void;
+  onSave: () => void;
+  onPrint: () => void;
+}) {
+  const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
+
+  return (
+    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Recetario médico</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Receta lista para impresión</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Configura tu encabezado profesional y genera recetas imprimibles para pacientes con cita activa.
+          </p>
+        </div>
+        <Printer className="h-8 w-8 text-medical" />
+      </div>
+
+      {status && <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm font-semibold text-medical">{status}</p>}
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-4">
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="font-semibold text-deep">Configuración del recetario</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {([
+                ["doctorName", "Nombre del médico"],
+                ["specialty", "Especialidad"],
+                ["professionalLicense", "Cédula profesional"],
+                ["phone", "Teléfono"],
+                ["officeAddress", "Dirección del consultorio"]
+              ] as const).map(([field, label]) => (
+                <label key={field} className={field === "officeAddress" ? "sm:col-span-2" : ""}>
+                  <span className="text-sm font-semibold text-deep">{label}</span>
+                  <input
+                    value={template[field]}
+                    onChange={(event) => setTemplate({ ...template, [field]: event.target.value })}
+                    className="mt-2 w-full rounded-full bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <label className="cursor-pointer rounded-full border border-silver bg-white px-4 py-2 text-sm font-semibold text-deep">
+                Subir encabezado
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => onUploadAsset("prescription-header", event.target.files?.[0])} />
+              </label>
+              <label className="cursor-pointer rounded-full border border-silver bg-white px-4 py-2 text-sm font-semibold text-deep">
+                Subir firma/sello
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => onUploadAsset("prescription-signature", event.target.files?.[0])} />
+              </label>
+              <button onClick={onSaveTemplate} disabled={loading} className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Guardar recetario</button>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="font-semibold text-deep">Buscar recetas guardadas</p>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <div className="flex min-w-0 flex-1 items-center gap-3 rounded-full bg-white px-4 py-3">
+                <Search className="h-5 w-5 text-slate-500" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar por nombre del paciente..."
+                  className="min-w-0 flex-1 bg-transparent outline-none"
+                />
+              </div>
+              <button onClick={onSearch} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Buscar</button>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {prescriptions.map((prescription) => (
+                <article key={prescription.id} className="rounded-2xl bg-white p-4">
+                  <p className="font-semibold text-deep">{prescription.patient.user.name}</p>
+                  <p className="mt-1 text-sm text-slate-600">Cita: {dateTime(prescription.appointment.availabilitySlot.startsAt)}</p>
+                  <p className="mt-1 text-xs text-slate-500">Última actualización: {dateTime(prescription.updatedAt)}</p>
+                  <button onClick={() => onOpenPrescription(prescription)} className="mt-3 rounded-full border border-silver px-4 py-2 text-sm font-semibold text-deep">Abrir receta</button>
+                </article>
+              ))}
+              {prescriptions.length === 0 && <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">Aún no hay recetas guardadas para este médico.</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-silver bg-white p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="sm:col-span-2">
+              <span className="text-sm font-semibold text-deep">Paciente con cita activa</span>
+              <select
+                value={selectedAppointmentId}
+                onChange={(event) => onSelectAppointment(event.target.value)}
+                className="mt-2 w-full rounded-full bg-slate-50 px-4 py-3 outline-none"
+              >
+                <option value="">Seleccionar paciente...</option>
+                {appointments.map((appointment) => (
+                  <option key={appointment.id} value={appointment.id}>
+                    {appointment.patient.user.name} · {dateTime(appointment.availabilitySlot.startsAt)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-semibold text-deep">Paciente</span>
+              <input value={selectedAppointment?.patient.user.name ?? ""} readOnly className="mt-2 w-full rounded-full bg-slate-50 px-4 py-3 outline-none" />
+            </label>
+            <label>
+              <span className="text-sm font-semibold text-deep">Edad</span>
+              <input value={form.patientAge} onChange={(event) => setForm({ ...form, patientAge: event.target.value })} className="mt-2 w-full rounded-full bg-slate-50 px-4 py-3 outline-none" />
+            </label>
+          </div>
+
+          <div className="mt-5 grid gap-4">
+            {prescriptionFields.map(([field, label]) => (
+              <label key={field} className="block">
+                <span className="text-sm font-semibold text-deep">{label}</span>
+                <textarea
+                  value={form[field]}
+                  onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+                  className="mt-2 min-h-20 w-full rounded-3xl bg-slate-50 px-5 py-4 text-sm leading-6 outline-none"
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">Vista previa</p>
+            <p className="mt-3 text-xl font-semibold text-deep">{template.doctorName || "Nombre del médico"}</p>
+            <p className="text-sm text-slate-600">{template.specialty || "Especialidad"} · Cédula {template.professionalLicense || "no registrada"}</p>
+            <div className="mt-4 rounded-2xl bg-white p-4 text-sm leading-6 text-slate-600">
+              <p><span className="font-semibold text-deep">Paciente:</span> {selectedAppointment?.patient.user.name ?? "Sin seleccionar"}</p>
+              <p><span className="font-semibold text-deep">Diagnóstico:</span> {form.diagnosis || "Pendiente"}</p>
+              <p><span className="font-semibold text-deep">Indicaciones:</span> {form.medicationInstructions || "Pendiente"}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={onSave} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Guardar receta</button>
+            <button onClick={onPrint} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Vista previa / imprimir</button>
+          </div>
         </div>
       </div>
     </section>

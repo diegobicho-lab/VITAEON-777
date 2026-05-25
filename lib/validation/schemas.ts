@@ -207,6 +207,49 @@ export const medicationSearchSchema = z.object({
   query: z.string().min(2).max(120)
 });
 
+const medicalNoteField = z.string().max(12000).optional().default("");
+
+export const clinicalHistoryUpsertSchema = z.object({
+  patientId: z.string().min(1),
+  appointmentId: z.string().min(1),
+  nonPathologicalHistory: medicalNoteField,
+  pathologicalHistory: medicalNoteField,
+  surgicalHistory: medicalNoteField,
+  fractureHistory: medicalNoteField,
+  gynecoObstetricHistory: medicalNoteField,
+  currentCondition: medicalNoteField,
+  physicalExam: medicalNoteField,
+  labsAndImaging: medicalNoteField,
+  plan: medicalNoteField,
+  prognosis: medicalNoteField,
+  healthStatus: medicalNoteField
+});
+
+export const prescriptionTemplateSchema = z.object({
+  doctorName: z.string().trim().min(3).max(160),
+  specialty: z.string().trim().min(2).max(160),
+  professionalLicense: z.string().trim().max(80).optional().default(""),
+  phone: z.string().trim().max(40).optional().default(""),
+  officeAddress: z.string().trim().max(240).optional().default(""),
+  headerImageUrl: z.string().trim().max(500).optional().default(""),
+  signatureImageUrl: z.string().trim().max(500).optional().default("")
+});
+
+export const prescriptionUpsertSchema = z.object({
+  id: z.string().min(1).optional(),
+  patientId: z.string().min(1),
+  appointmentId: z.string().min(1),
+  templateId: z.string().min(1).optional(),
+  patientAge: z.string().trim().max(40).optional().default(""),
+  diagnosis: medicalNoteField,
+  medicationInstructions: medicalNoteField,
+  dosage: medicalNoteField,
+  frequency: medicalNoteField,
+  duration: medicalNoteField,
+  generalRecommendations: medicalNoteField,
+  additionalNotes: medicalNoteField
+});
+
 export const reviewCreateSchema = z.object({
   doctorId: z.string().min(1),
   appointmentId: z.string().min(1).optional(),

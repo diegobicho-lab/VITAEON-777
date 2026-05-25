@@ -116,6 +116,8 @@ model Patient {
   appointments             Appointment[]
   cancellationRequests     CancellationRequest[]
   reviews                  DoctorReview[]
+  clinicalHistories        ClinicalHistory[]
+  prescriptions            Prescription[]
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt
 }
@@ -174,6 +176,9 @@ model Doctor {
   conversationsReceived       MedicalConversation[] @relation("ConversationRecipient")
   medicationSearchLogs        MedicationSearchLog[]
   reviews                     DoctorReview[]
+  clinicalHistories           ClinicalHistory[]
+  prescriptionTemplate        PrescriptionTemplate?
+  prescriptions               Prescription[]
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -286,11 +291,80 @@ model Appointment {
   payments            Payment[]
   reviews             DoctorReview[]
   cancellationRequests CancellationRequest[]
+  clinicalHistory     ClinicalHistory?
+  prescriptions       Prescription[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
   @@index([patientId, status])
   @@index([doctorId, status])
+}
+
+model ClinicalHistory {
+  id                        String      @id @default(cuid())
+  doctorId                  String
+  doctor                    Doctor      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId                 String
+  patient                   Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId             String      @unique
+  appointment               Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  nonPathologicalHistory    String?     @db.Text
+  pathologicalHistory       String?     @db.Text
+  surgicalHistory           String?     @db.Text
+  fractureHistory           String?     @db.Text
+  gynecoObstetricHistory    String?     @db.Text
+  currentCondition          String?     @db.Text
+  physicalExam              String?     @db.Text
+  labsAndImaging            String?     @db.Text
+  plan                      String?     @db.Text
+  prognosis                 String?     @db.Text
+  healthStatus              String?     @db.Text
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+
+  @@unique([doctorId, patientId, appointmentId])
+  @@index([doctorId, patientId])
+}
+
+model PrescriptionTemplate {
+  id                  String         @id @default(cuid())
+  doctorId            String         @unique
+  doctor              Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctorName          String
+  specialty           String
+  professionalLicense String?
+  phone               String?
+  officeAddress       String?
+  headerImageUrl      String?
+  signatureImageUrl   String?
+  prescriptions       Prescription[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model Prescription {
+  id                     String                @id @default(cuid())
+  doctorId               String
+  doctor                 Doctor                @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId              String
+  patient                Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId          String
+  appointment            Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  templateId             String?
+  template               PrescriptionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  patientAge             String?
+  diagnosis              String?               @db.Text
+  medicationInstructions String?               @db.Text
+  dosage                 String?               @db.Text
+  frequency              String?               @db.Text
+  duration               String?               @db.Text
+  generalRecommendations String?               @db.Text
+  additionalNotes        String?               @db.Text
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@index([doctorId, patientId])
+  @@index([appointmentId])
 }
 
 model Payment {
