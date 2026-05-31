@@ -308,14 +308,20 @@ model ClinicalHistory {
   patient                   Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
   appointmentId             String      @unique
   appointment               Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  identificationCard        String?     @db.Text
+  ethnicGroup               String?     @db.Text
+  hereditaryFamilyHistory   String?     @db.Text
   nonPathologicalHistory    String?     @db.Text
   pathologicalHistory       String?     @db.Text
   surgicalHistory           String?     @db.Text
   fractureHistory           String?     @db.Text
   gynecoObstetricHistory    String?     @db.Text
   currentCondition          String?     @db.Text
+  systemsReview             String?     @db.Text
   physicalExam              String?     @db.Text
   labsAndImaging            String?     @db.Text
+  diagnosesOrClinicalProblems String?   @db.Text
+  therapeuticIndication     String?     @db.Text
   plan                      String?     @db.Text
   prognosis                 String?     @db.Text
   healthStatus              String?     @db.Text

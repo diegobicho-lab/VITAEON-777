@@ -279,14 +279,20 @@ type ClinicalHistoryRecord = {
   id: string;
   patientId: string;
   appointmentId: string;
+  identificationCard?: string | null;
+  ethnicGroup?: string | null;
+  hereditaryFamilyHistory?: string | null;
   nonPathologicalHistory?: string | null;
   pathologicalHistory?: string | null;
   surgicalHistory?: string | null;
   fractureHistory?: string | null;
   gynecoObstetricHistory?: string | null;
   currentCondition?: string | null;
+  systemsReview?: string | null;
   physicalExam?: string | null;
   labsAndImaging?: string | null;
+  diagnosesOrClinicalProblems?: string | null;
+  therapeuticIndication?: string | null;
   plan?: string | null;
   prognosis?: string | null;
   healthStatus?: string | null;
@@ -368,14 +374,20 @@ const doctorPlans = [
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 
 const emptyClinicalForm = {
+  identificationCard: "",
+  ethnicGroup: "",
+  hereditaryFamilyHistory: "",
   nonPathologicalHistory: "",
   pathologicalHistory: "",
   surgicalHistory: "",
   fractureHistory: "",
   gynecoObstetricHistory: "",
   currentCondition: "",
+  systemsReview: "",
   physicalExam: "",
   labsAndImaging: "",
+  diagnosesOrClinicalProblems: "",
+  therapeuticIndication: "",
   plan: "",
   prognosis: "",
   healthStatus: ""
@@ -1091,14 +1103,20 @@ export function DoctorDashboardClient() {
   function openClinicalHistory(history: ClinicalHistoryRecord) {
     setSelectedClinicalAppointmentId(history.appointmentId);
     setClinicalForm({
+      identificationCard: history.identificationCard ?? "",
+      ethnicGroup: history.ethnicGroup ?? "",
+      hereditaryFamilyHistory: history.hereditaryFamilyHistory ?? "",
       nonPathologicalHistory: history.nonPathologicalHistory ?? "",
       pathologicalHistory: history.pathologicalHistory ?? "",
       surgicalHistory: history.surgicalHistory ?? "",
       fractureHistory: history.fractureHistory ?? "",
       gynecoObstetricHistory: history.gynecoObstetricHistory ?? "",
       currentCondition: history.currentCondition ?? "",
+      systemsReview: history.systemsReview ?? "",
       physicalExam: history.physicalExam ?? "",
       labsAndImaging: history.labsAndImaging ?? "",
+      diagnosesOrClinicalProblems: history.diagnosesOrClinicalProblems ?? "",
+      therapeuticIndication: history.therapeuticIndication ?? "",
       plan: history.plan ?? "",
       prognosis: history.prognosis ?? "",
       healthStatus: history.healthStatus ?? ""
@@ -1143,23 +1161,29 @@ export function DoctorDashboardClient() {
       return;
     }
     const sections = [
+      ["Ficha de identificación", clinicalForm.identificationCard],
+      ["Grupo étnico (cuando aplique)", clinicalForm.ethnicGroup],
+      ["Antecedentes heredo familiares", clinicalForm.hereditaryFamilyHistory],
       ["Antecedentes personales no patológicos", clinicalForm.nonPathologicalHistory],
       ["Antecedentes personales patológicos", clinicalForm.pathologicalHistory],
       ["Antecedentes quirúrgicos", clinicalForm.surgicalHistory],
       ["Antecedentes de fracturas", clinicalForm.fractureHistory],
-      ["Antecedentes ginecoobstétricos", clinicalForm.gynecoObstetricHistory],
+      ["Antecedentes ginecoobstétricos (cuando aplique)", clinicalForm.gynecoObstetricHistory],
       ["Padecimiento actual", clinicalForm.currentCondition],
+      ["Interrogatorio por aparatos y sistemas", clinicalForm.systemsReview],
       ["Exploración física", clinicalForm.physicalExam],
-      ["Estudios de laboratorio y gabinete", clinicalForm.labsAndImaging],
-      ["Plan", clinicalForm.plan],
+      ["Resultados previos y actuales de laboratorio, gabinete y otros", clinicalForm.labsAndImaging],
+      ["Diagnósticos o problemas clínicos", clinicalForm.diagnosesOrClinicalProblems],
       ["Pronóstico", clinicalForm.prognosis],
+      ["Indicación terapéutica", clinicalForm.therapeuticIndication],
+      ["Plan de seguimiento", clinicalForm.plan],
       ["Estado de salud", clinicalForm.healthStatus]
     ];
     const body = `
       <div class="header">
         <div>
           <h1>Historia clínica orientada</h1>
-          <p class="muted">VITAEON · Documento privado del médico tratante</p>
+          <p class="muted">VITAEON · Estructura guía alineada a NOM-004-SSA3-2012 para consulta general/especialidad</p>
         </div>
       </div>
       <div class="grid">
@@ -2423,16 +2447,22 @@ function DoctorAgendaPanel({
 }
 
 const clinicalFields = [
+  ["identificationCard", "Ficha de identificación"],
+  ["ethnicGroup", "Grupo étnico (cuando aplique)"],
+  ["hereditaryFamilyHistory", "Antecedentes heredo familiares"],
   ["nonPathologicalHistory", "Antecedentes personales no patológicos"],
   ["pathologicalHistory", "Antecedentes personales patológicos"],
   ["surgicalHistory", "Antecedentes quirúrgicos"],
   ["fractureHistory", "Antecedentes de fracturas"],
-  ["gynecoObstetricHistory", "Antecedentes ginecoobstétricos (opcional)"],
+  ["gynecoObstetricHistory", "Antecedentes ginecoobstétricos (cuando aplique)"],
   ["currentCondition", "Padecimiento actual"],
+  ["systemsReview", "Interrogatorio por aparatos y sistemas"],
   ["physicalExam", "Exploración física"],
-  ["labsAndImaging", "Estudios de laboratorio y gabinete"],
-  ["plan", "Plan"],
+  ["labsAndImaging", "Resultados previos y actuales de laboratorio, gabinete y otros"],
+  ["diagnosesOrClinicalProblems", "Diagnósticos o problemas clínicos"],
   ["prognosis", "Pronóstico"],
+  ["therapeuticIndication", "Indicación terapéutica"],
+  ["plan", "Plan de seguimiento"],
   ["healthStatus", "Estado de salud"]
 ] as const;
 
@@ -2477,7 +2507,7 @@ function AmatistaClinicalHistoryPanel({
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Historias clínicas orientadas</p>
           <h2 className="mt-2 text-2xl font-semibold text-deep">Registro clínico privado</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Cada historia queda ligada a una cita activa, a su paciente y solo al médico que la crea.
+            Cada historia queda ligada a una cita activa, a su paciente y solo al médico que la crea. La estructura usa como guía los apartados mínimos de historia clínica de la NOM-004-SSA3-2012.
           </p>
         </div>
         <Stethoscope className="h-8 w-8 text-medical" />
