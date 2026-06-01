@@ -128,6 +128,10 @@ export const availabilitySlotUpdateSchema = z.object({
   isActive: z.boolean()
 });
 
+export const availabilityRepeatRevertSchema = z.object({
+  repeatBatchId: z.string().min(8)
+});
+
 export const availabilityBulkSchema = z
   .object({
     date: z.coerce.date().optional(),
@@ -214,6 +218,7 @@ export const clinicalHistoryUpsertSchema = z.object({
   appointmentId: z.string().min(1),
   identificationCard: medicalNoteField,
   ethnicGroup: medicalNoteField,
+  consultationReason: medicalNoteField,
   hereditaryFamilyHistory: medicalNoteField,
   nonPathologicalHistory: medicalNoteField,
   pathologicalHistory: medicalNoteField,
@@ -224,11 +229,14 @@ export const clinicalHistoryUpsertSchema = z.object({
   systemsReview: medicalNoteField,
   physicalExam: medicalNoteField,
   labsAndImaging: medicalNoteField,
+  diagnosis: medicalNoteField,
+  treatment: medicalNoteField,
   diagnosesOrClinicalProblems: medicalNoteField,
   therapeuticIndication: medicalNoteField,
   plan: medicalNoteField,
   prognosis: medicalNoteField,
-  healthStatus: medicalNoteField
+  healthStatus: medicalNoteField,
+  additionalMedicalNotes: medicalNoteField
 });
 
 export const prescriptionTemplateSchema = z.object({

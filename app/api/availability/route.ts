@@ -3,7 +3,7 @@ import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
-import { availabilitySlotSchema, availabilitySlotUpdateSchema } from "@/lib/validation/schemas";
+import { availabilityRepeatRevertSchema, availabilitySlotSchema, availabilitySlotUpdateSchema } from "@/lib/validation/schemas";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -111,11 +111,33 @@ export async function DELETE(request: Request) {
   if (!user || user.role !== "DOCTOR") return fail("FORBIDDEN", "Solo médicos pueden eliminar disponibilidad.", 403);
 
   const body = await request.json().catch(() => null);
-  const parsed = availabilitySlotUpdateSchema.pick({ slotId: true }).safeParse(body);
-  if (!parsed.success) return fail("VALIDATION_ERROR", "Selecciona un horario válido.", 422, parsed.error.flatten());
+  const repeatRevert = availabilityRepeatRevertSchema.safeParse(body);
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+
+  if (repeatRevert.success) {
+    const result = await prisma.availabilitySlot.deleteMany({
+      where: {
+        doctorId: doctor.id,
+        repeatBatchId: repeatRevert.data.repeatBatchId,
+        generatedByMonthlyRepeat: true,
+        appointment: null
+      }
+    });
+
+    await auditLog({
+      actorUserId: user.id,
+      action: "REVERT_MONTHLY_REPEAT_AVAILABILITY",
+      entityType: "AvailabilitySlot",
+      metadata: { repeatBatchId: repeatRevert.data.repeatBatchId, deleted: result.count }
+    });
+
+    return ok({ deleted: result.count });
+  }
+
+  const parsed = availabilitySlotUpdateSchema.pick({ slotId: true }).safeParse(body);
+  if (!parsed.success) return fail("VALIDATION_ERROR", "Selecciona un horario válido.", 422, parsed.error.flatten());
 
   const existing = await prisma.availabilitySlot.findFirst({
     where: { id: parsed.data.slotId, doctorId: doctor.id },

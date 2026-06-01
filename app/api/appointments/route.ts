@@ -1,5 +1,6 @@
 import { AppointmentStatus, PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/api-response";
+import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { auditLog } from "@/lib/audit/audit";
@@ -13,6 +14,8 @@ import { appointmentCreateSchema } from "@/lib/validation/schemas";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver citas.", 401);
+
+  await autoCancelExpiredAppointments();
 
   const appointments = await prisma.appointment.findMany({
     where:

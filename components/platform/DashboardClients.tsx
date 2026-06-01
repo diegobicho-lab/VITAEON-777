@@ -181,6 +181,9 @@ type DoctorAgenda = {
       startsAt: string;
       endsAt: string;
       isActive: boolean;
+      repeatBatchId?: string | null;
+      generatedByMonthlyRepeat?: boolean;
+      repeatLabel?: string | null;
       appointment: null | {
         id: string;
         status: string;
@@ -287,15 +290,19 @@ type ClinicalHistoryRecord = {
   surgicalHistory?: string | null;
   fractureHistory?: string | null;
   gynecoObstetricHistory?: string | null;
+  consultationReason?: string | null;
   currentCondition?: string | null;
   systemsReview?: string | null;
   physicalExam?: string | null;
   labsAndImaging?: string | null;
+  diagnosis?: string | null;
+  treatment?: string | null;
   diagnosesOrClinicalProblems?: string | null;
   therapeuticIndication?: string | null;
   plan?: string | null;
   prognosis?: string | null;
   healthStatus?: string | null;
+  additionalMedicalNotes?: string | null;
   createdAt: string;
   updatedAt: string;
   patient: { user: { name: string; email: string } };
@@ -382,15 +389,19 @@ const emptyClinicalForm = {
   surgicalHistory: "",
   fractureHistory: "",
   gynecoObstetricHistory: "",
+  consultationReason: "",
   currentCondition: "",
   systemsReview: "",
   physicalExam: "",
   labsAndImaging: "",
+  diagnosis: "",
+  treatment: "",
   diagnosesOrClinicalProblems: "",
   therapeuticIndication: "",
   plan: "",
   prognosis: "",
-  healthStatus: ""
+  healthStatus: "",
+  additionalMedicalNotes: ""
 };
 
 const emptyPrescriptionTemplateForm = {
@@ -515,6 +526,7 @@ const appointmentLabels: Record<string, string> = {
   RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
   CANCELLATION_REQUESTED: "Cancelación solicitada",
   REFUND_PENDING: "Reembolso pendiente de revisión",
+  AUTO_CANCELLED: "Cita cancelada automáticamente por vencimiento",
   CANCELLED: "Cancelada",
   REFUNDED: "Reembolsada",
   PAID: "Pago confirmado",
@@ -535,7 +547,7 @@ function readableStatus(value: string) {
 
 function Badge({ value }: { value: string }) {
   const success = ["ACCEPTED", "CONFIRMED", "COMPLETED", "PAID", "VERIFIED", "ACTIVE", "ACTIVO"].includes(value);
-  const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW"].includes(value);
+  const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW", "AUTO_CANCELLED"].includes(value);
   const refund = ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED"].includes(value);
   const tone = success
     ? "bg-emerald-50 text-emerald-700"
@@ -545,6 +557,32 @@ function Badge({ value }: { value: string }) {
         ? "bg-sky-50 text-sky-700"
         : "bg-amber-50 text-amber-700";
   return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{readableStatus(value)}</span>;
+}
+
+function paymentReadableStatus(status: string, provider: string) {
+  if (status === "FAILED") return "Pago fallido";
+  if (status === "REFUNDED") return "Pago reembolsado";
+  if (provider === "STRIPE" && status === "PAID") return "Pago Stripe realizado";
+  if (provider === "STRIPE") return "Pago Stripe pendiente";
+  if (provider === "CASH" && status === "PAID") return "Pago en efectivo realizado";
+  if (provider === "CASH") return "Pago en efectivo pendiente";
+  if (provider === "TRANSFER" && status === "PAID") return "Transferencia confirmada";
+  if (provider === "TRANSFER") return "Transferencia pendiente";
+  return readableStatus(status);
+}
+
+function PaymentBadge({ status, provider }: { status: string; provider: string }) {
+  const paid = status === "PAID";
+  const failed = status === "FAILED";
+  const refunded = status === "REFUNDED";
+  const tone = paid
+    ? "bg-emerald-50 text-emerald-700"
+    : failed
+      ? "bg-red-50 text-red-700"
+      : refunded
+        ? "bg-sky-50 text-sky-700"
+        : "bg-amber-50 text-amber-700";
+  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{paymentReadableStatus(status, provider)}</span>;
 }
 
 function Shell({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
@@ -701,7 +739,7 @@ export function DoctorDashboardClient() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   const [selectedCalendarDates, setSelectedCalendarDates] = useState<string[]>([]);
   const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [repeatUntil, setRepeatUntil] = useState("");
+  const [lastRepeatBatchId, setLastRepeatBatchId] = useState("");
   const [medicationQuery, setMedicationQuery] = useState("");
   const [medicationResult, setMedicationResult] = useState<MedicationResult | null>(null);
   const [cancellationModal, setCancellationModal] = useState<Appointment | null>(null);
@@ -726,7 +764,7 @@ export function DoctorDashboardClient() {
   const assistantEnabled = medal === "amatista";
   const collaborationEnabled = medal === "amatista";
   const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
-  const activeDoctorAppointments = appointments.filter((appointment) => !["CANCELLED", "COMPLETED", "NO_SHOW", "REFUNDED"].includes(appointment.status));
+  const activeDoctorAppointments = appointments.filter((appointment) => !["CANCELLED", "COMPLETED", "NO_SHOW", "REFUNDED", "AUTO_CANCELLED"].includes(appointment.status));
 
   function monthKey(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -832,18 +870,36 @@ export function DoctorDashboardClient() {
       setMessage("Selecciona uno o varios días del calendario para publicar horarios.");
       return;
     }
-    const response = await clientApi<{ created: number; requested: number }>("/api/availability/bulk", {
+    if (repeat && !window.confirm("Se repetirá esta disponibilidad semanal durante el próximo mes. ¿Deseas continuar?")) {
+      return;
+    }
+    const response = await clientApi<{ created: number; requested: number; repeatBatchId?: string | null }>("/api/availability/bulk", {
       method: "POST",
       body: JSON.stringify({
         dates: repeat ? undefined : selectedCalendarDates,
         startTime: blockStartTime,
         endTime: blockEndTime,
         durationMinutes: slotDurationMinutes,
-        repeatWeekdays: repeat ? repeatWeekdays : undefined,
-        repeatUntil: repeat && repeatUntil ? repeatUntil : undefined
+        repeatWeekdays: repeat ? repeatWeekdays : undefined
       })
     });
+    if (repeat && response.repeatBatchId) setLastRepeatBatchId(response.repeatBatchId);
     setMessage(`Calendario actualizado: ${response.created} de ${response.requested} horarios publicados en bloques de ${slotDurationMinutes} minutos.`);
+    await load();
+  }
+
+  async function revertMonthlyRepeat(repeatBatchId = lastRepeatBatchId) {
+    setMessage("");
+    if (!repeatBatchId) {
+      setMessage("No hay una repetición mensual reciente para revertir.");
+      return;
+    }
+    const response = await clientApi<{ deleted: number }>("/api/availability", {
+      method: "DELETE",
+      body: JSON.stringify({ repeatBatchId })
+    });
+    setLastRepeatBatchId("");
+    setMessage(`Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).`);
     await load();
   }
 
@@ -1091,7 +1147,8 @@ export function DoctorDashboardClient() {
 
   function selectClinicalAppointment(appointmentId: string) {
     setSelectedClinicalAppointmentId(appointmentId);
-    const existing = clinicalHistories.find((history) => history.appointmentId === appointmentId);
+    const appointment = activeDoctorAppointments.find((item) => item.id === appointmentId);
+    const existing = appointment ? clinicalHistories.find((history) => history.patientId === appointment.patient.id) : undefined;
     if (existing) {
       openClinicalHistory(existing);
       return;
@@ -1105,6 +1162,7 @@ export function DoctorDashboardClient() {
     setClinicalForm({
       identificationCard: history.identificationCard ?? "",
       ethnicGroup: history.ethnicGroup ?? "",
+      consultationReason: history.consultationReason ?? "",
       hereditaryFamilyHistory: history.hereditaryFamilyHistory ?? "",
       nonPathologicalHistory: history.nonPathologicalHistory ?? "",
       pathologicalHistory: history.pathologicalHistory ?? "",
@@ -1115,11 +1173,14 @@ export function DoctorDashboardClient() {
       systemsReview: history.systemsReview ?? "",
       physicalExam: history.physicalExam ?? "",
       labsAndImaging: history.labsAndImaging ?? "",
+      diagnosis: history.diagnosis ?? "",
+      treatment: history.treatment ?? "",
       diagnosesOrClinicalProblems: history.diagnosesOrClinicalProblems ?? "",
       therapeuticIndication: history.therapeuticIndication ?? "",
       plan: history.plan ?? "",
       prognosis: history.prognosis ?? "",
-      healthStatus: history.healthStatus ?? ""
+      healthStatus: history.healthStatus ?? "",
+      additionalMedicalNotes: history.additionalMedicalNotes ?? ""
     });
     setClinicalStatus(`Historia clínica guardada. Última actualización: ${dateTime(history.updatedAt)}`);
   }
@@ -1163,6 +1224,7 @@ export function DoctorDashboardClient() {
     const sections = [
       ["Ficha de identificación", clinicalForm.identificationCard],
       ["Grupo étnico (cuando aplique)", clinicalForm.ethnicGroup],
+      ["Motivo de consulta", clinicalForm.consultationReason],
       ["Antecedentes heredo familiares", clinicalForm.hereditaryFamilyHistory],
       ["Antecedentes personales no patológicos", clinicalForm.nonPathologicalHistory],
       ["Antecedentes personales patológicos", clinicalForm.pathologicalHistory],
@@ -1173,11 +1235,14 @@ export function DoctorDashboardClient() {
       ["Interrogatorio por aparatos y sistemas", clinicalForm.systemsReview],
       ["Exploración física", clinicalForm.physicalExam],
       ["Resultados previos y actuales de laboratorio, gabinete y otros", clinicalForm.labsAndImaging],
+      ["Diagnóstico", clinicalForm.diagnosis],
+      ["Tratamiento", clinicalForm.treatment],
       ["Diagnósticos o problemas clínicos", clinicalForm.diagnosesOrClinicalProblems],
       ["Pronóstico", clinicalForm.prognosis],
       ["Indicación terapéutica", clinicalForm.therapeuticIndication],
       ["Plan de seguimiento", clinicalForm.plan],
-      ["Estado de salud", clinicalForm.healthStatus]
+      ["Estado de salud", clinicalForm.healthStatus],
+      ["Notas médicas adicionales", clinicalForm.additionalMedicalNotes]
     ];
     const body = `
       <div class="header">
@@ -1494,7 +1559,7 @@ export function DoctorDashboardClient() {
               endTime={blockEndTime}
               durationMinutes={slotDurationMinutes}
               repeatWeekdays={repeatWeekdays}
-              repeatUntil={repeatUntil}
+              lastRepeatBatchId={lastRepeatBatchId}
               showConfigurator={activeSection === "disponibilidad"}
               onMonthChange={(date) => {
                 setCalendarMonth(date);
@@ -1509,8 +1574,8 @@ export function DoctorDashboardClient() {
               onEndTimeChange={setBlockEndTime}
               onDurationChange={setSlotDurationMinutes}
               onRepeatWeekdaysChange={setRepeatWeekdays}
-              onRepeatUntilChange={setRepeatUntil}
               onCreateBlocks={createCalendarBlocks}
+              onRevertMonthlyRepeat={revertMonthlyRepeat}
               onToggleSlot={toggleAvailability}
               onDeleteSlot={deleteAvailability}
               onMarkDayUnavailable={markSelectedDayUnavailable}
@@ -2211,7 +2276,7 @@ function DoctorAgendaPanel({
   endTime,
   durationMinutes,
   repeatWeekdays,
-  repeatUntil,
+  lastRepeatBatchId,
   showConfigurator,
   onMonthChange,
   onSelectDate,
@@ -2220,8 +2285,8 @@ function DoctorAgendaPanel({
   onEndTimeChange,
   onDurationChange,
   onRepeatWeekdaysChange,
-  onRepeatUntilChange,
   onCreateBlocks,
+  onRevertMonthlyRepeat,
   onToggleSlot,
   onDeleteSlot,
   onMarkDayUnavailable,
@@ -2238,7 +2303,7 @@ function DoctorAgendaPanel({
   endTime: string;
   durationMinutes: 45 | 60;
   repeatWeekdays: number[];
-  repeatUntil: string;
+  lastRepeatBatchId: string;
   showConfigurator: boolean;
   onMonthChange: (date: Date) => void;
   onSelectDate: (value: string) => void;
@@ -2247,8 +2312,8 @@ function DoctorAgendaPanel({
   onEndTimeChange: (value: string) => void;
   onDurationChange: (value: 45 | 60) => void;
   onRepeatWeekdaysChange: (value: number[]) => void;
-  onRepeatUntilChange: (value: string) => void;
   onCreateBlocks: (repeat?: boolean) => void;
+  onRevertMonthlyRepeat: (repeatBatchId?: string) => void;
   onToggleSlot: (slotId: string, isActive: boolean) => void;
   onDeleteSlot: (slotId: string) => void;
   onMarkDayUnavailable: () => void;
@@ -2383,8 +2448,13 @@ function DoctorAgendaPanel({
                 <button key={`${label}-${index}`} onClick={() => toggleWeekday(index)} className={`h-10 w-10 rounded-full text-sm font-semibold ${repeatWeekdays.includes(index) ? "bg-black text-white" : "bg-white text-deep"}`}>{label}</button>
               ))}
             </div>
-            <input type="date" value={repeatUntil} onChange={(event) => onRepeatUntilChange(event.target.value)} className="mt-3 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
-            <button disabled={repeatWeekdays.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(true)} className="mt-3 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Publicar repetición</button>
+            <p className="mt-3 rounded-2xl bg-white p-3 text-xs leading-5 text-slate-600">
+              Se repetirá esta disponibilidad semanal durante el próximo mes. Puedes revertir solo los horarios generados, sin tocar horarios manuales ni citas ya agendadas.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button disabled={repeatWeekdays.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(true)} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Publicar repetición mensual</button>
+              <button disabled={!lastRepeatBatchId} onClick={() => onRevertMonthlyRepeat(lastRepeatBatchId)} className="rounded-full border border-red-100 bg-red-50 px-5 py-3 font-semibold text-red-700 disabled:opacity-50">Revertir repetición</button>
+            </div>
           </div>
         </div>
         )}
@@ -2407,11 +2477,11 @@ function DoctorAgendaPanel({
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge value={slot.appointment.status} />
-                          <Badge value={slot.appointment.paymentStatus} />
+                          <PaymentBadge status={slot.appointment.paymentStatus} provider={slot.appointment.paymentProvider} />
                         </div>
                       </div>
-                      {slot.appointment.reason && <p className="mt-3 text-sm leading-6 text-slate-600">Motivo: {slot.appointment.reason}</p>}
-                      {!["COMPLETED", "CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(slot.appointment.status) && (
+                      {slot.appointment.reason && <p className="mt-3 text-sm leading-6 text-slate-600">Motivo de consulta: {slot.appointment.reason}</p>}
+                      {!["COMPLETED", "CANCELLED", "AUTO_CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(slot.appointment.status) && (
                         <div className="mt-4 flex flex-wrap gap-2">
                           {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(slot.appointment.status) && (
                             <button onClick={() => slot.appointment && onAcceptAppointment(slot.appointment.id)} className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">Aceptar cita</button>
@@ -2449,6 +2519,7 @@ function DoctorAgendaPanel({
 const clinicalFields = [
   ["identificationCard", "Ficha de identificación"],
   ["ethnicGroup", "Grupo étnico (cuando aplique)"],
+  ["consultationReason", "Motivo de consulta"],
   ["hereditaryFamilyHistory", "Antecedentes heredo familiares"],
   ["nonPathologicalHistory", "Antecedentes personales no patológicos"],
   ["pathologicalHistory", "Antecedentes personales patológicos"],
@@ -2459,11 +2530,14 @@ const clinicalFields = [
   ["systemsReview", "Interrogatorio por aparatos y sistemas"],
   ["physicalExam", "Exploración física"],
   ["labsAndImaging", "Resultados previos y actuales de laboratorio, gabinete y otros"],
+  ["diagnosis", "Diagnóstico"],
+  ["treatment", "Tratamiento"],
   ["diagnosesOrClinicalProblems", "Diagnósticos o problemas clínicos"],
   ["prognosis", "Pronóstico"],
   ["therapeuticIndication", "Indicación terapéutica"],
   ["plan", "Plan de seguimiento"],
-  ["healthStatus", "Estado de salud"]
+  ["healthStatus", "Estado de salud"],
+  ["additionalMedicalNotes", "Notas médicas adicionales"]
 ] as const;
 
 function AmatistaClinicalHistoryPanel({
@@ -2498,7 +2572,7 @@ function AmatistaClinicalHistoryPanel({
   onPrint: () => void;
 }) {
   const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
-  const selectedHistory = histories.find((history) => history.appointmentId === selectedAppointmentId);
+  const selectedHistory = selectedAppointment ? histories.find((history) => history.patientId === selectedAppointment.patient.id) : undefined;
 
   return (
     <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
@@ -2507,7 +2581,7 @@ function AmatistaClinicalHistoryPanel({
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Historias clínicas orientadas</p>
           <h2 className="mt-2 text-2xl font-semibold text-deep">Registro clínico privado</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Cada historia queda ligada a una cita activa, a su paciente y solo al médico que la crea. La estructura usa como guía los apartados mínimos de historia clínica de la NOM-004-SSA3-2012.
+            Cada historia queda ligada al paciente y solo al médico que la crea. Se actualiza desde citas activas y usa como guía los apartados mínimos de historia clínica de la NOM-004-SSA3-2012.
           </p>
         </div>
         <Stethoscope className="h-8 w-8 text-medical" />

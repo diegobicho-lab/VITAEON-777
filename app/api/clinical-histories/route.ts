@@ -84,57 +84,61 @@ export async function POST(request: Request) {
   });
   if (!appointment) return fail("APPOINTMENT_NOT_FOUND", "La cita activa no pertenece a este médico y paciente.", 404);
 
-  const history = await prisma.clinicalHistory.upsert({
+  const historyData = {
+    appointmentId: parsed.data.appointmentId,
+    identificationCard: parsed.data.identificationCard,
+    ethnicGroup: parsed.data.ethnicGroup,
+    consultationReason: parsed.data.consultationReason,
+    hereditaryFamilyHistory: parsed.data.hereditaryFamilyHistory,
+    nonPathologicalHistory: parsed.data.nonPathologicalHistory,
+    pathologicalHistory: parsed.data.pathologicalHistory,
+    surgicalHistory: parsed.data.surgicalHistory,
+    fractureHistory: parsed.data.fractureHistory,
+    gynecoObstetricHistory: parsed.data.gynecoObstetricHistory,
+    currentCondition: parsed.data.currentCondition,
+    systemsReview: parsed.data.systemsReview,
+    physicalExam: parsed.data.physicalExam,
+    labsAndImaging: parsed.data.labsAndImaging,
+    diagnosis: parsed.data.diagnosis,
+    treatment: parsed.data.treatment,
+    diagnosesOrClinicalProblems: parsed.data.diagnosesOrClinicalProblems,
+    therapeuticIndication: parsed.data.therapeuticIndication,
+    plan: parsed.data.plan,
+    prognosis: parsed.data.prognosis,
+    healthStatus: parsed.data.healthStatus,
+    additionalMedicalNotes: parsed.data.additionalMedicalNotes
+  };
+
+  const exactHistory = await prisma.clinicalHistory.findFirst({
     where: {
-      doctorId_patientId_appointmentId: {
-        doctorId: session.doctor.id,
-        patientId: parsed.data.patientId,
-        appointmentId: parsed.data.appointmentId
-      }
-    },
-    update: {
-      identificationCard: parsed.data.identificationCard,
-      ethnicGroup: parsed.data.ethnicGroup,
-      hereditaryFamilyHistory: parsed.data.hereditaryFamilyHistory,
-      nonPathologicalHistory: parsed.data.nonPathologicalHistory,
-      pathologicalHistory: parsed.data.pathologicalHistory,
-      surgicalHistory: parsed.data.surgicalHistory,
-      fractureHistory: parsed.data.fractureHistory,
-      gynecoObstetricHistory: parsed.data.gynecoObstetricHistory,
-      currentCondition: parsed.data.currentCondition,
-      systemsReview: parsed.data.systemsReview,
-      physicalExam: parsed.data.physicalExam,
-      labsAndImaging: parsed.data.labsAndImaging,
-      diagnosesOrClinicalProblems: parsed.data.diagnosesOrClinicalProblems,
-      therapeuticIndication: parsed.data.therapeuticIndication,
-      plan: parsed.data.plan,
-      prognosis: parsed.data.prognosis,
-      healthStatus: parsed.data.healthStatus
-    },
-    create: {
       doctorId: session.doctor.id,
       patientId: parsed.data.patientId,
-      appointmentId: parsed.data.appointmentId,
-      identificationCard: parsed.data.identificationCard,
-      ethnicGroup: parsed.data.ethnicGroup,
-      hereditaryFamilyHistory: parsed.data.hereditaryFamilyHistory,
-      nonPathologicalHistory: parsed.data.nonPathologicalHistory,
-      pathologicalHistory: parsed.data.pathologicalHistory,
-      surgicalHistory: parsed.data.surgicalHistory,
-      fractureHistory: parsed.data.fractureHistory,
-      gynecoObstetricHistory: parsed.data.gynecoObstetricHistory,
-      currentCondition: parsed.data.currentCondition,
-      systemsReview: parsed.data.systemsReview,
-      physicalExam: parsed.data.physicalExam,
-      labsAndImaging: parsed.data.labsAndImaging,
-      diagnosesOrClinicalProblems: parsed.data.diagnosesOrClinicalProblems,
-      therapeuticIndication: parsed.data.therapeuticIndication,
-      plan: parsed.data.plan,
-      prognosis: parsed.data.prognosis,
-      healthStatus: parsed.data.healthStatus
-    },
-    include: includeClinicalHistory
+      appointmentId: parsed.data.appointmentId
+    }
   });
+
+  const patientHistory = exactHistory ?? await prisma.clinicalHistory.findFirst({
+    where: {
+      doctorId: session.doctor.id,
+      patientId: parsed.data.patientId
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  const history = patientHistory
+    ? await prisma.clinicalHistory.update({
+        where: { id: patientHistory.id },
+        data: historyData,
+        include: includeClinicalHistory
+      })
+    : await prisma.clinicalHistory.create({
+        data: {
+          doctorId: session.doctor.id,
+          patientId: parsed.data.patientId,
+          ...historyData
+        },
+        include: includeClinicalHistory
+      });
 
   await auditLog({
     actorUserId: session.user.id,

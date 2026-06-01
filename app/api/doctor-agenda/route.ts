@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { openSensitiveText } from "@/lib/security/crypto";
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, include: { specialty: true } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+
+  await autoCancelExpiredAppointments();
 
   const now = new Date();
   const monthParam = requestUrl.searchParams.get("month");
@@ -59,6 +62,9 @@ export async function GET(request: Request) {
         startsAt: slot.startsAt,
         endsAt: slot.endsAt,
         isActive: slot.isActive,
+        repeatBatchId: slot.repeatBatchId,
+        generatedByMonthlyRepeat: slot.generatedByMonthlyRepeat,
+        repeatLabel: slot.repeatLabel,
         appointment: slot.appointment
           ? {
               id: slot.appointment.id,

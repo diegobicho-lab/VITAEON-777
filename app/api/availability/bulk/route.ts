@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -39,11 +40,14 @@ export async function POST(request: Request) {
   if (parsed.data.date) dates.set(uniqueDateKey(parsed.data.date), parsed.data.date);
   for (const date of parsed.data.dates ?? []) dates.set(uniqueDateKey(date), date);
 
+  const isMonthlyRepeat = Boolean(parsed.data.repeatWeekdays?.length);
+  const repeatBatchId = isMonthlyRepeat ? randomUUID() : null;
+  const repeatLabel = isMonthlyRepeat ? "Disponibilidad repetida del próximo mes" : null;
+
   if (parsed.data.repeatWeekdays?.length) {
     const today = new Date();
-    const until = parsed.data.repeatUntil ?? new Date(today.getTime() + 1000 * 60 * 60 * 24 * 42);
-    const maxUntil = new Date(today.getTime() + 1000 * 60 * 60 * 24 * 90);
-    const end = until > maxUntil ? maxUntil : until;
+    const end = new Date(today);
+    end.setMonth(end.getMonth() + 1);
     for (let current = new Date(today); current <= end; current.setDate(current.getDate() + 1)) {
       if (parsed.data.repeatWeekdays.includes(current.getDay())) {
         dates.set(uniqueDateKey(current), new Date(current));
@@ -55,7 +59,15 @@ export async function POST(request: Request) {
   const requestedRows = Array.from(dates.values()).flatMap((date) => {
     const dayStart = combineDateAndTime(date, parsed.data.startTime);
     const dayEnd = combineDateAndTime(date, parsed.data.endTime);
-    const slots: Array<{ doctorId: string; startsAt: Date; endsAt: Date; isActive: boolean }> = [];
+    const slots: Array<{
+      doctorId: string;
+      startsAt: Date;
+      endsAt: Date;
+      isActive: boolean;
+      repeatBatchId?: string | null;
+      generatedByMonthlyRepeat?: boolean;
+      repeatLabel?: string | null;
+    }> = [];
 
     for (let cursor = dayStart; addMinutes(cursor, parsed.data.durationMinutes) <= dayEnd; cursor = addMinutes(cursor, parsed.data.durationMinutes)) {
       const endsAt = addMinutes(cursor, parsed.data.durationMinutes);
@@ -64,7 +76,10 @@ export async function POST(request: Request) {
           doctorId: doctor.id,
           startsAt: cursor,
           endsAt,
-          isActive: true
+          isActive: true,
+          repeatBatchId,
+          generatedByMonthlyRepeat: isMonthlyRepeat,
+          repeatLabel
         });
       }
     }
@@ -116,9 +131,19 @@ export async function POST(request: Request) {
       skipped: requestedRows.length - rows.length,
       startTime: parsed.data.startTime,
       endTime: parsed.data.endTime,
-      durationMinutes: parsed.data.durationMinutes
+      durationMinutes: parsed.data.durationMinutes,
+      repeatBatchId
     }
   });
 
-  return ok({ created: result.count, requested: requestedRows.length, skipped: requestedRows.length - rows.length, durationMinutes: parsed.data.durationMinutes }, { status: 201 });
+  return ok(
+    {
+      created: result.count,
+      requested: requestedRows.length,
+      skipped: requestedRows.length - rows.length,
+      durationMinutes: parsed.data.durationMinutes,
+      repeatBatchId
+    },
+    { status: 201 }
+  );
 }
