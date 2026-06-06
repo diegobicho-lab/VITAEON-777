@@ -916,7 +916,7 @@ export function DoctorDashboardClient() {
     if (kind === "profile") setImageUrl(response.url);
     if (kind === "office") setPracticePhotoUrl(response.url);
     if (kind === "license") setProfessionalLicensePhotoUrl(response.url);
-    setMessage("Imagen cargada. Revisa la vista previa y guarda tu perfil.");
+    setMessage("Imagen cargada y guardada en tu perfil. Ya puedes revisar la vista previa.");
   }
 
   async function checkoutPlan(plan: DoctorProfile["medal"]) {
