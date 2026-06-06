@@ -917,6 +917,7 @@ export function DoctorDashboardClient() {
     if (kind === "office") setPracticePhotoUrl(response.url);
     if (kind === "license") setProfessionalLicensePhotoUrl(response.url);
     setMessage("Imagen cargada y guardada en tu perfil. Ya puedes revisar la vista previa.");
+    await load();
   }
 
   async function checkoutPlan(plan: DoctorProfile["medal"]) {
@@ -1839,13 +1840,32 @@ export function DoctorDashboardClient() {
                   <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir imagen de cédula</span>
                   <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("license", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
                 </label>
-                {(imageUrl || practicePhotoUrl || professionalLicensePhotoUrl) && (
-                  <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
-                    {imageUrl && <Image src={imageUrl} alt="Vista previa perfil" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
-                    {practicePhotoUrl && <Image src={practicePhotoUrl} alt="Vista previa consultorio" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
-                    {professionalLicensePhotoUrl && <Image src={professionalLicensePhotoUrl} alt="Vista previa cédula" width={360} height={120} unoptimized className="h-24 w-full rounded-2xl object-cover" />}
+                <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
+                  <div className="rounded-2xl border border-silver bg-white p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Foto principal</p>
+                    {imageUrl ? (
+                      <Image src={imageUrl} alt="Vista previa perfil" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
+                    ) : (
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                    )}
                   </div>
-                )}
+                  <div className="rounded-2xl border border-silver bg-white p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Consultorio</p>
+                    {practicePhotoUrl ? (
+                      <Image src={practicePhotoUrl} alt="Vista previa consultorio" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
+                    ) : (
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-silver bg-white p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Cédula</p>
+                    {professionalLicensePhotoUrl ? (
+                      <Image src={professionalLicensePhotoUrl} alt="Vista previa cédula" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
+                    ) : (
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                    )}
+                  </div>
+                </div>
                 <label className="rounded-3xl border border-silver bg-slate-50 p-4 text-sm leading-6 text-slate-700 lg:col-span-2">
                   <span className="block font-semibold text-deep">Declaración profesional obligatoria</span>
                   <span className="mt-2 block">Declaro bajo protesta de decir verdad que la información profesional proporcionada es real, comprobable y me pertenece.</span>
