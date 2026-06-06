@@ -906,6 +906,16 @@ export function DoctorDashboardClient() {
   async function uploadDoctorImage(kind: "profile" | "office" | "license", file?: File) {
     if (!file) return;
     setMessage("");
+    const fieldByKind = {
+      profile: "imageUrl",
+      office: "practicePhotoUrl",
+      license: "professionalLicensePhotoUrl"
+    } as const;
+    const labelByKind = {
+      profile: "Foto principal",
+      office: "Foto de consultorio",
+      license: "Imagen de cédula"
+    } as const;
     const form = new FormData();
     form.append("kind", kind);
     form.append("file", file);
@@ -916,8 +926,8 @@ export function DoctorDashboardClient() {
     if (kind === "profile") setImageUrl(response.url);
     if (kind === "office") setPracticePhotoUrl(response.url);
     if (kind === "license") setProfessionalLicensePhotoUrl(response.url);
-    setMessage("Imagen cargada y guardada en tu perfil. Ya puedes revisar la vista previa.");
-    await load();
+    setProfile((current) => current ? { ...current, [fieldByKind[kind]]: response.url } : current);
+    setMessage(`${labelByKind[kind]} cargada y guardada en tu perfil. Ya puedes revisar la vista previa.`);
   }
 
   async function checkoutPlan(plan: DoctorProfile["medal"]) {
