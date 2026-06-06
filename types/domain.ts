@@ -46,7 +46,6 @@ export interface DoctorListItem {
   professionalLicense?: string | null;
   imageUrl?: string | null;
   practicePhotoUrl?: string | null;
-  professionalLicensePhotoUrl?: string | null;
   university?: string | null;
   verifiedAt?: string | null;
   reviewAverage?: number;

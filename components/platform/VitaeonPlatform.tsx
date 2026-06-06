@@ -1697,6 +1697,22 @@ function DoctorDetail(props: {
         </div>
       )}
       <DoctorLocationCard doctor={doctor} />
+      {doctor.practicePhotoUrl && (
+        <section className="mt-6 overflow-hidden rounded-[1.5rem] border border-silver bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Consultorio</p>
+          <Image
+            src={doctor.practicePhotoUrl}
+            alt={`Consultorio de ${doctor.name}`}
+            width={900}
+            height={420}
+            unoptimized
+            className="mt-3 h-56 w-full rounded-[1.25rem] object-cover transition duration-500 hover:scale-[1.01]"
+          />
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Imagen de referencia del espacio donde el médico atiende. La documentación sensible de verificación no se muestra públicamente.
+          </p>
+        </section>
+      )}
       <div className="mt-7">
         <label className="font-semibold text-slate-700">Disponibilidad real</label>
         <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-3 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none">

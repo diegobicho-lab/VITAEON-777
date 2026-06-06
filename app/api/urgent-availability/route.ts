@@ -57,7 +57,6 @@ export async function GET(request: Request) {
       professionalLicense: doctor.professionalLicense,
       imageUrl: doctor.imageUrl,
       practicePhotoUrl: doctor.practicePhotoUrl,
-      professionalLicensePhotoUrl: doctor.professionalLicensePhotoUrl,
       verifiedAt: doctor.verifiedAt,
       achievements: doctor.achievements,
       certifications: doctor.certifications,

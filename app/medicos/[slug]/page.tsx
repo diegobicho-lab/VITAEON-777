@@ -67,6 +67,22 @@ export default async function DoctorSeoPage({ params }: PageProps) {
             <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">Médico verificado</span>
             <span className="rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-deep">★ {average.toFixed(1)} · {doctor.reviews.length} opiniones</span>
           </div>
+          {doctor.practicePhotoUrl && (
+            <div className="mt-5 rounded-[1.75rem] border border-silver bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_100%)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Consultorio</p>
+              <Image
+                src={doctor.practicePhotoUrl}
+                alt={`Consultorio de ${doctor.fullName}`}
+                width={900}
+                height={520}
+                unoptimized
+                className="mt-3 h-56 w-full rounded-[1.35rem] object-cover"
+              />
+              <p className="mt-3 text-sm leading-6 text-slate-500">
+                Espacio de atención mostrado por el médico para orientar tu visita.
+              </p>
+            </div>
+          )}
         </div>
         <div className="rounded-[2rem] border border-silver bg-white p-8 shadow-premium">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Perfil médico público</p>
@@ -76,6 +92,9 @@ export default async function DoctorSeoPage({ params }: PageProps) {
           <div className="mt-8 grid gap-3 text-slate-600">
             <p><strong className="text-deep">Hospital:</strong> {doctor.hospital.name}</p>
             <p><strong className="text-deep">Cédula:</strong> {doctor.professionalLicense ?? "En verificación"}</p>
+            <p className="text-sm leading-6 text-slate-500">
+              La cédula se muestra como dato profesional. La imagen documental completa queda reservada para revisión interna de VITAEON.
+            </p>
             {doctor.university && <p><strong className="text-deep">Universidad:</strong> {doctor.university}</p>}
             <p><strong className="text-deep">Experiencia:</strong> {doctor.yearsExperience} años</p>
             {doctor.officeAddress && <p><strong className="text-deep">Consultorio:</strong> {doctor.officeAddress}</p>}

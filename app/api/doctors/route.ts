@@ -128,7 +128,6 @@ export async function GET(request: Request) {
       university: doctor.university,
       imageUrl: doctor.imageUrl,
       practicePhotoUrl: doctor.practicePhotoUrl,
-      professionalLicensePhotoUrl: doctor.professionalLicensePhotoUrl,
       verifiedAt: doctor.verifiedAt,
       officeAddress: doctor.officeAddress,
       officeReference: doctor.officeReference,
