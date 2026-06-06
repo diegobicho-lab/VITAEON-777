@@ -1469,6 +1469,60 @@ export function DoctorDashboardClient() {
     ["notificaciones", "Notificaciones"]
   ] as const;
 
+  const onboardingItems = [
+    {
+      title: "Perfil profesional completo",
+      detail: "Nombre, especialidad, hospital, cédula, universidad, biografía y dirección.",
+      done: Boolean(profile?.fullName && profile?.specialtyId && profile?.hospitalId && profile?.professionalLicense && profile?.university && profile?.bio && profile?.officeAddress),
+      section: "perfil",
+      action: "Completar perfil"
+    },
+    {
+      title: "Declaración legal aceptada",
+      detail: "Confirma que la información profesional es real, verificable y te pertenece.",
+      done: Boolean(profile?.legalDeclarationAccepted),
+      section: "perfil",
+      action: "Aceptar declaración"
+    },
+    {
+      title: "Fotografías y cédula visibles",
+      detail: "Agrega foto profesional, consultorio y cédula para revisión administrativa.",
+      done: Boolean(profile?.imageUrl && profile?.practicePhotoUrl && profile?.professionalLicensePhotoUrl),
+      section: "perfil",
+      action: "Subir imágenes"
+    },
+    {
+      title: "Disponibilidad mensual publicada",
+      detail: "Publica horarios reales para que pacientes puedan agendar sin fricción.",
+      done: Boolean((agenda?.summary.available ?? 0) > 0),
+      section: "disponibilidad",
+      action: "Configurar horarios"
+    },
+    {
+      title: "Cobros de citas configurados",
+      detail: "Conecta Stripe para recibir pagos de consultas directamente en tu cuenta.",
+      done: Boolean(profile?.stripeAccountId && profile?.chargesEnabled && profile?.payoutsEnabled),
+      section: "cobros",
+      action: "Configurar cobros"
+    },
+    {
+      title: "Verificación médica aprobada",
+      detail: profile?.verificationStatus === "IN_REVIEW" ? "Tu perfil está en revisión administrativa." : "El administrador debe aprobar el perfil antes de publicarlo.",
+      done: profile?.verificationStatus === "VERIFIED",
+      section: "perfil",
+      action: "Revisar verificación"
+    }
+  ] satisfies Array<{
+    title: string;
+    detail: string;
+    done: boolean;
+    section: typeof activeSection;
+    action: string;
+  }>;
+  const completedOnboarding = onboardingItems.filter((item) => item.done).length;
+  const onboardingProgress = Math.round((completedOnboarding / onboardingItems.length) * 100);
+  const readyForPilot = completedOnboarding === onboardingItems.length && profile?.subscriptionStatus === "ACTIVE";
+
   return (
     <Shell eyebrow="Médicos" title="Panel médico">
       {loading ? <LoadingState /> : (
@@ -1498,6 +1552,46 @@ export function DoctorDashboardClient() {
               ))}
             </div>
             {message && <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm font-semibold text-medical">{message}</p>}
+          </section>
+
+          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Onboarding beta privada</p>
+                <h2 className="mt-2 text-2xl font-semibold text-deep">
+                  {readyForPilot ? "Perfil listo para recibir pacientes reales" : "Completa tu alta antes del primer paciente"}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Esta guía prepara al médico piloto para operar en VITAEON con perfil verificable, agenda publicada y cobros seguros.
+                </p>
+              </div>
+              <Badge value={readyForPilot ? "ACTIVE" : profile?.verificationStatus ?? "IN_REVIEW"} />
+            </div>
+            <div className="mt-6 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-medical transition-all duration-700" style={{ width: `${onboardingProgress}%` }} />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-600">{completedOnboarding} de {onboardingItems.length} pasos completados</p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {onboardingItems.map((item) => (
+                <article key={item.title} className={`rounded-3xl border p-4 transition ${item.done ? "border-emerald-100 bg-emerald-50/70" : "border-silver bg-slate-50"}`}>
+                  <div className="flex items-start gap-3">
+                    {item.done ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <Clock className="mt-0.5 h-5 w-5 shrink-0 text-medical" />}
+                    <div>
+                      <p className="font-semibold text-deep">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">{item.detail}</p>
+                    </div>
+                  </div>
+                  {!item.done && (
+                    <button
+                      onClick={() => setActiveSection(item.section)}
+                      className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-semibold text-deep shadow-sm transition hover:bg-black hover:text-white"
+                    >
+                      {item.action}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
           </section>
 
           {activeSection === "resumen" && (
