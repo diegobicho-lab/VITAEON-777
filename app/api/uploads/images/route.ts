@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -16,6 +17,15 @@ const allowedTypes = new Map([
 const allowedKinds = new Set(["profile", "office", "license", "prescription-header", "prescription-signature"]);
 const maxBytes = 3 * 1024 * 1024;
 
+function getStorageConfig() {
+  return {
+    supabaseUrl: process.env.SUPABASE_URL?.replace(/\/+$/, ""),
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    bucket: process.env.STORAGE_BUCKET || "vitaeon-verifications",
+    basePath: (process.env.STORAGE_PRIVATE_BASE_PATH || "doctor-profile-assets").replace(/^\/+|\/+$/g, "")
+  };
+}
+
 function getImageField(kind: string) {
   if (kind === "profile") return "imageUrl";
   if (kind === "office") return "practicePhotoUrl";
@@ -29,10 +39,7 @@ async function uploadToSupabaseStorage(params: {
   filename: string;
   userId: string;
 }) {
-  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const bucket = process.env.STORAGE_BUCKET || "vitaeon-verifications";
-  const basePath = (process.env.STORAGE_PRIVATE_BASE_PATH || "doctor-profile-assets").replace(/^\/+|\/+$/g, "");
+  const { supabaseUrl, serviceRoleKey, bucket, basePath } = getStorageConfig();
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("SUPABASE_STORAGE_NOT_CONFIGURED");
@@ -63,7 +70,7 @@ async function uploadToSupabaseStorage(params: {
     throw new Error("SUPABASE_STORAGE_UPLOAD_FAILED");
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${objectPath}`;
+  return `/api/uploads/images?path=${encodeURIComponent(objectPath)}`;
 }
 
 async function uploadToLocalPublicFolder(params: {
@@ -145,4 +152,47 @@ export async function POST(request: Request) {
   }
 
   return ok({ url }, { status: 201 });
+}
+
+export async function GET(request: Request) {
+  const { supabaseUrl, serviceRoleKey, bucket, basePath } = getStorageConfig();
+  if (!supabaseUrl || !serviceRoleKey) return fail("STORAGE_NOT_CONFIGURED", "Storage no configurado.", 503);
+
+  const url = new URL(request.url);
+  const objectPath = url.searchParams.get("path") ?? "";
+  const normalizedPath = objectPath.replace(/^\/+/, "");
+  const allowedPrefixes = [
+    `${basePath}/`,
+    "doctor-profile-assets/",
+    "medical-verifications/"
+  ];
+
+  if (!allowedPrefixes.some((prefix) => normalizedPath.startsWith(prefix))) {
+    return fail("INVALID_IMAGE_PATH", "Ruta de imagen inválida.", 422);
+  }
+
+  const storageUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${normalizedPath}`;
+  const response = await fetch(storageUrl, {
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("[Supabase image read error]", response.status, detail);
+    return fail("IMAGE_NOT_FOUND", "No fue posible cargar la imagen.", response.status === 404 ? 404 : 502);
+  }
+
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  const body = await response.arrayBuffer();
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=300"
+    }
+  });
 }
