@@ -14,7 +14,6 @@ import {
   Calendar,
   ChevronRight,
   CheckCircle2,
-  Clock,
   CreditCard,
   Droplets,
   Eye,
@@ -1778,7 +1777,7 @@ function BookingFlow(props: {
         </div>
       </section>
 
-      <section className="rounded-[1.75rem] border border-silver bg-white p-6 shadow-sm">
+      <section className="rounded-[1.75rem] border border-silver bg-white shadow-sm">
         {props.selectedDoctor ? (
           <DoctorDetail
             doctor={props.selectedDoctor}
@@ -1999,28 +1998,78 @@ function DoctorDetail(props: {
     ? props.welcomeDiscount.finalAmountCents ?? doctor.priceCents
     : doctor.priceCents;
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <BadgeCheck className="h-6 w-6 text-medical" />
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Médico verificado</p>
+    <div className="p-6 sm:p-7">
+      {/* ── Header ─────────────────────────── */}
+      <div className="flex items-start gap-4">
+        <div className="relative h-16 w-16 flex-none overflow-hidden rounded-2xl bg-slate-100">
+          {doctor.imageUrl
+            ? <Image src={doctor.imageUrl} alt={doctor.name} width={128} height={128} className="h-full w-full object-cover" />
+            : <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-medical/70">{doctor.name.charAt(0)}</span>
+          }
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              <BadgeCheck className="h-3 w-3" /> Verificado
+            </span>
+            <MedalShield medal={doctor.medal} compact />
+          </div>
+          <h2 className="mt-1.5 text-2xl font-bold leading-tight text-deep">{doctor.name}</h2>
+          {doctor.subSpecialty && (
+            <p className="mt-0.5 text-sm font-medium text-medical">{doctor.subSpecialty}</p>
+          )}
+        </div>
       </div>
-      <div className="mt-4 flex items-center gap-4">
-        <h2 className="text-4xl font-semibold text-deep">{doctor.name}</h2>
-        <MedalShield medal={doctor.medal} compact />
+
+      {doctor.bio && (
+        <p className="mt-5 text-sm leading-7 text-slate-600">{doctor.bio}</p>
+      )}
+
+      {/* ── Stats ──────────────────────────── */}
+      <div className="mt-5 grid grid-cols-3 gap-2.5">
+        <div className="rounded-2xl bg-[#071726] p-4 text-center text-white">
+          <p className="text-lg font-bold leading-tight">{money(doctor.priceCents)}</p>
+          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-white/55">por consulta</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-4 text-center">
+          <p className="text-lg font-bold leading-tight text-deep">{doctor.consultationDurationMinutes}<span className="text-sm font-normal text-slate-400"> min</span></p>
+          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">duración</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-4 text-center">
+          <p className="text-lg font-bold leading-tight text-deep">{doctor.yearsExperience}<span className="text-sm font-normal text-slate-400"> años</span></p>
+          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">experiencia</p>
+        </div>
       </div>
-      <p className="mt-2 text-lg text-medical">{doctor.subSpecialty}</p>
-      <p className="mt-5 leading-7 text-slate-600">{doctor.bio}</p>
-      <div className="mt-6 grid gap-3">
-        <Line icon={<Stethoscope className="h-5 w-5" />} text={`Especialidad: ${doctor.specialty}`} />
-        <Line icon={<Clock className="h-5 w-5" />} text={`${doctor.consultationDurationMinutes} minutos`} />
-        <Line icon={<WalletCards className="h-5 w-5" />} text={money(doctor.priceCents)} />
-        <Line icon={<Sparkles className="h-5 w-5" />} text={`${doctor.yearsExperience} años de experiencia`} />
-        <Line icon={<Hospital className="h-5 w-5" />} text={doctor.hospital} />
-        {doctor.university && <Line icon={<FileCheck2 className="h-5 w-5" />} text={`Universidad: ${doctor.university}`} />}
-        {doctor.professionalLicense && <Line icon={<FileCheck2 className="h-5 w-5" />} text={`Cédula profesional ${doctor.professionalLicense}`} />}
+
+      {/* ── Credenciales ───────────────────── */}
+      <div className="mt-4 rounded-2xl border border-silver/60 bg-slate-50/60 p-4">
+        <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Información médica</p>
+        <div className="grid gap-2.5">
+          <div className="flex items-center gap-2.5 text-sm text-slate-600">
+            <Stethoscope className="h-4 w-4 flex-none text-medical" />
+            {doctor.specialty}
+          </div>
+          <div className="flex items-center gap-2.5 text-sm text-slate-600">
+            <Hospital className="h-4 w-4 flex-none text-slate-400" />
+            {doctor.hospital}
+          </div>
+          {doctor.university && (
+            <div className="flex items-center gap-2.5 text-sm text-slate-600">
+              <FileCheck2 className="h-4 w-4 flex-none text-slate-400" />
+              {doctor.university}
+            </div>
+          )}
+          {doctor.professionalLicense && (
+            <div className="flex items-center gap-2.5 text-sm text-slate-600">
+              <ShieldCheck className="h-4 w-4 flex-none text-emerald-500" />
+              Cédula {doctor.professionalLicense}
+            </div>
+          )}
+        </div>
       </div>
+
       {props.welcomeDiscount && (
-        <div className={`mt-6 rounded-[1.5rem] border p-5 ${props.welcomeDiscount.eligible ? "border-emerald-100 bg-emerald-50 text-emerald-800" : "border-silver bg-slate-50 text-slate-600"}`}>
+        <div className={`mt-4 rounded-2xl border p-5 ${props.welcomeDiscount.eligible ? "border-emerald-100 bg-emerald-50 text-emerald-800" : "border-silver bg-slate-50 text-slate-600"}`}>
           <p className="flex items-center gap-2 font-semibold">
             <Sparkles className="h-5 w-5" />
             {props.welcomeDiscount.headline ?? props.welcomeDiscount.message ?? "Descuento de bienvenida para pacientes nuevos"}
@@ -2035,9 +2084,11 @@ function DoctorDetail(props: {
           )}
         </div>
       )}
+
       <DoctorLocationCard doctor={doctor} />
+
       {doctor.practicePhotoUrl && (
-        <section className="mt-6 overflow-hidden rounded-[1.5rem] border border-silver bg-white p-4 shadow-sm">
+        <section className="mt-5 overflow-hidden rounded-2xl border border-silver bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Consultorio</p>
           <Image
             src={doctor.practicePhotoUrl}
@@ -2045,44 +2096,78 @@ function DoctorDetail(props: {
             width={900}
             height={420}
             unoptimized
-            className="mt-3 h-56 w-full rounded-[1.25rem] object-cover transition duration-500 hover:scale-[1.01]"
+            className="mt-3 h-56 w-full rounded-xl object-cover transition duration-500 hover:scale-[1.01]"
           />
           <p className="mt-3 text-sm leading-6 text-slate-500">
             Imagen de referencia del espacio donde el médico atiende. La documentación sensible de verificación no se muestra públicamente.
           </p>
         </section>
       )}
-      <div className="mt-7">
-        <label className="font-semibold text-slate-700">Disponibilidad real</label>
-        <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-3 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
-          {doctor.availability.length === 0 && <option value="">Sin horarios publicados</option>}
-          {doctor.availability.map((slot) => <option key={slot.id} value={slot.id}>{dateTime(slot.startsAt)}</option>)}
-        </select>
-      </div>
-      <div className="mt-5">
-        <label className="font-semibold text-slate-700">Motivo de consulta</label>
-        <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-3 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
-      </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <button onClick={() => props.setPaymentMethod("CASH")} className={`rounded-3xl border px-5 py-4 font-semibold ${props.paymentMethod === "CASH" ? "border-black bg-black text-white" : "border-silver bg-white"}`}>Efectivo pendiente</button>
-        <button onClick={() => props.setPaymentMethod("STRIPE")} className={`rounded-3xl border px-5 py-4 font-semibold ${props.paymentMethod === "STRIPE" ? "border-black bg-black text-white" : "border-silver bg-white"}`}>Pago en línea</button>
-      </div>
-      <button
-        onClick={props.createAppointment}
-        disabled={props.bookingStatus === "creating" || props.bookingStatus === "success" || doctor.availability.length === 0}
-        className={`mt-6 flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 font-semibold text-white transition disabled:opacity-80 ${props.bookingStatus === "success" ? "bg-emerald-600" : "bg-black hover:bg-deep"}`}
-      >
-        {props.bookingStatus === "creating" ? <Loader2 className="h-5 w-5 animate-spin" /> : props.bookingStatus === "success" ? <CheckCircle2 className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
-        {props.bookingStatus === "success" ? "Cita creada correctamente" : props.user ? (props.paymentMethod === "STRIPE" ? "Crear cita y continuar al pago" : "Crear cita") : "Inicia sesión para agendar"}
-      </button>
-      {props.bookingStatus === "success" && (
-        <p className="mt-4 rounded-3xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
-          Cita creada correctamente. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
+
+      {/* ── Agendar ────────────────────────── */}
+      <div className="mt-6 border-t border-silver/50 pt-6">
+        <p className="mb-4 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Agendar consulta</p>
+
+        <div>
+          <label className="text-sm font-semibold text-slate-700">Disponibilidad real</label>
+          <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-2 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
+            {doctor.availability.length === 0 && <option value="">Sin horarios publicados</option>}
+            {doctor.availability.map((slot) => <option key={slot.id} value={slot.id}>{dateTime(slot.startsAt)}</option>)}
+          </select>
+        </div>
+
+        <div className="mt-4">
+          <label className="text-sm font-semibold text-slate-700">Motivo de consulta</label>
+          <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-2 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => props.setPaymentMethod("CASH")}
+            className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-semibold transition-all ${
+              props.paymentMethod === "CASH"
+                ? "border-[#071726] bg-[#071726] text-white shadow-sm"
+                : "border-silver/70 bg-white text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            <WalletCards className="h-4 w-4" />
+            Efectivo en consultorio
+          </button>
+          <button
+            onClick={() => props.setPaymentMethod("STRIPE")}
+            className={`flex items-center justify-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-semibold transition-all ${
+              props.paymentMethod === "STRIPE"
+                ? "border-medical bg-medical text-white shadow-sm"
+                : "border-silver/70 bg-white text-slate-600 hover:border-medical/30"
+            }`}
+          >
+            <CreditCard className="h-4 w-4" />
+            Pago en línea
+          </button>
+        </div>
+
+        <button
+          onClick={props.createAppointment}
+          disabled={props.bookingStatus === "creating" || props.bookingStatus === "success" || doctor.availability.length === 0}
+          className={`mt-5 flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 font-semibold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-70 ${
+            props.bookingStatus === "success" ? "bg-emerald-600" : "bg-medical hover:bg-[#0f6491]"
+          }`}
+        >
+          {props.bookingStatus === "creating" ? <Loader2 className="h-5 w-5 animate-spin" /> : props.bookingStatus === "success" ? <CheckCircle2 className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+          {props.bookingStatus === "success" ? "Cita creada correctamente" : props.user ? (props.paymentMethod === "STRIPE" ? "Crear cita y continuar al pago" : "Crear cita") : "Inicia sesión para agendar"}
+        </button>
+
+        {props.bookingStatus === "success" && (
+          <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
+            Cita creada correctamente. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
+          </p>
+        )}
+
+        <p className="mt-4 text-xs leading-5 text-slate-400">
+          La disponibilidad visible proviene de la agenda publicada por el médico. VITAEON bloquea el horario al registrar la cita para evitar dobles reservas.
         </p>
-      )}
-      <p className="mt-4 text-sm leading-6 text-slate-500">
-        La disponibilidad visible proviene de la agenda publicada por el médico. VITAEON bloquea el horario al registrar la cita para evitar dobles reservas.
-      </p>
+      </div>
+
       <DoctorReviews
         reviews={props.reviews}
         rating={props.reviewRating}
