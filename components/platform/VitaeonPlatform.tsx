@@ -5,30 +5,43 @@ import { loadStripe } from "@stripe/stripe-js";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Activity,
   AlertTriangle,
+  Baby,
   BadgeCheck,
+  Bone,
   Brain,
   Calendar,
   ChevronRight,
   CheckCircle2,
   Clock,
   CreditCard,
+  Droplets,
+  Eye,
   FileCheck2,
+  Heart,
   HeartPulse,
   Hospital,
+  Leaf,
   Loader2,
   LogIn,
   MapPin,
+  Microscope,
+  Scissors,
   Search,
   ShieldCheck,
+  Siren,
   Sparkles,
   Star,
   Stethoscope,
-  Siren,
-  WalletCards
+  Thermometer,
+  Users,
+  WalletCards,
+  Wind,
+  Zap
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
@@ -1433,7 +1446,8 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
   );
 
   const activeSpecialty = specialties.find((s) => s.id === (hoveredId ?? selectedId));
-  const previewImage = specialtyImageFor(activeSpecialty?.name);
+  const activeTheme = specialtyThemeFor(activeSpecialty?.name);
+  const PreviewIcon = activeTheme.Icon;
 
   return (
     <section id="especialidades" className="relative mx-auto mt-20 max-w-7xl scroll-mt-24">
@@ -1471,16 +1485,16 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
       {/* Content: preview image + cards grid */}
       <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr]">
         {/* Sticky preview panel — hidden on small screens */}
-        <div className="specialty-preview hidden overflow-hidden rounded-[2rem] border border-silver/70 shadow-premium lg:block">
-          <Image
-            key={previewImage.src + (activeSpecialty?.id ?? "default")}
-            src={previewImage.src}
-            alt={activeSpecialty?.name ?? "VITAEON"}
-            width={680}
-            height={860}
-            className="h-full min-h-[28rem] w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#071726]/80 via-[#071726]/20 to-transparent" />
+        <div
+          className="specialty-preview relative hidden min-h-[28rem] overflow-hidden rounded-[2rem] shadow-premium lg:block"
+          style={{ background: activeTheme.gradient }}
+        >
+          {/* Watermark icon — large, bottom-right, low opacity */}
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-5">
+            <PreviewIcon className="h-52 w-52 text-white opacity-[0.14]" />
+          </div>
+          {/* Dark overlay for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-7">
             <p className="text-[0.6rem] font-semibold uppercase tracking-[0.36em] text-white/60">
               VITAEON · {activeCategory !== "all" ? (visibleCategories.find((c) => c.id === activeCategory)?.label ?? "Especialidades") : "Red médica"}
@@ -1496,7 +1510,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
             {activeSpecialty && (
               <button
                 onClick={() => onSelect(activeSpecialty.id)}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-deep transition hover:-translate-y-0.5"
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-5 py-2.5 text-sm font-semibold text-deep transition hover:-translate-y-0.5"
               >
                 Ver médicos <ChevronRight className="h-4 w-4" />
               </button>
@@ -1515,6 +1529,8 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
             {filtered.map((specialty) => {
               const isSelected = selectedId === specialty.id;
               const isHovered = hoveredId === specialty.id;
+              const theme = specialtyThemeFor(specialty.name);
+              const SpecIcon = theme.Icon;
               return (
                 <button
                   key={specialty.id}
@@ -1526,16 +1542,25 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
                   className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
                     isSelected
                       ? "border-medical/30 bg-white shadow-[0_8px_32px_rgba(17,109,157,0.12)] ring-2 ring-medical/15"
-                      : "border-silver/60 bg-white hover:border-medical/20 hover:shadow-soft"
+                      : "border-silver/60 bg-white hover:border-silver hover:shadow-soft"
                   }`}
                 >
-                  {/* Subtle hover glow */}
-                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-medical/5 to-transparent transition-opacity duration-300 ${isHovered || isSelected ? "opacity-100" : "opacity-0"}`} />
+                  {/* Specialty gradient accent bar at top */}
+                  <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: theme.gradient }} />
 
-                  <div className="relative flex items-start justify-between gap-3">
-                    {/* Icon */}
-                    <div className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl transition-colors duration-300 ${isSelected ? "bg-medical text-white" : "bg-medical/8 text-medical group-hover:bg-medical/15"}`}>
-                      <Stethoscope className="h-5 w-5" />
+                  {/* Hover glow using specialty color */}
+                  <div
+                    className={`absolute inset-0 transition-opacity duration-300 ${isHovered || isSelected ? "opacity-100" : "opacity-0"}`}
+                    style={{ background: `linear-gradient(135deg, ${theme.iconBg} 0%, transparent 65%)` }}
+                  />
+
+                  <div className="relative flex items-start justify-between gap-3 pt-1">
+                    {/* Specialty-themed icon */}
+                    <div
+                      className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl transition-[transform,box-shadow] duration-300 ${isSelected ? "scale-110 shadow-sm" : "group-hover:scale-105"}`}
+                      style={{ backgroundColor: theme.iconBg, color: theme.iconColor }}
+                    >
+                      <SpecIcon className="h-5 w-5" />
                     </div>
                     {/* Doctors count badge */}
                     {specialty.doctorsCount > 0 && (
@@ -1575,18 +1600,38 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
   );
 }
 
-function specialtyImageFor(name = "") {
-  const normalized = name.toLowerCase();
-  if (/(cirugía|ortopedia|trauma|anest|radiolog|rehabilitación|deporte)/i.test(normalized)) {
-    return { src: "/doctor-diagnosis.jpg", position: "center" };
-  }
-  if (/(pediatr|gine|derma|psicolo|psiqu|nutri|geriatr|familiar)/i.test(normalized)) {
-    return { src: "/clinic-consultation.jpg", position: "center" };
-  }
-  if (/(cardio|neuro|medicina interna|endo|gastro|neumo|uro|nefro|onco|hemato|infecto|reuma|oftal|otorrino)/i.test(normalized)) {
-    return { src: "/doctor-diagnosis.jpg", position: "center top" };
-  }
-  return { src: "/clinic-consultation.jpg", position: "center" };
+type SpecialtyTheme = { gradient: string; iconBg: string; iconColor: string; Icon: ElementType };
+
+function specialtyThemeFor(name = ""): SpecialtyTheme {
+  const n = name.toLowerCase();
+  if (/cardio/.test(n))       return { gradient: "linear-gradient(135deg,#fecdd3,#be123c)",  iconBg: "rgba(254,205,211,.42)", iconColor: "#be123c", Icon: HeartPulse };
+  if (/neuro|cereb/.test(n))  return { gradient: "linear-gradient(135deg,#e9d5ff,#7c3aed)",  iconBg: "rgba(233,213,255,.42)", iconColor: "#7c3aed", Icon: Brain };
+  if (/psicol|psiqu/.test(n)) return { gradient: "linear-gradient(135deg,#ddd6fe,#5b21b6)",  iconBg: "rgba(221,214,254,.42)", iconColor: "#5b21b6", Icon: Brain };
+  if (/trauma|ortop/.test(n)) return { gradient: "linear-gradient(135deg,#fde68a,#d97706)",  iconBg: "rgba(253,230,138,.42)", iconColor: "#d97706", Icon: Bone };
+  if (/reuma/.test(n))        return { gradient: "linear-gradient(135deg,#ffedd5,#b45309)",  iconBg: "rgba(255,237,213,.42)", iconColor: "#b45309", Icon: Bone };
+  if (/derma/.test(n))        return { gradient: "linear-gradient(135deg,#fbcfe8,#db2777)",  iconBg: "rgba(251,207,232,.42)", iconColor: "#db2777", Icon: Eye };
+  if (/oftal/.test(n))        return { gradient: "linear-gradient(135deg,#cffafe,#155e75)",  iconBg: "rgba(207,250,254,.42)", iconColor: "#155e75", Icon: Eye };
+  if (/gastro/.test(n))       return { gradient: "linear-gradient(135deg,#a7f3d0,#059669)",  iconBg: "rgba(167,243,208,.42)", iconColor: "#059669", Icon: Activity };
+  if (/pediatr/.test(n))      return { gradient: "linear-gradient(135deg,#bae6fd,#0284c7)",  iconBg: "rgba(186,230,253,.42)", iconColor: "#0284c7", Icon: Baby };
+  if (/ginec/.test(n))        return { gradient: "linear-gradient(135deg,#fce7f3,#9d174d)",  iconBg: "rgba(252,231,243,.42)", iconColor: "#9d174d", Icon: Heart };
+  if (/nutri/.test(n))        return { gradient: "linear-gradient(135deg,#d9f99d,#4d7c0f)",  iconBg: "rgba(217,249,157,.42)", iconColor: "#4d7c0f", Icon: Leaf };
+  if (/endocrin/.test(n))     return { gradient: "linear-gradient(135deg,#fed7aa,#c2410c)",  iconBg: "rgba(254,215,170,.42)", iconColor: "#c2410c", Icon: Microscope };
+  if (/neumo|pulmon/.test(n)) return { gradient: "linear-gradient(135deg,#e0f2fe,#0369a1)",  iconBg: "rgba(224,242,254,.42)", iconColor: "#0369a1", Icon: Wind };
+  if (/\buro/.test(n))        return { gradient: "linear-gradient(135deg,#cffafe,#0e7490)",  iconBg: "rgba(207,250,254,.42)", iconColor: "#0e7490", Icon: Droplets };
+  if (/nefro/.test(n))        return { gradient: "linear-gradient(135deg,#99f6e4,#0f766e)",  iconBg: "rgba(153,246,228,.42)", iconColor: "#0f766e", Icon: Droplets };
+  if (/onco/.test(n))         return { gradient: "linear-gradient(135deg,#fee2e2,#b91c1c)",  iconBg: "rgba(254,226,226,.42)", iconColor: "#b91c1c", Icon: Microscope };
+  if (/hemato/.test(n))       return { gradient: "linear-gradient(135deg,#fecaca,#9f1239)",  iconBg: "rgba(254,202,202,.42)", iconColor: "#9f1239", Icon: Droplets };
+  if (/infecto/.test(n))      return { gradient: "linear-gradient(135deg,#bbf7d0,#15803d)",  iconBg: "rgba(187,247,208,.42)", iconColor: "#15803d", Icon: Thermometer };
+  if (/otorrino/.test(n))     return { gradient: "linear-gradient(135deg,#ecfdf5,#065f46)",  iconBg: "rgba(236,253,245,.42)", iconColor: "#065f46", Icon: Activity };
+  if (/rehab|fisio/.test(n))  return { gradient: "linear-gradient(135deg,#d1fae5,#047857)",  iconBg: "rgba(209,250,229,.42)", iconColor: "#047857", Icon: Activity };
+  if (/cirug/.test(n))        return { gradient: "linear-gradient(135deg,#f1f5f9,#334155)",  iconBg: "rgba(241,245,249,.42)", iconColor: "#334155", Icon: Scissors };
+  if (/anest/.test(n))        return { gradient: "linear-gradient(135deg,#dbeafe,#1e3a8a)",  iconBg: "rgba(219,234,254,.42)", iconColor: "#1e3a8a", Icon: Zap };
+  if (/radio/.test(n))        return { gradient: "linear-gradient(135deg,#f1f5f9,#475569)",  iconBg: "rgba(241,245,249,.42)", iconColor: "#475569", Icon: Zap };
+  if (/deporte/.test(n))      return { gradient: "linear-gradient(135deg,#dcfce7,#16a34a)",  iconBg: "rgba(220,252,231,.42)", iconColor: "#16a34a", Icon: Activity };
+  if (/geriatr/.test(n))      return { gradient: "linear-gradient(135deg,#f3e8ff,#6b21a8)",  iconBg: "rgba(243,232,255,.42)", iconColor: "#6b21a8", Icon: Users };
+  if (/familiar/.test(n))     return { gradient: "linear-gradient(135deg,#dbeafe,#1d4ed8)",  iconBg: "rgba(219,234,254,.42)", iconColor: "#1d4ed8", Icon: Users };
+  if (/interna/.test(n))      return { gradient: "linear-gradient(135deg,#bfdbfe,#2563eb)",  iconBg: "rgba(191,219,254,.42)", iconColor: "#2563eb", Icon: Stethoscope };
+  return { gradient: "linear-gradient(135deg,#cfe8f5,#116D9D)", iconBg: "rgba(207,232,245,.42)", iconColor: "#116D9D", Icon: Stethoscope };
 }
 
 function SubscriptionShowcase() {
