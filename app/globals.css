@@ -154,6 +154,14 @@ select {
     linear-gradient(180deg, #faf9f7 0%, #ffffff 58%, #f4f8fa 100%);
 }
 
+/* ─── Hero gradient text ──────────────────────────────────────── */
+.hero-gradient-text {
+  background: linear-gradient(135deg, #1a80b8 0%, #116D9D 55%, #0e5580 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ─── Premium card ────────────────────────────────────────────── */
 .premium-card {
   background: rgba(255, 255, 255, 0.92);

@@ -764,16 +764,31 @@ export default function VitaeonPlatform() {
       <main className="px-4 pb-24 pt-28 sm:px-5 sm:pt-32">
         <section className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-10 rounded-[2rem] px-5 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:rounded-[2.5rem] lg:px-12 lg:py-12">
           <div className="soft-reveal">
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-silver/80 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 shadow-soft">
-              <ShieldCheck className="h-4 w-4 text-medical" />
-              Red médica privada · Especialistas verificados
+            {/* Badge con dot pulsante */}
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-silver/80 bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-soft">
+              <span className="relative flex h-2 w-2 flex-none">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Beta privada · León, Guanajuato
             </div>
-            <h1 className="mt-7 text-5xl font-bold tracking-tight text-deep sm:text-6xl md:text-7xl lg:text-8xl">
-              VITAEON
+
+            {/* Eyebrow serif */}
+            <p className="mt-5 font-serif text-base italic text-medical/70">Red médica privada</p>
+
+            {/* H1 — propuesta de valor */}
+            <h1 className="mt-2 text-4xl font-extrabold leading-[1.09] tracking-tight text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
+              Encuentra el{" "}
+              <span className="hero-gradient-text">especialista</span>
+              {" "}que necesitas
             </h1>
-            <p className="mt-5 max-w-xl text-xl leading-relaxed text-slate-500 sm:text-2xl">
-              Conectando León en una sola red médica privada. Especialistas verificados, agenda digital y experiencia clínica premium.
+
+            {/* Subtítulo */}
+            <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-500">
+              Médicos con cédula profesional verificada, agenda digital y atención privada. Solo en León.
             </p>
+
+            {/* CTAs */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => setBookingOpen(true)}
@@ -783,16 +798,16 @@ export default function VitaeonPlatform() {
                 Agendar cita
               </button>
               <a
-                href="#especialidades"
+                href="#busqueda"
                 className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium"
               >
-                <Stethoscope className="h-4 w-4" />
-                Especialidades
+                <Search className="h-4 w-4" />
+                Buscar especialista
               </a>
             </div>
             <HeroStats onRepresentativesClick={openRepresentatives} />
           </div>
-          <div className="editorial-image relative overflow-hidden rounded-[2rem] border border-silver/70 bg-white shadow-premium">
+          <div className="editorial-image relative overflow-hidden rounded-[2rem] bg-[#0c1f2e] shadow-premium">
             <video
               className="h-[400px] w-full object-cover sm:h-[480px] lg:h-[540px]"
               autoPlay muted loop playsInline
@@ -800,13 +815,22 @@ export default function VitaeonPlatform() {
             >
               <source src="/vitaeon-hero.mov" type="video/quicktime" />
             </video>
-            <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/90 p-5 shadow-glass backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:rounded-[2rem] sm:p-6">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-400">Ruta clínica personalizada</p>
-              <div className="mt-2.5 flex items-center justify-between gap-4">
-                <h2 className="text-xl font-semibold text-deep sm:text-2xl">Diagnóstico inteligente</h2>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-medical/10 text-medical">
-                  <HeartPulse className="h-5 w-5" />
+            <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/92 p-5 shadow-glass backdrop-blur-md sm:bottom-6 sm:left-6 sm:right-6 sm:p-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-emerald-500/12">
+                  <BadgeCheck className="h-5 w-5 text-emerald-600" />
                 </div>
+                <div>
+                  <p className="text-sm font-semibold text-deep">Médicos verificados</p>
+                  <p className="text-xs text-slate-500">Cédula profesional · León, Gto.</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 border-t border-silver/60 pt-3">
+                <span className="relative flex h-2 w-2 flex-none">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <p className="text-xs text-slate-500">Red activa · Agenda digital disponible</p>
               </div>
             </div>
           </div>
@@ -1224,23 +1248,34 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
 
 function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => void }) {
   return (
-    <div className="hero-stats mt-12 grid gap-4 sm:grid-cols-3">
-      <div className="hero-bubble hero-medal-bubble rounded-3xl border border-silver bg-white/92 p-5 text-center shadow-sm">
-        <div className="flex justify-center gap-3">
-          <MedalShield medal="oro" compact />
-          <MedalShield medal="diamante" compact />
-          <MedalShield medal="amatista" compact />
-        </div>
-        <p className="mt-4 font-serif text-lg italic leading-7 text-deep">Médicos que forjan tu bienestar</p>
+    <div className="mt-10">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Presentes en</p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+        {["Hospital Ángeles", "Lomas Medical", "HMAS León", "Hospital OHL"].map((name) => (
+          <span key={name} className="text-sm font-semibold text-slate-400 transition-colors hover:text-slate-600">{name}</span>
+        ))}
       </div>
-      <div className="hero-bubble map-mini rounded-3xl border border-silver bg-white/92 p-5 text-center shadow-sm">
-        <span className="map-pin mx-auto" />
-        <p className="mt-5 font-semibold text-deep">León, Gto.</p>
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2.5 border-t border-silver/60 pt-4">
+        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+          <BadgeCheck className="h-3.5 w-3.5 text-medical" />
+          Cédula verificada
+        </span>
+        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+          Agenda digital
+        </span>
+        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+          <MapPin className="h-3.5 w-3.5 text-slate-400" />
+          León, Gto.
+        </span>
+        <button
+          onClick={onRepresentativesClick}
+          className="flex items-center gap-1.5 text-sm text-medical/75 underline-offset-2 transition hover:text-medical hover:underline"
+        >
+          <WalletCards className="h-3.5 w-3.5" />
+          Representantes médicos
+        </button>
       </div>
-      <button onClick={onRepresentativesClick} className="hero-bubble rounded-3xl border border-silver bg-white/92 p-5 text-center shadow-sm transition hover:-translate-y-1">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Representantes médicos</p>
-        <p className="mt-3 font-semibold text-deep">Farmacéuticas y contacto profesional</p>
-      </button>
     </div>
   );
 }
