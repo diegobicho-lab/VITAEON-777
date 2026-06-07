@@ -688,5 +688,22 @@ Pendientes externos:
 
 - Configurar `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_URL` y `STRIPE_PLATFORM_FEE_PERCENTAGE` en Vercel.
 - Registrar el webhook de Stripe con los eventos documentados.
+
+## Directorio Representantes Médicos / Catering
+
+Cambios aplicados:
+- La sección pública de representantes médicos ahora opera como “Representantes Médicos / Catering”.
+- Se agregó selector visual por tabs/pills para alternar entre representantes médicos y catering sin romper la estética premium actual.
+- `GET /api/medical-representatives` ahora devuelve representantes y catering desde base de datos, filtrando únicamente registros `ACTIVE` con suscripción Obsidiana `ACTIVE`.
+- Se agregaron modelos `MarketplaceListing` y `MarketplaceSubscriptionPayment` para representantes médicos, servicios de catering y pagos Obsidiana.
+- Se agregó la suscripción `obsidiana`, separada de los planes médicos Oro, Diamante y Amatista.
+- `POST /api/marketplace-subscriptions/checkout` activa Obsidiana gratis si `OBSIDIANA_PRICE_CENTS=0`; si se define monto, abre Checkout mensual en Stripe hacia la cuenta administradora de VITAEON.
+- Se agregó base administrativa con `GET/POST/PATCH /api/admin/marketplace-listings` para crear, revisar, activar, pausar o rechazar representantes y catering.
+- El webhook de Stripe reconoce `marketplace_obsidiana` para activar o fallar suscripciones Obsidiana sin mezclar pagos de citas ni suscripciones médicas.
+
+Riesgos pendientes:
+- Falta conectar una vista específica en el panel admin para gestionar representantes/catering desde interfaz, aunque la API segura ya quedó preparada.
+- Si Obsidiana deja de ser gratis, debe definirse `OBSIDIANA_PRICE_CENTS` en Vercel y confirmar webhook Stripe con eventos de checkout/suscripción.
+- No publicar representantes ni catering sin revisión administrativa y datos de contacto verificados.
 - Completar onboarding Connect de cada médico antes de cobrar citas en línea.
 - Pasar de pagos únicos de planes a Billing recurrente si se desea suscripción mensual automática.

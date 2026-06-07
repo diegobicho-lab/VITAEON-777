@@ -1,4 +1,11 @@
-import { AppointmentStatus, MedicalMedal, PaymentStatus, SubscriptionStatus } from "@prisma/client";
+import {
+  AppointmentStatus,
+  MarketplaceListingStatus,
+  MarketplaceSubscriptionStatus,
+  MedicalMedal,
+  PaymentStatus,
+  SubscriptionStatus
+} from "@prisma/client";
 import { headers } from "next/headers";
 import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
@@ -235,12 +242,84 @@ export async function POST(request: Request) {
           entityId: payment.id,
           metadata: { stripeEvent: event.id, subscriptionId }
         });
+      } else {
+        const marketplacePayment = await prisma.marketplaceSubscriptionPayment.findFirst({
+          where: { providerSubscriptionId: subscriptionId },
+          orderBy: { createdAt: "desc" }
+        });
+
+        if (marketplacePayment) {
+          const paid = event.type === "invoice.paid";
+          let currentPeriodEnd = marketplacePayment.currentPeriodEnd;
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            currentPeriodEnd = stripeSubscriptionPeriodEnd(subscription) ?? currentPeriodEnd;
+          } catch (error) {
+            console.error("[Stripe Obsidiana period lookup error]", error);
+          }
+
+          const updatedPayment = await prisma.marketplaceSubscriptionPayment.update({
+            where: { id: marketplacePayment.id },
+            data: {
+              status: paid ? PaymentStatus.PAID : PaymentStatus.FAILED,
+              providerPaymentId: invoicePaymentIntentId(invoice) ?? marketplacePayment.providerPaymentId,
+              providerCustomerId: invoiceCustomerId(invoice) ?? marketplacePayment.providerCustomerId,
+              currentPeriodEnd
+            }
+          });
+
+          await prisma.marketplaceListing.update({
+            where: { id: updatedPayment.listingId },
+            data: {
+              subscriptionStatus: paid ? MarketplaceSubscriptionStatus.ACTIVE : MarketplaceSubscriptionStatus.FAILED,
+              activeUntil: currentPeriodEnd
+            }
+          });
+
+          await auditLog({
+            action: paid ? "STRIPE_WEBHOOK_OBSIDIANA_RENEWED" : "STRIPE_WEBHOOK_OBSIDIANA_RENEWAL_FAILED",
+            entityType: "MarketplaceSubscriptionPayment",
+            entityId: updatedPayment.id,
+            metadata: { stripeEvent: event.id, subscriptionId }
+          });
+        }
       }
     }
   }
 
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.expired") {
     const session = event.data.object as Stripe.Checkout.Session;
+    if (session.metadata?.kind === "marketplace_obsidiana" && session.metadata.paymentId && session.metadata.listingId) {
+      const isPaid = event.type === "checkout.session.completed" && session.payment_status === "paid";
+      const payment = await prisma.marketplaceSubscriptionPayment.update({
+        where: { id: session.metadata.paymentId },
+        data: {
+          status: isPaid ? PaymentStatus.PAID : PaymentStatus.FAILED,
+          providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+          providerCustomerId: typeof session.customer === "string" ? session.customer : null,
+          providerSubscriptionId: typeof session.subscription === "string" ? session.subscription : null
+        }
+      });
+
+      await prisma.marketplaceListing.update({
+        where: { id: session.metadata.listingId },
+        data: {
+          status: isPaid ? MarketplaceListingStatus.ACTIVE : MarketplaceListingStatus.PENDING,
+          subscriptionStatus: isPaid ? MarketplaceSubscriptionStatus.ACTIVE : MarketplaceSubscriptionStatus.FAILED,
+          providerCustomerId: payment.providerCustomerId,
+          providerSubscriptionId: payment.providerSubscriptionId,
+          providerSessionId: session.id
+        }
+      });
+
+      await auditLog({
+        action: isPaid ? "STRIPE_WEBHOOK_OBSIDIANA_ACTIVE" : "STRIPE_WEBHOOK_OBSIDIANA_FAILED",
+        entityType: "MarketplaceListing",
+        entityId: session.metadata.listingId,
+        metadata: { stripeEvent: event.id, paymentId: payment.id }
+      });
+    }
+
     if (session.metadata?.kind === "doctor_subscription" && session.metadata.paymentId) {
       const isPaid = event.type === "checkout.session.completed" && session.payment_status === "paid";
       const plan = session.metadata.plan as keyof typeof MedicalMedal;
@@ -411,6 +490,41 @@ export async function POST(request: Request) {
         where: { userId: payment.userId },
         data: planMedal && status === SubscriptionStatus.ACTIVE ? { subscriptionStatus: status, medal: planMedal } : { subscriptionStatus: status }
       });
+    } else {
+      const marketplacePayment = await prisma.marketplaceSubscriptionPayment.findFirst({
+        where: {
+          OR: subscriptionLookup
+        },
+        orderBy: { createdAt: "desc" }
+      });
+
+      if (marketplacePayment) {
+        await prisma.marketplaceSubscriptionPayment.update({
+          where: { id: marketplacePayment.id },
+          data: {
+            providerSubscriptionId: subscription.id,
+            providerCustomerId: typeof subscription.customer === "string" ? subscription.customer : marketplacePayment.providerCustomerId,
+            status: status === SubscriptionStatus.ACTIVE ? PaymentStatus.PAID : marketplacePayment.status,
+            currentPeriodEnd: stripeSubscriptionPeriodEnd(subscription) ?? marketplacePayment.currentPeriodEnd
+          }
+        });
+
+        await prisma.marketplaceListing.update({
+          where: { id: marketplacePayment.listingId },
+          data: {
+            subscriptionStatus:
+              status === SubscriptionStatus.ACTIVE
+                ? MarketplaceSubscriptionStatus.ACTIVE
+                : status === SubscriptionStatus.CANCELLED
+                  ? MarketplaceSubscriptionStatus.CANCELLED
+                  : status === SubscriptionStatus.FAILED
+                    ? MarketplaceSubscriptionStatus.FAILED
+                    : MarketplaceSubscriptionStatus.PENDING,
+            providerSubscriptionId: subscription.id,
+            providerCustomerId: typeof subscription.customer === "string" ? subscription.customer : undefined
+          }
+        });
+      }
     }
   }
 

@@ -50,12 +50,29 @@ type HospitalItem = { id: string; name: string; city: string; address?: string |
 type PaymentMethod = "CASH" | "STRIPE";
 type AuthAudience = "PATIENT" | "DOCTOR";
 type MedicalRepresentative = {
+  id?: string;
   lab: string;
   focus: string;
   representative: string;
   zone: string;
   phone: string;
   email: string;
+  imageUrl?: string | null;
+};
+type CateringService = {
+  id: string;
+  name: string;
+  description: string;
+  cityOrZone: string;
+  phone: string;
+  email: string;
+  imageUrl?: string | null;
+  createdAt?: string;
+  plan?: "obsidiana";
+};
+type CommercialDirectoryResponse = {
+  representatives: MedicalRepresentative[];
+  catering: CateringService[];
 };
 
 type ReviewSummary = {
@@ -398,6 +415,8 @@ export default function VitaeonPlatform() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [representativesOpen, setRepresentativesOpen] = useState(false);
   const [representatives, setRepresentatives] = useState<MedicalRepresentative[]>([]);
+  const [cateringServices, setCateringServices] = useState<CateringService[]>([]);
+  const [commercialDirectoryTab, setCommercialDirectoryTab] = useState<"representatives" | "catering">("representatives");
   const [representativesLoading, setRepresentativesLoading] = useState(false);
   const [representativesError, setRepresentativesError] = useState("");
   const [urgentOpen, setUrgentOpen] = useState(false);
@@ -550,13 +569,21 @@ export default function VitaeonPlatform() {
 
   async function openRepresentatives() {
     setRepresentativesOpen(true);
-    if (representatives.length > 0) return;
+    if (representatives.length > 0 || cateringServices.length > 0) return;
     setRepresentativesLoading(true);
     setRepresentativesError("");
     try {
-      setRepresentatives(await clientApi<MedicalRepresentative[]>("/api/medical-representatives"));
+      const data = await clientApi<CommercialDirectoryResponse | MedicalRepresentative[]>("/api/medical-representatives");
+      if (Array.isArray(data)) {
+        setRepresentatives(data);
+        setCateringServices([]);
+      } else {
+        setRepresentatives(data.representatives);
+        setCateringServices(data.catering);
+      }
     } catch (caught) {
       setRepresentatives(defaultMedicalRepresentatives);
+      setCateringServices([]);
       setRepresentativesError(caught instanceof Error ? caught.message : "No fue posible cargar representantes médicos.");
     } finally {
       setRepresentativesLoading(false);
@@ -1114,26 +1141,85 @@ export default function VitaeonPlatform() {
       )}
 
       {representativesOpen && (
-        <Modal title="Representantes médicos" onClose={() => setRepresentativesOpen(false)} size="wide">
-          <div className="grid gap-4">
+        <Modal title="Representantes Médicos / Catering" onClose={() => setRepresentativesOpen(false)} size="wide">
+          <div className="grid gap-5">
             <p className="leading-7 text-slate-600">
-              Directorio inicial de laboratorios y representantes para contacto profesional dentro de la red VITAEON.
+              Directorio profesional para conectar médicos con representantes y servicios de catering activos dentro de VITAEON.
             </p>
+            <div className="inline-flex w-fit rounded-full border border-silver bg-slate-50 p-1 shadow-sm">
+              {[
+                { id: "representatives", label: "Representantes Médicos" },
+                { id: "catering", label: "Catering" }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCommercialDirectoryTab(item.id as "representatives" | "catering")}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    commercialDirectoryTab === item.id
+                      ? "bg-white text-deep shadow-sm"
+                      : "text-slate-500 hover:text-deep"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
             {representativesLoading && <p className="rounded-3xl bg-slate-50 p-5 text-slate-600">Cargando laboratorios...</p>}
             {representativesError && <p className="rounded-3xl bg-red-50 p-5 text-red-700">{representativesError}</p>}
-            {(representatives.length ? representatives : defaultMedicalRepresentatives).map((item) => (
-              <article key={`${item.lab}-${item.email}`} className="representative-option rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Farmacéutica</p>
-                <h3 className="mt-2 text-2xl font-semibold text-deep">{item.lab}</h3>
-                <p className="mt-2 leading-6 text-slate-600">{item.focus}</p>
-                <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                  <Line icon={<BadgeCheck className="h-5 w-5" />} text={item.representative} />
-                  <Line icon={<MapPin className="h-5 w-5" />} text={item.zone} />
-                  <Line icon={<LogIn className="h-5 w-5" />} text={item.phone} />
-                  <Line icon={<FileCheck2 className="h-5 w-5" />} text={item.email} />
-                </div>
-              </article>
-            ))}
+            {commercialDirectoryTab === "representatives" && (
+              <div className="grid gap-4">
+                {(representativesError ? defaultMedicalRepresentatives : representatives).map((item) => (
+                  <article key={`${item.lab}-${item.email}`} className="representative-option rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-premium">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Farmacéutica</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-deep">{item.lab}</h3>
+                      </div>
+                      <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">Obsidiana activa</span>
+                    </div>
+                    <p className="mt-2 leading-6 text-slate-600">{item.focus}</p>
+                    <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                      <Line icon={<BadgeCheck className="h-5 w-5" />} text={item.representative} />
+                      <Line icon={<MapPin className="h-5 w-5" />} text={item.zone} />
+                      <Line icon={<LogIn className="h-5 w-5" />} text={item.phone} />
+                      <Line icon={<FileCheck2 className="h-5 w-5" />} text={item.email} />
+                    </div>
+                  </article>
+                ))}
+                {!representativesLoading && !representativesError && representatives.length === 0 && (
+                  <p className="rounded-[1.5rem] border border-dashed border-silver bg-slate-50 p-6 text-slate-600">
+                    Aún no hay representantes médicos activos.
+                  </p>
+                )}
+              </div>
+            )}
+            {commercialDirectoryTab === "catering" && (
+              <div className="grid gap-4">
+                {cateringServices.map((item) => (
+                  <article key={item.id} className="rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-premium">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Catering médico</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-deep">{item.name}</h3>
+                      </div>
+                      <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">Obsidiana activa</span>
+                    </div>
+                    <p className="mt-2 leading-6 text-slate-600">{item.description}</p>
+                    <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                      <Line icon={<Leaf className="h-5 w-5" />} text={item.cityOrZone} />
+                      <Line icon={<LogIn className="h-5 w-5" />} text={item.phone} />
+                      <Line icon={<FileCheck2 className="h-5 w-5" />} text={item.email} />
+                    </div>
+                  </article>
+                ))}
+                {!representativesLoading && cateringServices.length === 0 && (
+                  <p className="rounded-[1.5rem] border border-dashed border-silver bg-slate-50 p-6 text-slate-600">
+                    Próximamente habrá servicios de catering disponibles.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -1262,7 +1348,7 @@ function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => v
           className="flex items-center gap-1.5 text-sm text-medical/75 underline-offset-2 transition hover:text-medical hover:underline"
         >
           <WalletCards className="h-3.5 w-3.5" />
-          Representantes médicos
+          Representantes / Catering
         </button>
       </div>
     </div>

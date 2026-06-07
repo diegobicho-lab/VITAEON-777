@@ -70,6 +70,29 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum MarketplaceListingType {
+  MEDICAL_REPRESENTATIVE
+  CATERING
+}
+
+enum MarketplaceListingStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum MarketplacePlan {
+  obsidiana
+}
+
+enum MarketplaceSubscriptionStatus {
+  PENDING
+  ACTIVE
+  FAILED
+  CANCELLED
+}
+
 enum ReviewStatus {
   PUBLISHED
   PENDING_REVIEW
@@ -502,6 +525,55 @@ model MedicationSearchLog {
   createdAt DateTime @default(now())
 
   @@index([doctorId, createdAt])
+}
+
+model MarketplaceListing {
+  id                     String                        @id @default(cuid())
+  type                   MarketplaceListingType
+  name                   String
+  description            String                        @db.Text
+  cityOrZone             String
+  contactName            String?
+  phone                  String?
+  email                  String?
+  imageUrl               String?
+  status                 MarketplaceListingStatus      @default(PENDING)
+  plan                   MarketplacePlan               @default(obsidiana)
+  subscriptionStatus     MarketplaceSubscriptionStatus @default(PENDING)
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  providerSessionId      String?
+  activeUntil            DateTime?
+  payments               MarketplaceSubscriptionPayment[]
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+
+  @@unique([type, name, cityOrZone])
+  @@index([type, status, subscriptionStatus, createdAt])
+  @@index([providerSubscriptionId])
+}
+
+model MarketplaceSubscriptionPayment {
+  id                     String              @id @default(cuid())
+  listingId              String
+  listing                MarketplaceListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  plan                   MarketplacePlan     @default(obsidiana)
+  amountCents            Int                 @default(0)
+  currency               String              @default("mxn")
+  status                 PaymentStatus       @default(PENDING)
+  provider               PaymentProvider     @default(STRIPE)
+  providerSessionId      String?
+  providerPaymentId      String?
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  currentPeriodEnd       DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@index([listingId, status, createdAt])
+  @@index([providerSessionId])
+  @@index([providerCustomerId])
+  @@index([providerSubscriptionId])
 }
 
 model AuditLog {

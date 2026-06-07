@@ -202,6 +202,28 @@ export const subscriptionCheckoutSchema = z.object({
   plan: z.enum(["oro", "diamante", "amatista"])
 });
 
+export const marketplaceListingSchema = z.object({
+  type: z.enum(["MEDICAL_REPRESENTATIVE", "CATERING"]),
+  name: z.string().trim().min(3).max(160),
+  description: z.string().trim().min(8).max(1200),
+  cityOrZone: z.string().trim().min(3).max(160),
+  contactName: z.string().trim().max(160).optional(),
+  phone: z.string().trim().max(40).optional(),
+  email: emailSchema.optional(),
+  imageUrl: z.string().trim().max(500).optional(),
+  status: z.enum(["PENDING", "ACTIVE", "INACTIVE", "REJECTED"]).optional()
+});
+
+export const marketplaceStatusSchema = z.object({
+  listingId: z.string().min(1),
+  status: z.enum(["PENDING", "ACTIVE", "INACTIVE", "REJECTED"]),
+  subscriptionStatus: z.enum(["PENDING", "ACTIVE", "FAILED", "CANCELLED"]).optional()
+});
+
+export const marketplaceSubscriptionCheckoutSchema = z.object({
+  listingId: z.string().min(1)
+});
+
 export const cancellationRequestSchema = z.object({
   appointmentId: z.string().min(1),
   reason: z.string().trim().min(6).max(600)

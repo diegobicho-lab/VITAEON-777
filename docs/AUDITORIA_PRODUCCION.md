@@ -52,6 +52,8 @@
   - `GET/POST /api/hospitals`
   - `GET /api/audit-logs`
   - `GET /api/medical-representatives`
+  - `GET/POST/PATCH /api/admin/marketplace-listings`
+  - `POST /api/marketplace-subscriptions/checkout`
 - Se agregaron sesiones firmadas con cookie HTTP-only.
 - Se agregó middleware para proteger dashboards por rol.
 - Se agregaron validaciones con Zod.
@@ -75,6 +77,8 @@
 - Se rechazaron URLs públicas directas en verificación médica.
 - Se agregaron headers de seguridad ampliados en `next.config.mjs`.
 - Se agregaron pruebas unitarias y e2e base.
+- Se agregó el directorio comercial “Representantes Médicos / Catering” con tabs visuales, estados vacíos premium, publicación pública solo con estado activo y suscripción Obsidiana activa.
+- Se agregó la suscripción mensual Obsidiana para representantes médicos y catering, separada de planes médicos y preparada para Stripe hacia la cuenta administradora de VITAEON.
 
 ## Prioridades técnicas
 

@@ -141,7 +141,9 @@ Durante beta privada, `BETA_ALLOW_INDEXING=false` evita indexación accidental. 
 - `GET/POST /api/specialties`: catálogo público y alta administrativa.
 - `GET/POST /api/hospitals`: catálogo público y alta administrativa.
 - `GET /api/audit-logs`: auditoría para administración.
-- `GET /api/medical-representatives`: contactos de representantes médicos.
+- `GET /api/medical-representatives`: directorio público de representantes médicos y catering con Obsidiana activa.
+- `GET/POST/PATCH /api/admin/marketplace-listings`: administración de representantes médicos, catering y estado de Obsidiana.
+- `POST /api/marketplace-subscriptions/checkout`: activación o checkout mensual Obsidiana para representantes/catering; los pagos entran a la cuenta VITAEON.
 - `GET /api/doctor-agenda`: agenda médica ordenada por días y horarios publicados.
 - `GET /api/doctor-agenda?month=YYYY-MM`: calendario médico mensual con disponibilidad y citas.
 - `GET/POST /api/doctor-assistant`: secretaria médica virtual para plan Amatista.
