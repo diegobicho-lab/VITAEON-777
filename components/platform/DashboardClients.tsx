@@ -550,13 +550,17 @@ function Badge({ value }: { value: string }) {
   const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW", "AUTO_CANCELLED"].includes(value);
   const refund = ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED"].includes(value);
   const tone = success
-    ? "bg-emerald-50 text-emerald-700"
+    ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
     : danger
-      ? "bg-red-50 text-red-700"
+      ? "border border-red-100 bg-red-50 text-red-700"
       : refund
-        ? "bg-sky-50 text-sky-700"
-        : "bg-amber-50 text-amber-700";
-  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{readableStatus(value)}</span>;
+        ? "border border-sky-100 bg-sky-50 text-sky-700"
+        : "border border-amber-100 bg-amber-50 text-amber-700";
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold leading-none ${tone}`}>
+      {readableStatus(value)}
+    </span>
+  );
 }
 
 function paymentReadableStatus(status: string, provider: string) {
@@ -587,10 +591,12 @@ function PaymentBadge({ status, provider }: { status: string; provider: string }
 
 function Shell({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#ffffff_55%,#eef7fb_100%)] px-5 pb-24 pt-32 text-ink">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#faf9f7_0%,#ffffff_50%,#eef5f8_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
       <section className="mx-auto max-w-7xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">{eyebrow}</p>
-        <h1 className="mt-3 text-5xl font-semibold text-deep">{title}</h1>
+        <header className="mb-8 border-b border-silver/40 pb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>
+          <h1 className="mt-3 text-4xl font-bold text-deep sm:text-5xl">{title}</h1>
+        </header>
         {children}
       </section>
     </main>
@@ -598,7 +604,17 @@ function Shell({ eyebrow, title, children }: { eyebrow: string; title: string; c
 }
 
 function LoadingState() {
-  return <div className="mt-8 flex items-center gap-3 rounded-3xl bg-white p-5 shadow-sm"><Loader2 className="h-5 w-5 animate-spin" /> Cargando información segura...</div>;
+  return (
+    <div className="mt-4">
+      <div className="mb-4 flex items-center gap-3 rounded-2xl border border-silver/60 bg-white px-5 py-4 text-slate-500 shadow-soft">
+        <Loader2 className="h-5 w-5 animate-spin text-medical" />
+        <span className="text-sm font-medium">Cargando información segura...</span>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => <div key={i} className="skeleton h-40 rounded-[1.5rem]" />)}
+      </div>
+    </div>
+  );
 }
 
 export function PatientDashboardClient() {
@@ -639,7 +655,7 @@ export function PatientDashboardClient() {
         <div className="mt-8 grid gap-5">
           {appointments.length === 0 && <EmptyState text="Aún no tienes citas registradas." />}
           {appointments.map((appointment) => (
-            <article key={appointment.id} className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <article key={appointment.id} className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold text-deep">{appointment.doctor.fullName}</h2>
@@ -648,7 +664,7 @@ export function PatientDashboardClient() {
                 <div className="flex gap-2"><Badge value={appointment.status} /><Badge value={appointment.payments[0]?.status ?? "PENDING"} /></div>
               </div>
               <p className="mt-5 flex items-center gap-3 text-slate-600"><Calendar className="h-5 w-5" /> {dateTime(appointment.availabilitySlot.startsAt)}</p>
-              <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+              <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Ticket</p>
                 <p className="mt-2 text-sm text-slate-600">Folio: {appointment.id}</p>
                 <p className="mt-1 text-sm text-slate-600">Estado de cita: {readableStatus(appointment.status)}</p>
@@ -670,8 +686,8 @@ export function PatientDashboardClient() {
               </div>
               {appointment.status === "NO_SHOW" && (
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Solicitar reagendar</button>
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Solicitar reagendar</button>
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
                 </div>
               )}
               {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
@@ -1538,7 +1554,7 @@ export function DoctorDashboardClient() {
     <Shell eyebrow="Médicos" title="Panel médico">
       {loading ? <LoadingState /> : (
         <div className="mt-8 grid gap-6">
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div>
                 <BadgeCheck className="h-8 w-8 text-medical" />
@@ -1551,21 +1567,21 @@ export function DoctorDashboardClient() {
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
               </div>
             </div>
-            <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
+            <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Secciones del panel">
               {sections.map(([id, label]) => (
                 <button
                   key={id}
                   onClick={() => setActiveSection(id)}
-                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${activeSection === id ? "bg-black text-white shadow-glass" : "border border-silver bg-white text-deep hover:bg-slate-50"}`}
+                  className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${activeSection === id ? "bg-[#071726] text-white shadow-soft" : "border border-silver/60 bg-white/80 text-slate-600 hover:border-silver hover:bg-white hover:text-deep"}`}
                 >
                   {label}
                 </button>
               ))}
-            </div>
-            {message && <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm font-semibold text-medical">{message}</p>}
+            </nav>
+            {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
 
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Onboarding beta privada</p>
@@ -1606,7 +1622,7 @@ export function DoctorDashboardClient() {
           </section>
 
           {activeSection === "resumen" && (
-            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Resumen clínico</p>
@@ -1707,7 +1723,7 @@ export function DoctorDashboardClient() {
           )}
 
           {activeSection === "suscripcion" && (
-            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Suscripción médica</p>
@@ -1740,7 +1756,7 @@ export function DoctorDashboardClient() {
           )}
 
           {activeSection === "cobros" && (
-            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Cobros y cuenta bancaria</p>
@@ -1769,7 +1785,7 @@ export function DoctorDashboardClient() {
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button
                       onClick={() => startConnectOnboarding().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir Stripe Connect."))}
-                      className="rounded-full bg-black px-5 py-3 font-semibold text-white"
+                      className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
                     >
                       {profile?.stripeAccountId ? "Actualizar datos de cobro" : "Configurar cuenta de cobro"}
                     </button>
@@ -1798,7 +1814,7 @@ export function DoctorDashboardClient() {
           )}
 
           {activeSection === "perfil" && (
-            <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Perfil público</p>
@@ -1807,30 +1823,30 @@ export function DoctorDashboardClient() {
                 <ShieldCheck className="h-8 w-8 text-medical" />
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Nombre profesional visible" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Precio MXN" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)} className="rounded-3xl bg-slate-50 px-4 py-3 outline-none">
+                <input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Nombre profesional visible" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Precio MXN" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)} className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
                   {specialties.map((specialty) => <option key={specialty.id} value={specialty.id}>{specialty.name}</option>)}
                 </select>
-                <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="rounded-3xl bg-slate-50 px-4 py-3 outline-none">
+                <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
                   {hospitals.map((hospital) => <option key={hospital.id} value={hospital.id}>{hospital.name} · {hospital.city}</option>)}
                 </select>
-                <input value={professionalLicense} onChange={(event) => setProfessionalLicense(event.target.value)} placeholder="Cédula profesional visible" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={university} onChange={(event) => setUniversity(event.target.value)} placeholder="Universidad o institución formadora" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <textarea value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Biografía profesional" className="min-h-28 rounded-3xl bg-slate-50 px-4 py-3 outline-none lg:col-span-2" />
-                <input value={subSpecialty} onChange={(event) => setSubSpecialty(event.target.value)} placeholder="Subespecialidad, posgrado o enfoque clínico" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none lg:col-span-2" />
-                <textarea value={achievementsText} onChange={(event) => setAchievementsText(event.target.value)} placeholder="Títulos profesionales y logros, uno por línea" className="min-h-24 rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <textarea value={certificationsText} onChange={(event) => setCertificationsText(event.target.value)} placeholder="Posgrados y certificaciones, uno por línea" className="min-h-24 rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={officeAddress} onChange={(event) => setOfficeAddress(event.target.value)} placeholder="Dirección del consultorio" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={officeReference} onChange={(event) => setOfficeReference(event.target.value)} placeholder="Piso, consultorio o referencia" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={cityState} onChange={(event) => setCityState(event.target.value)} placeholder="Ciudad y estado" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={mapsUrl} onChange={(event) => setMapsUrl(event.target.value)} placeholder="Google Maps o ubicación" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={professionalPhone} onChange={(event) => setProfessionalPhone(event.target.value)} placeholder="Teléfono profesional opcional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={instagramUrl} onChange={(event) => setInstagramUrl(event.target.value)} placeholder="Instagram profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={facebookUrl} onChange={(event) => setFacebookUrl(event.target.value)} placeholder="Facebook profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} placeholder="LinkedIn" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="Sitio web" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
-                <input value={whatsappUrl} onChange={(event) => setWhatsappUrl(event.target.value)} placeholder="WhatsApp profesional" className="rounded-3xl bg-slate-50 px-4 py-3 outline-none" />
+                <input value={professionalLicense} onChange={(event) => setProfessionalLicense(event.target.value)} placeholder="Cédula profesional visible" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={university} onChange={(event) => setUniversity(event.target.value)} placeholder="Universidad o institución formadora" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <textarea value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Biografía profesional" className="min-h-28 rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 lg:col-span-2" />
+                <input value={subSpecialty} onChange={(event) => setSubSpecialty(event.target.value)} placeholder="Subespecialidad, posgrado o enfoque clínico" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 lg:col-span-2" />
+                <textarea value={achievementsText} onChange={(event) => setAchievementsText(event.target.value)} placeholder="Títulos profesionales y logros, uno por línea" className="min-h-24 rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <textarea value={certificationsText} onChange={(event) => setCertificationsText(event.target.value)} placeholder="Posgrados y certificaciones, uno por línea" className="min-h-24 rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={officeAddress} onChange={(event) => setOfficeAddress(event.target.value)} placeholder="Dirección del consultorio" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={officeReference} onChange={(event) => setOfficeReference(event.target.value)} placeholder="Piso, consultorio o referencia" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={cityState} onChange={(event) => setCityState(event.target.value)} placeholder="Ciudad y estado" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={mapsUrl} onChange={(event) => setMapsUrl(event.target.value)} placeholder="Google Maps o ubicación" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={professionalPhone} onChange={(event) => setProfessionalPhone(event.target.value)} placeholder="Teléfono profesional opcional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={instagramUrl} onChange={(event) => setInstagramUrl(event.target.value)} placeholder="Instagram profesional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={facebookUrl} onChange={(event) => setFacebookUrl(event.target.value)} placeholder="Facebook profesional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} placeholder="LinkedIn" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="Sitio web" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={whatsappUrl} onChange={(event) => setWhatsappUrl(event.target.value)} placeholder="WhatsApp profesional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <div className="rounded-3xl bg-slate-50 px-4 py-3 lg:col-span-2">
                   <label className="text-sm font-semibold text-slate-600">Código promocional del médico</label>
                   <input value={affiliateCode} onChange={(event) => setAffiliateCode(event.target.value)} placeholder="Código de afiliación autorizado" className="mt-2 w-full bg-transparent outline-none" />
@@ -1886,7 +1902,7 @@ export function DoctorDashboardClient() {
                 </label>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <button onClick={updateProfile} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Guardar perfil</button>
+                <button onClick={updateProfile} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Guardar perfil</button>
                 <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="Referencia privada para verificación" className="min-w-64 rounded-full bg-slate-50 px-4 py-3 outline-none" />
                 <button onClick={submitVerification} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Enviar verificación</button>
               </div>
@@ -1899,7 +1915,7 @@ export function DoctorDashboardClient() {
 
           {activeSection === "notificaciones" && (
             <div className="grid gap-6">
-              <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+              <section className="dashboard-card rounded-[1.75rem] border-silver/70">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Herramientas clínicas Amatista</p>
@@ -1999,13 +2015,13 @@ export function DoctorDashboardClient() {
                   value={cancellationReason}
                   onChange={(event) => setCancellationReason(event.target.value)}
                   placeholder="Motivo de cancelación para revisión administrativa"
-                  className="mt-5 min-h-32 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none"
+                  className="mt-5 min-h-32 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
                 />
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   Esta acción crea una solicitud pendiente. Primero se intentará reagendar; una devolución queda como segunda opción de revisión, sin mezclar pagos de suscripciones.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="rounded-full bg-black px-5 py-3 font-semibold text-white">
+                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">
                     Enviar solicitud
                   </button>
                   <button onClick={() => setCancellationModal(null)} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">
@@ -2126,7 +2142,7 @@ export function AdminDashboardClient() {
             reviews={reviews}
             logs={logs}
           />
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Seguimiento clínico sensible</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Solicitudes que requieren revisión administrativa o seguimiento del equipo VITAEON.
@@ -2157,7 +2173,7 @@ export function AdminDashboardClient() {
                 ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Verificación médica</h2>
             <div className="mt-5 grid gap-4">
               {verifications.length === 0 && <EmptyState text="No hay verificaciones pendientes." />}
@@ -2178,24 +2194,24 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Catálogos clínicos</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl bg-slate-50 p-5">
                 <p className="font-semibold text-deep">Nueva especialidad</p>
-                <input value={specialtyName} onChange={(event) => setSpecialtyName(event.target.value)} placeholder="Ej. Cardiología pediátrica" className="mt-4 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+                <input value={specialtyName} onChange={(event) => setSpecialtyName(event.target.value)} placeholder="Ej. Cardiología pediátrica" className="mt-4 w-full rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <button onClick={createSpecialty} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Crear especialidad</button>
               </div>
               <div className="rounded-3xl bg-slate-50 p-5">
                 <p className="font-semibold text-deep">Nuevo hospital o clínica</p>
-                <input value={hospitalName} onChange={(event) => setHospitalName(event.target.value)} placeholder="Nombre del hospital" className="mt-4 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
-                <input value={hospitalCity} onChange={(event) => setHospitalCity(event.target.value)} placeholder="Ciudad" className="mt-3 w-full rounded-3xl bg-white px-4 py-3 outline-none" />
+                <input value={hospitalName} onChange={(event) => setHospitalName(event.target.value)} placeholder="Nombre del hospital" className="mt-4 w-full rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={hospitalCity} onChange={(event) => setHospitalCity(event.target.value)} placeholder="Ciudad" className="mt-3 w-full rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <button onClick={createHospital} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Crear hospital</button>
               </div>
             </div>
             {message && <p className="mt-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Médicos registrados</h2>
             <div className="mt-5 grid gap-3">
               {doctors.length === 0 && <EmptyState text="No hay médicos registrados." />}
@@ -2218,7 +2234,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Citas recientes</h2>
             <div className="mt-5 grid gap-3">
               {appointments.length === 0 && <EmptyState text="No hay citas registradas." />}
@@ -2233,7 +2249,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Pagos recientes</h2>
             <div className="mt-5 grid gap-3">
               {payments.length === 0 && <EmptyState text="No hay pagos registrados." />}
@@ -2248,7 +2264,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Ingresos por suscripciones médicas</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Trazabilidad administrativa de planes Oro, Diamante y Amatista procesados desde backend/Stripe.</p>
             <div className="mt-5 grid gap-3">
@@ -2264,7 +2280,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Pacientes</h2>
             <div className="mt-5 grid gap-3">
               {patients.length === 0 && <EmptyState text="No hay pacientes registrados." />}
@@ -2279,7 +2295,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Opiniones y moderación</h2>
             <div className="mt-5 grid gap-3">
               {(reviews?.reviews ?? []).length === 0 && <EmptyState text="No hay opiniones registradas." />}
@@ -2301,7 +2317,7 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
-          <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Últimos accesos y acciones</h2>
             <div className="mt-5 grid gap-3">
               {logs.slice(0, 12).map((log) => (
@@ -2363,7 +2379,7 @@ function BetaPrivateMode({
   ] satisfies Array<[string, number]>;
 
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Modo Beta Privada</p>
@@ -2471,7 +2487,7 @@ function DoctorAgendaPanel({
   }
 
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Agenda clínica</p>
@@ -2537,15 +2553,15 @@ function DoctorAgendaPanel({
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <label className="grid gap-2 text-sm font-semibold text-slate-600">
               Inicio
-              <input type="time" value={startTime} onChange={(event) => onStartTimeChange(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none" />
+              <input type="time" value={startTime} onChange={(event) => onStartTimeChange(event.target.value)} className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-slate-600">
               Fin
-              <input type="time" value={endTime} onChange={(event) => onEndTimeChange(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none" />
+              <input type="time" value={endTime} onChange={(event) => onEndTimeChange(event.target.value)} className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-slate-600">
               Duración
-              <select value={durationMinutes} onChange={(event) => onDurationChange(Number(event.target.value) as 45 | 60)} className="rounded-3xl bg-white px-4 py-3 outline-none">
+              <select value={durationMinutes} onChange={(event) => onDurationChange(Number(event.target.value) as 45 | 60)} className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
                 <option value={45}>45 min</option>
                 <option value={60}>60 min</option>
               </select>
@@ -2699,7 +2715,7 @@ function AmatistaClinicalHistoryPanel({
   const selectedHistory = selectedAppointment ? histories.find((history) => history.patientId === selectedAppointment.patient.id) : undefined;
 
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Historias clínicas orientadas</p>
@@ -2784,7 +2800,7 @@ function AmatistaClinicalHistoryPanel({
                 <textarea
                   value={form[field]}
                   onChange={(event) => setForm({ ...form, [field]: event.target.value })}
-                  className="mt-2 min-h-24 w-full rounded-3xl bg-slate-50 px-5 py-4 text-sm leading-6 outline-none"
+                  className="mt-2 min-h-24 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-4 text-sm leading-6 outline-none"
                 />
               </label>
             ))}
@@ -2854,7 +2870,7 @@ function AmatistaPrescriptionPanel({
   const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
 
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Recetario médico</p>
@@ -2965,13 +2981,13 @@ function AmatistaPrescriptionPanel({
                 <textarea
                   value={form[field]}
                   onChange={(event) => setForm({ ...form, [field]: event.target.value })}
-                  className="mt-2 min-h-20 w-full rounded-3xl bg-slate-50 px-5 py-4 text-sm leading-6 outline-none"
+                  className="mt-2 min-h-20 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-4 text-sm leading-6 outline-none"
                 />
               </label>
             ))}
           </div>
 
-          <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+          <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">Vista previa</p>
             <p className="mt-3 text-xl font-semibold text-deep">{template.doctorName || "Nombre del médico"}</p>
             <p className="text-sm text-slate-600">{template.specialty || "Especialidad"} · Cédula {template.professionalLicense || "no registrada"}</p>
@@ -3010,7 +3026,7 @@ function DoctorAssistantPanel({
   notifications: NotificationItem[];
 }) {
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Asistente virtual médico</p>
@@ -3026,7 +3042,7 @@ function DoctorAssistantPanel({
         </div>
       )}
       {secretary?.nextAppointment && (
-        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+        <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-medical">Próxima cita</p>
           <p className="mt-2 font-semibold text-deep">{secretary.nextAppointment.patientName}</p>
           <p className="mt-1 text-sm text-slate-600">{dateTime(secretary.nextAppointment.startsAt)} · {secretary.nextAppointment.status} · {secretary.nextAppointment.paymentStatus}</p>
@@ -3056,7 +3072,7 @@ function DoctorAssistantPanel({
         onChange={(event) => setPrompt(event.target.value)}
         placeholder="Ej. Organiza mis citas pendientes, detecta huecos libres o resume mi agenda de hoy..."
         disabled={locked}
-        className="mt-5 min-h-28 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none disabled:opacity-55"
+        className="mt-5 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55"
       />
       {locked && (
         <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
@@ -3065,7 +3081,7 @@ function DoctorAssistantPanel({
       )}
       <button onClick={onAsk} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Pedir apoyo de agenda</button>
       {response && (
-        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+        <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
           <p className="font-semibold text-deep">{response.title}: {response.specialty}</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">{response.priority}</p>
           <div className="mt-4 grid gap-2">
@@ -3094,7 +3110,7 @@ function MedicationSearchPanel({
   locked: boolean;
 }) {
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Referencia farmacológica</p>
@@ -3108,9 +3124,9 @@ function MedicationSearchPanel({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Ej. ibuprofeno"
           disabled={locked}
-          className="min-w-0 flex-1 rounded-3xl bg-slate-50 px-5 py-4 outline-none disabled:opacity-55"
+          className="min-w-0 flex-1 rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55"
         />
-        <button onClick={onSearch} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Buscar</button>
+        <button onClick={onSearch} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Buscar</button>
       </div>
       {locked && (
         <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
@@ -3118,7 +3134,7 @@ function MedicationSearchPanel({
         </p>
       )}
       {result && (
-        <div className="mt-5 rounded-3xl bg-slate-50 p-5">
+        <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">{result.status === "ready" ? "Fuente conectada" : "Integración pendiente"}</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">{result.disclaimer}</p>
           <div className="mt-4 grid gap-3">
@@ -3158,7 +3174,7 @@ function MedicalChatPanel(props: {
   onUpgrade: () => void;
 }) {
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Colaboración médica</p>
@@ -3181,16 +3197,16 @@ function MedicalChatPanel(props: {
         </div>
       )}
       <div className="mt-5 grid gap-3 rounded-3xl bg-slate-50 p-4">
-        <select disabled={props.locked} value={props.recipientDoctorId} onChange={(event) => props.setRecipientDoctorId(event.target.value)} className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55">
+        <select disabled={props.locked} value={props.recipientDoctorId} onChange={(event) => props.setRecipientDoctorId(event.target.value)} className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55">
           <option value="">Seleccionar médico destinatario</option>
           {props.doctors.map((doctor) => (
             <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.specialty} · {doctor.hospital}</option>
           ))}
         </select>
-        <input disabled={props.locked} value={props.conversationTitle} onChange={(event) => props.setConversationTitle(event.target.value)} placeholder="Título de la conversación" className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
-        <input disabled={props.locked} value={props.patientAlias} onChange={(event) => props.setPatientAlias(event.target.value)} placeholder="Alias del paciente, sin exponer datos innecesarios" className="rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
-        <textarea disabled={props.locked} value={props.clinicalSummary} onChange={(event) => props.setClinicalSummary(event.target.value)} placeholder="Resumen clínico breve para la derivación" className="min-h-24 rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
-        <textarea disabled={props.locked} value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Mensaje inicial o respuesta" className="min-h-20 rounded-3xl bg-white px-4 py-3 outline-none disabled:opacity-55" />
+        <input disabled={props.locked} value={props.conversationTitle} onChange={(event) => props.setConversationTitle(event.target.value)} placeholder="Título de la conversación" className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55" />
+        <input disabled={props.locked} value={props.patientAlias} onChange={(event) => props.setPatientAlias(event.target.value)} placeholder="Alias del paciente, sin exponer datos innecesarios" className="rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55" />
+        <textarea disabled={props.locked} value={props.clinicalSummary} onChange={(event) => props.setClinicalSummary(event.target.value)} placeholder="Resumen clínico breve para la derivación" className="min-h-24 rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55" />
+        <textarea disabled={props.locked} value={props.chatMessage} onChange={(event) => props.setChatMessage(event.target.value)} placeholder="Mensaje inicial o respuesta" className="min-h-20 rounded-2xl border border-silver/60 bg-white px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10 disabled:opacity-55" />
         <button disabled={props.locked} onClick={props.onCreate} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Crear conversación</button>
       </div>
       <div className="mt-5 grid gap-4">
@@ -3240,7 +3256,7 @@ function DoctorReviewPanel({
   onReply: (id: string) => void;
 }) {
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Opiniones recibidas</p>
@@ -3266,7 +3282,7 @@ function DoctorReviewPanel({
             ) : (
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <input value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Responder opinión" className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 outline-none" />
-                <button onClick={() => onReply(review.id)} className="rounded-full bg-black px-5 py-3 font-semibold text-white">Responder</button>
+                <button onClick={() => onReply(review.id)} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Responder</button>
               </div>
             )}
           </article>
@@ -3298,7 +3314,7 @@ function AppointmentList({
   onRejectRefund: (appointment: Appointment) => void;
 }) {
   return (
-    <section className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Citas clínicas</p>
@@ -3369,13 +3385,32 @@ function AppointmentList({
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <div className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">{icon}<p className="mt-5 text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p><p className="mt-2 text-4xl font-semibold text-deep">{value}</p></div>;
+  return (
+    <div className="dashboard-stat rounded-[1.75rem]">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-medical/10 text-medical">
+        {icon}
+      </div>
+      <p className="mt-4 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <p className="mt-1.5 text-3xl font-bold text-deep">{value}</p>
+    </div>
+  );
 }
 
 function ErrorState({ message }: { message: string }) {
-  return <div className="mt-8 rounded-3xl border border-red-100 bg-red-50 p-5 text-red-700">{message}</div>;
+  return (
+    <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex-none text-red-500">⚠</span>
+        <p>{message}</p>
+      </div>
+    </div>
+  );
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-3xl bg-slate-50 p-5 text-slate-600">{text}</div>;
+  return (
+    <div className="rounded-2xl border border-dashed border-silver/60 bg-slate-50/60 px-6 py-10 text-center">
+      <p className="text-sm text-slate-400">{text}</p>
+    </div>
+  );
 }

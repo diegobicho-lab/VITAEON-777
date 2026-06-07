@@ -3,6 +3,7 @@
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import Image from "next/image";
+import Link from "next/link";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -760,36 +761,52 @@ export default function VitaeonPlatform() {
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink">
       <Header user={user} onLogin={() => openAuth()} onLogout={logout} />
 
-      <main className="px-5 pb-24 pt-32">
-        <section className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-12 rounded-[2.5rem] px-0 py-8 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:px-8">
+      <main className="px-4 pb-24 pt-28 sm:px-5 sm:pt-32">
+        <section className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-10 rounded-[2rem] px-5 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:rounded-[2.5rem] lg:px-12 lg:py-12">
           <div className="soft-reveal">
-            <div className="inline-flex items-center gap-3 rounded-full border border-silver bg-white px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm">
-              <ShieldCheck className="h-5 w-5" />
-              Red médica privada con especialistas verificados
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-silver/80 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 shadow-soft">
+              <ShieldCheck className="h-4 w-4 text-medical" />
+              Red médica privada · Especialistas verificados
             </div>
-            <h1 className="mt-9 text-6xl font-semibold tracking-tight text-deep md:text-8xl">VITAEON</h1>
-            <p className="mt-7 max-w-3xl text-2xl leading-relaxed text-slate-600">
-              Conectando León en una sola red médica privada para priorizar la salud, el bienestar y el acceso a especialistas verificados con una experiencia clínica premium.
+            <h1 className="mt-7 text-5xl font-bold tracking-tight text-deep sm:text-6xl md:text-7xl lg:text-8xl">
+              VITAEON
+            </h1>
+            <p className="mt-5 max-w-xl text-xl leading-relaxed text-slate-500 sm:text-2xl">
+              Conectando León en una sola red médica privada. Especialistas verificados, agenda digital y experiencia clínica premium.
             </p>
-            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-              <button onClick={() => setBookingOpen(true)} className="rounded-full bg-black px-8 py-4 font-semibold text-white shadow-glass transition hover:-translate-y-0.5 hover:bg-deep">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => setBookingOpen(true)}
+                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#071726] px-8 py-4 font-semibold text-white shadow-glass transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]"
+              >
+                <Calendar className="h-4 w-4" />
                 Agendar cita
               </button>
-              <a href="#especialidades" className="rounded-full border border-silver bg-white px-8 py-4 text-center font-semibold text-deep shadow-sm transition hover:-translate-y-0.5">
-                Explorar especialidades
+              <a
+                href="#especialidades"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium"
+              >
+                <Stethoscope className="h-4 w-4" />
+                Especialidades
               </a>
             </div>
             <HeroStats onRepresentativesClick={openRepresentatives} />
           </div>
-          <div className="editorial-image relative overflow-hidden rounded-[2rem] border border-silver bg-white shadow-premium">
-            <video className="h-[540px] w-full object-cover" autoPlay muted loop playsInline poster="/doctor-diagnosis.jpg">
+          <div className="editorial-image relative overflow-hidden rounded-[2rem] border border-silver/70 bg-white shadow-premium">
+            <video
+              className="h-[400px] w-full object-cover sm:h-[480px] lg:h-[540px]"
+              autoPlay muted loop playsInline
+              poster="/doctor-diagnosis.jpg"
+            >
               <source src="/vitaeon-hero.mov" type="video/quicktime" />
             </video>
-            <div className="absolute bottom-6 left-6 right-6 rounded-[2rem] bg-white/90 p-6 shadow-glass backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Ruta clínica personalizada</p>
-              <div className="mt-3 flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-semibold text-deep">Diagnóstico inteligente</h2>
-                <HeartPulse className="h-8 w-8" />
+            <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/90 p-5 shadow-glass backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:rounded-[2rem] sm:p-6">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-400">Ruta clínica personalizada</p>
+              <div className="mt-2.5 flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold text-deep sm:text-2xl">Diagnóstico inteligente</h2>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-medical/10 text-medical">
+                  <HeartPulse className="h-5 w-5" />
+                </div>
               </div>
             </div>
           </div>
@@ -799,21 +816,21 @@ export default function VitaeonPlatform() {
           <IntelligentGuide specialties={specialties} onSpecialtySelect={(id) => chooseSpecialty(id, true)} />
         </section>
 
-        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl rounded-[2rem] p-5 shadow-premium">
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
-            <FieldIcon icon={<Search className="h-5 w-5" />}>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar médico, subespecialidad o servicio" className="w-full bg-transparent outline-none" />
+        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 rounded-[2rem] p-5 shadow-premium">
+          <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr]">
+            <FieldIcon icon={<Search className="h-4 w-4" />}>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Médico, subespecialidad o servicio" className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:shadow-none focus:ring-0" />
             </FieldIcon>
-            <FieldIcon icon={<Stethoscope className="h-5 w-5" />}>
-	              <select value={specialtyId} onChange={(event) => chooseSpecialty(event.target.value)} className="w-full bg-transparent outline-none">
+            <FieldIcon icon={<Stethoscope className="h-4 w-4" />}>
+              <select value={specialtyId} onChange={(event) => chooseSpecialty(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
                 <option value="">Todas las especialidades</option>
                 {specialties.map((specialty) => (
                   <option key={specialty.id} value={specialty.id}>{specialty.name}</option>
                 ))}
               </select>
             </FieldIcon>
-            <FieldIcon icon={<Hospital className="h-5 w-5" />}>
-              <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="w-full bg-transparent outline-none">
+            <FieldIcon icon={<Hospital className="h-4 w-4" />}>
+              <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
                 <option value="">Todos los hospitales</option>
                 {hospitals.map((hospital) => (
                   <option key={hospital.id} value={hospital.id}>{hospital.name}</option>
@@ -824,7 +841,7 @@ export default function VitaeonPlatform() {
           {searchSuggestions.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {searchSuggestions.map((suggestion) => (
-                <button key={suggestion} onClick={() => setQuery(suggestion)} className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:text-deep">
+                <button key={suggestion} onClick={() => setQuery(suggestion)} className="rounded-full border border-silver/60 bg-white px-4 py-2 text-xs font-semibold text-slate-500 shadow-soft transition hover:-translate-y-0.5 hover:border-silver hover:text-deep">
                   {suggestion}
                 </button>
               ))}
@@ -979,11 +996,12 @@ export default function VitaeonPlatform() {
 
       <button
         onClick={() => setUrgentOpen(true)}
-        className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-600/92 px-4 py-3 text-sm font-semibold text-white shadow-premium backdrop-blur transition hover:-translate-y-0.5 hover:bg-red-700"
+        className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2.5 rounded-full bg-red-600 px-5 py-3.5 text-sm font-semibold text-white shadow-[0_8px_32px_rgba(220,38,38,0.35)] transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[0_12px_40px_rgba(220,38,38,0.42)] active:scale-[0.97]"
         aria-label="Buscar cita pronta"
       >
         <Siren className="h-4 w-4" />
-        Cita pronta
+        <span className="hidden sm:inline">Cita pronta</span>
+        <span className="sm:hidden">Urgente</span>
       </button>
 
       {authOpen && (
@@ -1047,17 +1065,17 @@ export default function VitaeonPlatform() {
             )}
             {authMode === "register" && (
               <>
-                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" />
-                <select value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })} className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" disabled={Boolean(authAudience)}>
+                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <select value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })} className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" disabled={Boolean(authAudience)}>
                   <option value="PATIENT">Paciente</option>
                   <option value="DOCTOR">Médico</option>
                 </select>
               </>
             )}
-            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" />
-            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="rounded-3xl bg-slate-50 px-5 py-4 outline-none" />
+            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
-            <button type="button" onClick={submitAuth} className="rounded-full bg-black px-6 py-4 font-semibold text-white">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
+            <button type="button" onClick={submitAuth} className="rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
             <button type="button" onClick={toggleAuthMode} className="text-sm font-semibold text-medical">
               {authMode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
             </button>
@@ -1147,22 +1165,48 @@ export default function VitaeonPlatform() {
 }
 
 function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin: () => void; onLogout: () => void }) {
+  const dashboardPath = user
+    ? `/dashboard/${user.role === "DOCTOR" ? "doctor" : user.role === "ADMIN" || user.role === "STAFF" ? "admin" : "patient"}`
+    : null;
+
   return (
-    <header className="fixed inset-x-0 top-0 z-40 px-5 py-4">
-      <nav className="glass mx-auto flex max-w-7xl items-center justify-between rounded-full px-7 py-4 shadow-glass">
-        <div className="flex items-center gap-4">
-          <HeartPulse className="h-6 w-6 text-white" />
-          <span className="font-semibold tracking-[0.45em] text-deep">VITAEON</span>
-        </div>
-        <div className="hidden items-center gap-4 md:flex">
-          <a href="#busqueda" className="text-sm font-semibold text-slate-600">Especialistas</a>
-          {user && <a href={`/dashboard/${user.role === "DOCTOR" ? "doctor" : user.role === "ADMIN" || user.role === "STAFF" ? "admin" : "patient"}`} className="text-sm font-semibold text-slate-600">Panel</a>}
+    <header className="fixed inset-x-0 top-0 z-40 px-4 py-3 sm:px-5 sm:py-4">
+      <nav className="glass mx-auto flex max-w-7xl items-center justify-between rounded-full px-5 py-3 shadow-glass sm:px-7 sm:py-4">
+        <Link href="/" className="flex select-none items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071726]">
+            <HeartPulse className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-sm font-bold tracking-[0.42em] text-deep sm:text-base">VITAEON</span>
+        </Link>
+        <div className="hidden items-center gap-1 md:flex">
+          <a href="#busqueda" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
+            Especialistas
+          </a>
+          <a href="#especialidades" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
+            Áreas
+          </a>
+          {dashboardPath && (
+            <a href={dashboardPath} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
+              Mi panel
+            </a>
+          )}
         </div>
         {user ? (
-          <button onClick={onLogout} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep shadow-sm">Salir</button>
+          <div className="flex items-center gap-2">
+            {dashboardPath && (
+              <a href={dashboardPath} className="hidden rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium sm:inline-flex">
+                {user.name.split(" ")[0]}
+              </a>
+            )}
+            <button onClick={onLogout} className="rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-soft transition hover:-translate-y-0.5 hover:text-deep">
+              Salir
+            </button>
+          </div>
         ) : (
-          <button onClick={onLogin} className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 font-semibold text-white shadow-sm">
-            <LogIn className="h-4 w-4" /> Iniciar sesión
+          <button onClick={onLogin} className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638]">
+            <LogIn className="h-4 w-4" />
+            <span className="hidden sm:inline">Iniciar sesión</span>
+            <span className="sm:hidden">Entrar</span>
           </button>
         )}
       </nav>
@@ -1393,16 +1437,48 @@ function SubscriptionShowcase() {
 }
 
 function FieldIcon({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return <label className="flex items-center gap-4 rounded-3xl bg-slate-50 px-5 py-4 text-slate-500">{icon}{children}</label>;
+  return (
+    <label className="flex items-center gap-3 rounded-2xl border border-silver/60 bg-white px-5 py-3.5 text-slate-400 shadow-soft transition-all focus-within:border-medical/40 focus-within:ring-2 focus-within:ring-medical/10">
+      <span className="flex-none">{icon}</span>
+      {children}
+    </label>
+  );
 }
 
 function StateBlock({ loading, error, empty }: { loading: boolean; error: string; empty: boolean }) {
-  if (loading) return <div className="mx-auto mt-10 flex max-w-7xl items-center gap-3 rounded-3xl bg-white p-5 text-slate-600 shadow-sm"><Loader2 className="h-5 w-5 animate-spin" /> Cargando red médica...</div>;
-  if (error) return <div className="mx-auto mt-10 max-w-7xl rounded-3xl border border-red-100 bg-red-50 p-5 text-red-700">{error}</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto mt-10 max-w-7xl">
+        <div className="mb-4 flex items-center gap-3 rounded-[1.5rem] border border-silver bg-white px-6 py-4 text-slate-600 shadow-soft">
+          <Loader2 className="h-5 w-5 animate-spin text-medical" />
+          <span className="font-medium">Cargando red médica...</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton h-64 rounded-[2rem]" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="mx-auto mt-10 max-w-7xl rounded-[1.5rem] border border-red-100 bg-red-50 p-6 text-red-700">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-none" />
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
   if (empty) {
     return (
-      <div className="mx-auto mt-10 max-w-7xl rounded-3xl bg-white p-6 text-slate-600 shadow-sm">
-        Aún no hay especialistas disponibles en esta categoría. Estamos incorporando médicos verificados para la beta privada de VITAEON.
+      <div className="mx-auto mt-10 max-w-7xl rounded-[2rem] border border-silver bg-white p-10 text-center shadow-soft">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-50">
+          <Stethoscope className="h-7 w-7 text-slate-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-deep">Sin especialistas en esta categoría</h3>
+        <p className="mt-2 text-slate-500">Estamos incorporando médicos verificados para la beta privada de VITAEON.</p>
       </div>
     );
   }
@@ -1715,14 +1791,14 @@ function DoctorDetail(props: {
       )}
       <div className="mt-7">
         <label className="font-semibold text-slate-700">Disponibilidad real</label>
-        <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-3 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none">
+        <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-3 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
           {doctor.availability.length === 0 && <option value="">Sin horarios publicados</option>}
           {doctor.availability.map((slot) => <option key={slot.id} value={slot.id}>{dateTime(slot.startsAt)}</option>)}
         </select>
       </div>
       <div className="mt-5">
         <label className="font-semibold text-slate-700">Motivo de consulta</label>
-        <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-3 min-h-28 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none" placeholder="Describe brevemente el motivo principal." />
+        <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-3 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <button onClick={() => props.setPaymentMethod("CASH")} className={`rounded-3xl border px-5 py-4 font-semibold ${props.paymentMethod === "CASH" ? "border-black bg-black text-white" : "border-silver bg-white"}`}>Efectivo pendiente</button>
@@ -1844,24 +1920,45 @@ function DoctorReviews(props: {
 }
 
 function Line({ icon, text }: { icon: ReactNode; text: string }) {
-  return <p className="flex items-center gap-3">{icon}<span>{text}</span></p>;
+  return (
+    <p className="flex items-start gap-3 text-slate-600">
+      <span className="mt-0.5 flex-none text-slate-400">{icon}</span>
+      <span>{text}</span>
+    </p>
+  );
 }
 
 function Summary({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-3xl bg-slate-50 p-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p><p className="mt-2 font-semibold text-deep">{value}</p></div>;
+  return (
+    <div className="rounded-2xl border border-silver/60 bg-slate-50/80 p-4">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <p className="mt-1.5 font-semibold text-deep">{value}</p>
+    </div>
+  );
 }
 
 function EmptyCard({ title, text }: { title: string; text: string }) {
-  return <div className="rounded-3xl bg-slate-50 p-6"><h3 className="font-semibold text-deep">{title}</h3><p className="mt-2 text-slate-600">{text}</p></div>;
+  return (
+    <div className="rounded-[1.75rem] border border-dashed border-silver bg-slate-50/60 px-6 py-10 text-center">
+      <h3 className="font-semibold text-deep">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
+    </div>
+  );
 }
 
 function Modal({ title, children, onClose, size = "normal" }: { title: string; children: ReactNode; onClose: () => void; size?: "normal" | "wide" }) {
   return (
-    <div className="modal-shell fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-deep/30 px-5 py-6 backdrop-blur-sm">
-      <div className={`modal-panel w-full rounded-[2rem] border border-silver bg-white p-7 shadow-premium ${size === "wide" ? "max-w-6xl" : "max-w-xl"}`}>
+    <div className="modal-shell fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-deep/25 px-4 py-6 backdrop-blur-md sm:px-6">
+      <div className={`modal-panel w-full rounded-[2rem] border border-silver/60 bg-white p-6 shadow-premium sm:p-8 ${size === "wide" ? "max-w-6xl" : "max-w-xl"}`}>
         <div className="modal-header mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-3xl font-semibold text-deep">{title}</h2>
-          <button onClick={onClose} className="rounded-full bg-slate-50 px-4 py-2 font-semibold">Cerrar</button>
+          <h2 className="text-2xl font-semibold text-deep sm:text-3xl">{title}</h2>
+          <button
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-deep"
+            aria-label="Cerrar"
+          >
+            <span className="text-lg leading-none">×</span>
+          </button>
         </div>
         <div className="modal-scroll representatives-panel">
           {children}
@@ -1873,21 +1970,48 @@ function Modal({ title, children, onClose, size = "normal" }: { title: string; c
 
 function HowItWorks() {
   const steps = [
-    ["1", "Busca por especialidad", "Filtra médicos verificados por área clínica, hospital y disponibilidad."],
-    ["2", "Elige especialista", "Revisa trayectoria, cédula, hospital, precio y horarios reales."],
-    ["3", "Agenda con claridad", "Confirma fecha, método de pago y recibe tu ticket VITAEON."]
+    {
+      number: "01",
+      icon: <Search className="h-6 w-6" />,
+      title: "Busca por especialidad",
+      text: "Filtra médicos verificados por área clínica, hospital y disponibilidad real en León."
+    },
+    {
+      number: "02",
+      icon: <BadgeCheck className="h-6 w-6" />,
+      title: "Elige especialista",
+      text: "Revisa trayectoria, cédula profesional, hospital, precio y horarios publicados."
+    },
+    {
+      number: "03",
+      icon: <Calendar className="h-6 w-6" />,
+      title: "Agenda con claridad",
+      text: "Confirma fecha, método de pago y recibe tu ticket VITAEON al instante."
+    }
   ];
 
   return (
-    <section className="mx-auto mt-16 max-w-7xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Cómo funciona</p>
-      <h2 className="mt-3 text-4xl font-semibold text-deep">Una ruta médica simple, segura y premium.</h2>
-      <div className="mt-8 grid gap-5 md:grid-cols-3">
-        {steps.map(([number, title, text]) => (
-          <article key={number} className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-black font-semibold text-white">{number}</span>
-            <h3 className="mt-6 text-2xl font-semibold text-deep">{title}</h3>
-            <p className="mt-3 leading-7 text-slate-600">{text}</p>
+    <section className="mx-auto mt-20 max-w-7xl">
+      <div className="mb-10">
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Cómo funciona</p>
+        <h2 className="mt-3 text-4xl font-semibold leading-tight text-deep sm:text-5xl">
+          Una ruta médica simple,<br className="hidden sm:block" /> segura y premium.
+        </h2>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-3">
+        {steps.map((step, idx) => (
+          <article
+            key={step.number}
+            className={`stagger-${idx + 1} rounded-[2rem] border border-silver/80 bg-white p-7 shadow-soft transition hover:-translate-y-1 hover:shadow-premium`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#071726] text-white">
+                {step.icon}
+              </span>
+              <span className="font-mono text-4xl font-bold text-slate-100">{step.number}</span>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-deep">{step.title}</h3>
+            <p className="mt-3 leading-7 text-slate-500">{step.text}</p>
           </article>
         ))}
       </div>
@@ -1897,20 +2021,47 @@ function HowItWorks() {
 
 function Testimonials() {
   return (
-    <section className="mx-auto mt-16 grid max-w-7xl gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Confianza paciente</p>
-        <h2 className="mt-3 text-4xl font-semibold text-deep">Acompañamiento privado desde la primera búsqueda.</h2>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2">
-        <article className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
-          <p className="leading-7 text-slate-600">&ldquo;La información del especialista y el ticket de cita hacen que el proceso se sienta claro y confiable.&rdquo;</p>
-          <p className="mt-5 font-semibold text-deep">Paciente verificado</p>
-        </article>
-        <article className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
-          <p className="leading-7 text-slate-600">&ldquo;La agenda visible y la verificación médica ayudan a elegir con más seguridad.&rdquo;</p>
-          <p className="mt-5 font-semibold text-deep">Paciente VITAEON</p>
-        </article>
+    <section className="mx-auto mt-20 max-w-7xl">
+      <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Confianza paciente</p>
+          <h2 className="mt-3 text-4xl font-semibold leading-tight text-deep sm:text-5xl">
+            Acompañamiento privado desde la primera búsqueda.
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-slate-500">
+            Cada cita en VITAEON está respaldada por verificación médica, agenda transparente y experiencia digital de alto nivel.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            {
+              quote: "La información del especialista y el ticket de cita hacen que el proceso se sienta claro y confiable.",
+              author: "Paciente verificado",
+              detail: "León, Gto."
+            },
+            {
+              quote: "La agenda visible y la verificación médica ayudan a elegir con más seguridad.",
+              author: "Paciente VITAEON",
+              detail: "Beta privada"
+            }
+          ].map((t) => (
+            <article key={t.author} className="rounded-[2rem] border border-silver/80 bg-white p-7 shadow-soft">
+              <div className="mb-4 flex gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+              </div>
+              <p className="text-base leading-8 text-slate-600">&ldquo;{t.quote}&rdquo;</p>
+              <div className="mt-6 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-medical/10 text-medical">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-deep">{t.author}</p>
+                  <p className="text-xs text-slate-400">{t.detail}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1918,42 +2069,78 @@ function Testimonials() {
 
 function FAQ() {
   const items = [
-    ["¿Los médicos están verificados?", "La búsqueda pública muestra médicos con estado verificado. Administración puede revisar cédula y documentos desde el panel."],
-    ["¿Puedo pagar en efectivo?", "Sí. El sistema registra efectivo como pago pendiente para liquidarlo en consulta."],
-    ["¿VITAEON reemplaza una consulta médica?", "No. VITAEON facilita búsqueda, agenda y gestión; la valoración clínica corresponde al especialista."]
+    {
+      q: "¿Los médicos están verificados?",
+      a: "La búsqueda pública muestra solo médicos con estado verificado. Administración revisa cédula y documentos desde el panel interno."
+    },
+    {
+      q: "¿Puedo pagar en efectivo?",
+      a: "Sí. El sistema registra efectivo como pago pendiente para liquidarlo directamente en consulta."
+    },
+    {
+      q: "¿VITAEON reemplaza una consulta médica?",
+      a: "No. VITAEON facilita búsqueda, agenda y gestión digital; la valoración clínica corresponde al especialista."
+    }
   ];
 
   return (
-    <section className="mx-auto mt-16 max-w-7xl rounded-[2rem] border border-silver bg-white p-8 shadow-premium">
-      <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Preguntas frecuentes</p>
-      <div className="mt-6 grid gap-5 md:grid-cols-3">
-        {items.map(([question, answer]) => (
-          <article key={question} className="rounded-3xl bg-slate-50 p-5">
-            <h3 className="font-semibold text-deep">{question}</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{answer}</p>
-          </article>
-        ))}
+    <section className="mx-auto mt-20 max-w-7xl">
+      <div className="rounded-[2.5rem] border border-silver/70 bg-white px-8 py-10 shadow-soft sm:px-12 sm:py-14">
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Preguntas frecuentes</p>
+        <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">Respuestas rápidas</h2>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          {items.map(({ q, a }) => (
+            <article key={q} className="rounded-2xl border border-silver/60 bg-slate-50/60 p-5">
+              <h3 className="font-semibold leading-6 text-deep">{q}</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-500">{a}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
 function LegalLinks() {
+  const links = [
+    { href: "/aviso-de-privacidad", label: "Privacidad" },
+    { href: "/terminos", label: "Términos" },
+    { href: "/politica-cancelaciones", label: "Cancelaciones" },
+    { href: "/politica-reembolsos", label: "Reembolsos" },
+    { href: "/consentimiento-datos", label: "Consentimiento" },
+    { href: "/urgencias", label: "Urgencias" },
+    { href: "/soporte", label: "Soporte" }
+  ];
+
   return (
-    <footer className="mx-auto mt-16 max-w-7xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="font-semibold tracking-[0.35em] text-deep">VITAEON</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Medicina privada, tecnología clínica y experiencia premium para el paciente.</p>
+    <footer className="mx-auto mb-8 mt-20 max-w-7xl">
+      <div className="rounded-[2rem] border border-silver/70 bg-white px-6 py-8 shadow-soft sm:px-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071726]">
+                <HeartPulse className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-sm font-bold tracking-[0.42em] text-deep">VITAEON</p>
+            </div>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500">
+              Medicina privada, tecnología clínica y experiencia premium para el paciente en León, Guanajuato.
+            </p>
+          </div>
+          <nav className="flex flex-wrap gap-2" aria-label="Legal">
+            {links.map(({ href, label }) => (
+              <a
+                key={href}
+                href={href}
+                className="rounded-full border border-silver/60 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-silver hover:bg-white hover:text-deep hover:shadow-soft"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
-          <a href="/aviso-de-privacidad" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Aviso de privacidad</a>
-          <a href="/terminos" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Términos</a>
-          <a href="/politica-cancelaciones" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Cancelaciones</a>
-          <a href="/politica-reembolsos" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Reembolsos</a>
-          <a href="/consentimiento-datos" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Consentimiento</a>
-          <a href="/urgencias" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Urgencias</a>
-          <a href="/soporte" className="rounded-full bg-slate-50 px-4 py-2 transition hover:bg-white hover:shadow-sm">Soporte</a>
+        <div className="mt-8 border-t border-silver/40 pt-6 text-center">
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} VITAEON · Red médica privada · León, Guanajuato · México</p>
         </div>
       </div>
     </footer>
