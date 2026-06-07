@@ -1269,104 +1269,51 @@ function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => v
 }
 
 function HeroMockup() {
-  const slots = [
-    { day: "Lun", date: "9 jun", time: "10:00 am", active: true },
-    { day: "Mar", date: "10 jun", time: "12:30 pm", active: false },
-    { day: "Jue", date: "12 jun", time: "9:00 am", active: false },
-  ];
   return (
-    <div className="flex h-[400px] flex-col p-6 sm:h-[480px] sm:p-7 lg:h-[540px]">
-      {/* Top bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-medical/25">
-            <HeartPulse className="h-3.5 w-3.5 text-[#67b8e8]" />
-          </div>
-          <span className="text-xs font-bold tracking-widest text-white/60">VITAEON</span>
-        </div>
-        <div className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-1.5">
-          <span className="relative flex h-1.5 w-1.5 flex-none">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          </span>
-          <span className="text-[0.65rem] font-medium text-white/55">León, Gto. · en vivo</span>
-        </div>
-      </div>
+    <div className="relative h-[400px] overflow-hidden sm:h-[480px] lg:h-[540px]">
+      {/* Animated orbs */}
+      <div className="absolute left-[-8%] top-[-12%] h-80 w-80 rounded-full bg-medical/40 blur-[72px] [animation:orbA_9s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[0%] right-[-8%] h-72 w-72 rounded-full bg-[#0e5580]/50 blur-[80px] [animation:orbB_11s_ease-in-out_infinite]" />
+      <div className="absolute left-[30%] top-[25%] h-60 w-60 rounded-full bg-[#1a80b8]/30 blur-[60px] [animation:orbC_7s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[25%] left-[5%] h-44 w-44 rounded-full bg-emerald-800/25 blur-[50px] [animation:orbA_14s_ease-in-out_infinite_reverse]" />
 
-      {/* Doctor card */}
-      <div className="mt-5 rounded-2xl bg-white/7 p-4 ring-1 ring-white/10">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-medical/25 text-sm font-bold text-[#67b8e8]">
-            AM
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white">Dr. Arturo Medina</p>
-            <p className="text-xs text-white/50">Cardiología · Hosp. Ángeles León</p>
-          </div>
-          <div className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1">
-            <BadgeCheck className="h-3 w-3 text-emerald-400" />
-            <span className="text-[0.6rem] font-bold text-emerald-400">Verificado</span>
+      {/* Center content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+        {/* Pulse ring */}
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <span className="absolute h-full w-full animate-ping rounded-full bg-medical/12" style={{ animationDuration: "2.4s" }} />
+          <span className="absolute h-[80%] w-[80%] animate-ping rounded-full bg-medical/18" style={{ animationDuration: "2.4s", animationDelay: "0.6s" }} />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
+            <HeartPulse className="h-8 w-8 text-white/85" />
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-5 border-t border-white/8 pt-3">
-          <div className="flex items-center gap-1.5">
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-semibold text-white/80">4.9</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-white/35" />
-            <span className="text-xs text-white/45">14 años exp.</span>
-          </div>
-          <span className="ml-auto text-xs font-bold text-white/80">$1,200 MXN</span>
-        </div>
-      </div>
 
-      {/* Availability slots */}
-      <div className="mt-4">
-        <p className="mb-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-white/30">Próxima disponibilidad</p>
-        <div className="grid grid-cols-3 gap-2">
-          {slots.map((slot) => (
-            <div
-              key={slot.time}
-              className={`rounded-xl p-2.5 text-center ring-1 ${
-                slot.active ? "bg-medical ring-medical/50" : "bg-white/6 ring-white/8"
-              }`}
+        {/* Trust badges */}
+        <div className="flex flex-wrap justify-center gap-2 px-8">
+          {[
+            { Icon: BadgeCheck, label: "Cédula verificada" },
+            { Icon: Calendar,   label: "Agenda digital" },
+            { Icon: ShieldCheck, label: "Red privada" },
+          ].map(({ Icon, label }) => (
+            <span
+              key={label}
+              className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/65 ring-1 ring-white/15 backdrop-blur-sm"
             >
-              <p className={`text-[0.55rem] font-semibold uppercase tracking-wide ${slot.active ? "text-white/75" : "text-white/30"}`}>
-                {slot.day} {slot.date}
-              </p>
-              <p className={`mt-0.5 text-xs font-bold ${slot.active ? "text-white" : "text-white/50"}`}>
-                {slot.time}
-              </p>
-            </div>
+              <Icon className="h-3 w-3 text-white/50" />
+              {label}
+            </span>
           ))}
         </div>
       </div>
 
-      {/* Payment + CTA */}
-      <div className="mt-3 flex items-center justify-between rounded-xl bg-white/6 px-4 py-2.5 ring-1 ring-white/8">
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-3.5 w-3.5 text-white/40" />
-          <span className="text-xs text-white/50">Pago en línea</span>
-        </div>
-        <span className="text-xs font-bold text-white/80">$1,200 MXN</span>
-      </div>
-      <div className="mt-2.5 flex items-center justify-center gap-2 rounded-xl bg-medical py-3">
-        <Calendar className="h-3.5 w-3.5 text-white" />
-        <span className="text-xs font-bold text-white">Confirmar cita</span>
-      </div>
-
-      {/* Push confirmation to bottom */}
-      <div className="min-h-0 flex-1" />
-
-      {/* Confirmation toast */}
-      <div className="flex items-center gap-3 rounded-2xl bg-white/94 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-md">
-        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-50">
+      {/* Confirmation card */}
+      <div className="absolute bottom-5 left-5 right-5 flex items-center gap-3 rounded-2xl bg-white/94 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-md sm:bottom-6 sm:left-6 sm:right-6">
+        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald-50">
           <CheckCircle2 className="h-5 w-5 text-emerald-500" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-deep">Cita confirmada</p>
-          <p className="text-xs text-slate-500">Lun 9 jun · 10:00 am · Dr. Medina</p>
+          <p className="text-sm font-semibold text-deep">Médicos verificados</p>
+          <p className="text-xs text-slate-500">Cédula profesional · León, Gto.</p>
         </div>
         <span className="relative ml-auto flex h-2 w-2 flex-none">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
