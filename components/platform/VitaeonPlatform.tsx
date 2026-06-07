@@ -819,7 +819,7 @@ export default function VitaeonPlatform() {
             </div>
             <HeroStats onRepresentativesClick={openRepresentatives} />
           </div>
-          <div className="editorial-image relative overflow-hidden rounded-[2rem] bg-[#0c1f2e] shadow-premium">
+          <div className="editorial-image relative">
             <HeroMockup />
           </div>
         </section>
@@ -1270,55 +1270,99 @@ function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => v
 
 function HeroMockup() {
   return (
-    <div className="relative h-[400px] overflow-hidden sm:h-[480px] lg:h-[540px]">
-      {/* Animated orbs */}
-      <div className="absolute left-[-8%] top-[-12%] h-80 w-80 rounded-full bg-medical/40 blur-[72px] [animation:orbA_9s_ease-in-out_infinite]" />
-      <div className="absolute bottom-[0%] right-[-8%] h-72 w-72 rounded-full bg-[#0e5580]/50 blur-[80px] [animation:orbB_11s_ease-in-out_infinite]" />
-      <div className="absolute left-[30%] top-[25%] h-60 w-60 rounded-full bg-[#1a80b8]/30 blur-[60px] [animation:orbC_7s_ease-in-out_infinite]" />
-      <div className="absolute bottom-[25%] left-[5%] h-44 w-44 rounded-full bg-emerald-800/25 blur-[50px] [animation:orbA_14s_ease-in-out_infinite_reverse]" />
+    <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
 
-      {/* Center content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-        {/* Pulse ring */}
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <span className="absolute h-full w-full animate-ping rounded-full bg-medical/12" style={{ animationDuration: "2.4s" }} />
-          <span className="absolute h-[80%] w-[80%] animate-ping rounded-full bg-medical/18" style={{ animationDuration: "2.4s", animationDelay: "0.6s" }} />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm">
-            <HeartPulse className="h-8 w-8 text-white/85" />
+      {/* ── Morphing blob — forma orgánica con gradiente ── */}
+      <div
+        className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)] [animation:blobMorph_9s_ease-in-out_infinite]"
+        style={{ backgroundColor: "#0a1c2e" }}
+      >
+        <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/45 blur-[64px] [animation:orbA_9s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/55 blur-[72px] [animation:orbB_11s_ease-in-out_infinite]" />
+        <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/28 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[20%] left-[5%] h-40 w-40 rounded-full bg-emerald-800/20 blur-[44px] [animation:orbA_14s_ease-in-out_infinite_reverse]" />
+      </div>
+
+      {/* ── Tarjetas 3D flotantes ── */}
+      <div className="relative z-10 w-full px-7 sm:px-9" style={{ perspective: "700px" }}>
+
+        {/* Doctor — profundidad trasera */}
+        <div
+          className="mb-3 [animation:floatA_5s_ease-in-out_infinite]"
+          style={{ transform: "rotateX(7deg) rotateY(-6deg) translateZ(-20px)" }}
+        >
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/12 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-medical/30 text-sm font-bold text-[#67b8e8]">
+                AM
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Dr. Arturo Medina</p>
+                <p className="text-xs text-white/50">Cardiología · Hosp. Ángeles</p>
+              </div>
+              <div className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-500/18 px-2.5 py-1">
+                <BadgeCheck className="h-3 w-3 text-emerald-400" />
+                <span className="text-[0.6rem] font-bold text-emerald-400">Verificado</span>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-4 border-t border-white/8 pt-3">
+              <div className="flex items-center gap-1.5">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                <span className="text-xs font-semibold text-white/80">4.9</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-white/35" />
+                <span className="text-xs text-white/45">14 años exp.</span>
+              </div>
+              <span className="ml-auto text-xs font-bold text-white/75">$1,200 MXN</span>
+            </div>
           </div>
         </div>
 
-        {/* Trust badges */}
-        <div className="flex flex-wrap justify-center gap-2 px-8">
-          {[
-            { Icon: BadgeCheck, label: "Cédula verificada" },
-            { Icon: Calendar,   label: "Agenda digital" },
-            { Icon: ShieldCheck, label: "Red privada" },
-          ].map(({ Icon, label }) => (
-            <span
-              key={label}
-              className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/65 ring-1 ring-white/15 backdrop-blur-sm"
-            >
-              <Icon className="h-3 w-3 text-white/50" />
-              {label}
-            </span>
-          ))}
+        {/* Slots — profundidad media */}
+        <div
+          className="mb-3 [animation:floatB_4s_ease-in-out_0.7s_infinite]"
+          style={{ transform: "rotateX(3deg) rotateY(-3deg) translateZ(12px)" }}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Lun 9 jun", time: "10:00 am", active: true },
+              { label: "Mar 10 jun", time: "12:30 pm", active: false },
+              { label: "Jue 12 jun", time: "9:00 am",  active: false },
+            ].map((s) => (
+              <div
+                key={s.time}
+                className={`rounded-xl p-2.5 text-center ring-1 ${
+                  s.active ? "bg-medical ring-medical/50" : "bg-white/7 ring-white/8"
+                }`}
+              >
+                <p className={`text-[0.5rem] font-semibold leading-tight ${s.active ? "text-white/75" : "text-white/30"}`}>{s.label}</p>
+                <p className={`mt-0.5 text-xs font-bold ${s.active ? "text-white" : "text-white/50"}`}>{s.time}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Confirmation card */}
-      <div className="absolute bottom-5 left-5 right-5 flex items-center gap-3 rounded-2xl bg-white/94 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-md sm:bottom-6 sm:left-6 sm:right-6">
-        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald-50">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+        {/* Confirmación — profundidad delantera */}
+        <div
+          className="[animation:floatC_6s_ease-in-out_1.4s_infinite]"
+          style={{ transform: "rotateX(1deg) rotateY(-1deg) translateZ(36px)" }}
+        >
+          <div className="flex items-center gap-3 rounded-2xl bg-white/95 p-4 shadow-[0_10px_40px_rgba(0,0,0,0.22)] backdrop-blur-md">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-50">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-deep">Cita confirmada</p>
+              <p className="text-xs text-slate-500">Lun 9 jun · 10:00 am · Dr. Medina</p>
+            </div>
+            <span className="relative ml-auto flex h-2 w-2 flex-none">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-deep">Médicos verificados</p>
-          <p className="text-xs text-slate-500">Cédula profesional · León, Gto.</p>
-        </div>
-        <span className="relative ml-auto flex h-2 w-2 flex-none">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-        </span>
+
       </div>
     </div>
   );
