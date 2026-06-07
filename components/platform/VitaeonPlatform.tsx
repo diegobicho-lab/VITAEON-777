@@ -28,7 +28,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
@@ -854,14 +854,22 @@ export default function VitaeonPlatform() {
 
         <StateBlock loading={loading || doctorsLoading} error={error} empty={!doctorsLoading && doctors.length === 0} />
 
-        <section className="mx-auto mt-12 grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="doctor-results-grid grid gap-5">
-            {doctors.map((doctor) => (
-	              <DoctorCard key={doctor.id} doctor={doctor} selected={selectedDoctor?.id === doctor.id} onSelect={() => selectDoctor(doctor)} />
-            ))}
+        <section className="mx-auto mt-16 grid max-w-7xl gap-6 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_460px]">
+          <div>
+            {/* Doctor count header */}
+            {doctors.length > 0 && !doctorsLoading && (
+              <p className="mb-4 text-sm text-slate-500">
+                <span className="font-semibold text-deep">{doctors.length}</span> médico{doctors.length !== 1 ? "s" : ""} encontrado{doctors.length !== 1 ? "s" : ""}
+              </p>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {doctors.map((doctor) => (
+                <DoctorCard key={doctor.id} doctor={doctor} selected={selectedDoctor?.id === doctor.id} onSelect={() => selectDoctor(doctor)} />
+              ))}
+            </div>
           </div>
 
-          <aside className="h-fit rounded-[2rem] border border-silver bg-white p-6 shadow-premium lg:sticky lg:top-32">
+          <aside className="h-fit rounded-[2rem] border border-silver/70 bg-white shadow-soft lg:sticky lg:top-28">
             {selectedDoctor ? (
               <DoctorDetail
                 doctor={selectedDoctor}
@@ -1354,56 +1362,178 @@ function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Spe
   );
 }
 
-function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties: Specialty[]; selectedId: string; onSelect: (id: string) => void }) {
-  const [previewId, setPreviewId] = useState(selectedId);
-  const activeId = previewId || selectedId;
-  const activeSpecialty = specialties.find((item) => item.id === activeId) ?? specialties.find((item) => item.id === selectedId);
-  const activeImage = specialtyImageFor(activeSpecialty?.name);
+const SPECIALTY_CATEGORIES: Array<{ id: string; label: string; icon: string; keywords: RegExp }> = [
+  { id: "all",        label: "Todas",              icon: "✦", keywords: /.*/ },
+  { id: "general",   label: "Medicina general",   icon: "🩺", keywords: /interna|familiar|geriatr/i },
+  { id: "corazon",   label: "Corazón y metab.",   icon: "❤️", keywords: /cardio|endocrin|hemato|onco/i },
+  { id: "mente",     label: "Mente y neurología", icon: "🧠", keywords: /neuro|psico|psiqu/i },
+  { id: "huesos",    label: "Huesos y movilidad", icon: "🦴", keywords: /trauma|ortoped|reuma|rehab|deport/i },
+  { id: "digestivo", label: "Digestivo y renal",  icon: "💧", keywords: /gastro|nefro|uro|infecto/i },
+  { id: "resp",      label: "Respiratorio y ORL", icon: "🌬️", keywords: /neumo|otorrino|neumolog/i },
+  { id: "piel",      label: "Piel y sensorial",   icon: "👁️", keywords: /derma|oftal/i },
+  { id: "mujer",     label: "Mujer y familia",    icon: "🌸", keywords: /ginec|pediatr|nutri/i },
+  { id: "cirugia",   label: "Cirugía",            icon: "⚕️", keywords: /cirugía|anest|radiolog/i },
+];
 
-  useEffect(() => {
-    if (selectedId) setPreviewId(selectedId);
-  }, [selectedId]);
+function categoryOf(name: string): string {
+  const n = name.toLowerCase();
+  for (const cat of SPECIALTY_CATEGORIES.slice(1)) {
+    if (cat.keywords.test(n)) return cat.id;
+  }
+  return "general";
+}
+
+function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties: Specialty[]; selectedId: string; onSelect: (id: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const visibleCategories = useMemo(() => {
+    const usedIds = new Set(specialties.map((s) => categoryOf(s.name)));
+    return SPECIALTY_CATEGORIES.filter((c) => c.id === "all" || usedIds.has(c.id));
+  }, [specialties]);
+
+  const filtered = useMemo(
+    () => activeCategory === "all" ? specialties : specialties.filter((s) => categoryOf(s.name) === activeCategory),
+    [specialties, activeCategory]
+  );
+
+  const activeSpecialty = specialties.find((s) => s.id === (hoveredId ?? selectedId));
+  const previewImage = specialtyImageFor(activeSpecialty?.name);
 
   return (
-    <section id="especialidades" className="specialty-flow relative mx-auto mt-16 rounded-[2.5rem] px-5 py-14">
-      <div className="mx-auto max-w-7xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.36em] text-medical">Especialidades</p>
-        <h2 className="mt-4 max-w-5xl text-5xl font-semibold leading-tight text-deep">
-          Todas las áreas médicas en una red privada de excelencia en León, Guanajuato.
-        </h2>
-        <p className="mt-5 font-serif text-2xl italic text-slate-500">Desliza y explora con calma</p>
-        <div className="specialty-content mt-10 grid gap-8 lg:grid-cols-[0.82fr_1.18fr]">
-          <div className="specialty-preview overflow-hidden rounded-[2rem] border border-silver shadow-premium">
-            <Image key={activeImage.src} src={activeImage.src} alt={`Especialidad ${activeSpecialty?.name ?? "VITAEON"}`} width={1000} height={720} className="h-full min-h-[24rem] w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-deep/72 via-deep/10 to-transparent" />
-            <div className="absolute bottom-8 left-8 right-8 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.34em]">VITAEON INDEX</p>
-              <h3 className="mt-3 text-4xl font-semibold">{activeSpecialty?.name ?? "Vista de especialidad"}</h3>
-              <p className="mt-3 max-w-xl text-lg leading-8 text-white/86">
-                Explora perfiles seleccionados con criterio clínico, disponibilidad real y atención en León.
-              </p>
-            </div>
-          </div>
-          <div className="specialty-card-grid grid gap-5 md:grid-cols-2">
-            {specialties.map((specialty) => {
-              const cardImage = specialtyImageFor(specialty.name);
-              return (
+    <section id="especialidades" className="relative mx-auto mt-20 max-w-7xl scroll-mt-24">
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Especialidades</p>
+          <h2 className="mt-3 text-4xl font-bold leading-tight text-deep sm:text-5xl">
+            Encuentra tu especialista
+          </h2>
+          <p className="mt-3 max-w-xl text-lg text-slate-500">
+            Médicos verificados en León, organizados por área clínica.
+          </p>
+        </div>
+      </div>
+
+      {/* Category tabs — horizontal scroll */}
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        {visibleCategories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.id)}
+            className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${
+              activeCategory === cat.id
+                ? "bg-[#071726] text-white shadow-soft"
+                : "border border-silver/70 bg-white text-slate-600 hover:border-silver hover:bg-slate-50 hover:text-deep"
+            }`}
+          >
+            <span className="mr-1.5">{cat.icon}</span>
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content: preview image + cards grid */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr]">
+        {/* Sticky preview panel — hidden on small screens */}
+        <div className="specialty-preview hidden overflow-hidden rounded-[2rem] border border-silver/70 shadow-premium lg:block">
+          <Image
+            key={previewImage.src + (activeSpecialty?.id ?? "default")}
+            src={previewImage.src}
+            alt={activeSpecialty?.name ?? "VITAEON"}
+            width={680}
+            height={860}
+            className="h-full min-h-[28rem] w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071726]/80 via-[#071726]/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-7">
+            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.36em] text-white/60">
+              VITAEON · {activeCategory !== "all" ? (visibleCategories.find((c) => c.id === activeCategory)?.label ?? "Especialidades") : "Red médica"}
+            </p>
+            <h3 className="mt-2 text-3xl font-bold leading-tight text-white">
+              {activeSpecialty?.name ?? "Selecciona una especialidad"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-white/70">
+              {activeSpecialty?.doctorsCount
+                ? `${activeSpecialty.doctorsCount} especialista${activeSpecialty.doctorsCount !== 1 ? "s" : ""} disponible${activeSpecialty.doctorsCount !== 1 ? "s" : ""}`
+                : "Especialistas verificados en León, Gto."}
+            </p>
+            {activeSpecialty && (
               <button
-                key={specialty.id}
-                onMouseEnter={() => setPreviewId(specialty.id)}
-                onFocus={() => setPreviewId(specialty.id)}
-                onClick={() => onSelect(specialty.id)}
-                className={`specialty-motion-card premium-card rounded-[2rem] p-6 text-left ${selectedId === specialty.id ? "ring-4 ring-medical/15" : ""}`}
-                style={{ "--card-photo": `url(${cardImage.src})`, "--card-position": cardImage.position } as CSSProperties}
+                onClick={() => onSelect(activeSpecialty.id)}
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-deep transition hover:-translate-y-0.5"
               >
-                <span className="specialty-card-photo" />
-                <HeartPulse className="h-8 w-8 text-medical" />
-                <h3 className="mt-8 text-2xl font-semibold text-deep">{specialty.name}</h3>
-                <p className="mt-3 leading-7 text-slate-600">{specialty.description ?? "Especialistas certificados, hospitales afiliados y horarios verificados."}</p>
+                Ver médicos <ChevronRight className="h-4 w-4" />
               </button>
+            )}
+          </div>
+        </div>
+
+        {/* Cards grid */}
+        <div>
+          {filtered.length === 0 && (
+            <div className="rounded-[2rem] border border-dashed border-silver/60 bg-white/60 px-6 py-16 text-center">
+              <p className="text-slate-400">Sin especialidades en esta categoría por el momento.</p>
+            </div>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((specialty) => {
+              const isSelected = selectedId === specialty.id;
+              const isHovered = hoveredId === specialty.id;
+              return (
+                <button
+                  key={specialty.id}
+                  onMouseEnter={() => setHoveredId(specialty.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onFocus={() => setHoveredId(specialty.id)}
+                  onBlur={() => setHoveredId(null)}
+                  onClick={() => onSelect(specialty.id)}
+                  className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
+                    isSelected
+                      ? "border-medical/30 bg-white shadow-[0_8px_32px_rgba(17,109,157,0.12)] ring-2 ring-medical/15"
+                      : "border-silver/60 bg-white hover:border-medical/20 hover:shadow-soft"
+                  }`}
+                >
+                  {/* Subtle hover glow */}
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-medical/5 to-transparent transition-opacity duration-300 ${isHovered || isSelected ? "opacity-100" : "opacity-0"}`} />
+
+                  <div className="relative flex items-start justify-between gap-3">
+                    {/* Icon */}
+                    <div className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl transition-colors duration-300 ${isSelected ? "bg-medical text-white" : "bg-medical/8 text-medical group-hover:bg-medical/15"}`}>
+                      <Stethoscope className="h-5 w-5" />
+                    </div>
+                    {/* Doctors count badge */}
+                    {specialty.doctorsCount > 0 && (
+                      <span className="flex-none rounded-full border border-silver/50 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                        {specialty.doctorsCount} médico{specialty.doctorsCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative mt-3">
+                    <h3 className="font-semibold leading-snug text-deep">{specialty.name}</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-400 line-clamp-2">
+                      {specialty.description ?? "Especialistas certificados y horarios verificados."}
+                    </p>
+                  </div>
+
+                  {/* Bottom arrow */}
+                  <div className={`relative mt-4 flex items-center gap-1.5 text-xs font-semibold transition-colors duration-200 ${isSelected ? "text-medical" : "text-slate-400 group-hover:text-medical"}`}>
+                    Ver especialistas
+                    <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${isHovered ? "translate-x-0.5" : ""}`} />
+                  </div>
+                </button>
               );
             })}
           </div>
+
+          {/* Show count */}
+          {filtered.length > 0 && (
+            <p className="mt-4 text-xs text-slate-400">
+              Mostrando {filtered.length} especialidad{filtered.length !== 1 ? "es" : ""}
+              {activeCategory !== "all" ? ` en ${visibleCategories.find((c) => c.id === activeCategory)?.label}` : " disponibles"}
+            </p>
+          )}
         </div>
       </div>
     </section>
@@ -1602,60 +1732,113 @@ function BookingFlow(props: {
 }
 
 function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; selected: boolean; onSelect: () => void }) {
+  const topAchievements = (doctor.achievements.length
+    ? doctor.achievements
+    : [`${doctor.yearsExperience} años de trayectoria`, `Excelencia en ${doctor.specialty}`]
+  ).slice(0, 2);
+
   return (
-    <button onClick={onSelect} className={`doctor-card-game premium-card overflow-hidden rounded-[2rem] border text-left ${selected ? "border-medical ring-4 ring-medical/10" : "border-silver"}`}>
+    <button
+      onClick={onSelect}
+      className={`group relative w-full overflow-hidden rounded-[1.75rem] border text-left transition-all duration-300 ${
+        selected
+          ? "border-medical/30 bg-white shadow-[0_16px_56px_rgba(17,109,157,0.14)] ring-2 ring-medical/12"
+          : "border-silver/70 bg-white hover:border-medical/20 hover:shadow-[0_12px_48px_rgba(8,32,51,0.09)]"
+      }`}
+    >
+      {/* Photo strip */}
       <div className="relative overflow-hidden">
-        <Image src={doctor.imageUrl || "/doctor-diagnosis.jpg"} alt={doctor.name} width={820} height={520} className="h-64 w-full object-cover" />
-        <span className="absolute left-5 top-5 rounded-full bg-black/78 px-5 py-3 text-xs font-semibold uppercase tracking-[0.28em] text-white">
-          Selección médica
-        </span>
-      </div>
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h3 className="text-2xl font-semibold text-deep">{doctor.name}</h3>
-              <MedalShield medal={doctor.medal} compact />
-            </div>
-            <p className="mt-1 text-medical">{doctor.specialty}</p>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 font-semibold text-amber-700"><Star className="h-4 w-4 fill-current" /> {doctor.rating.toFixed(2)}</span>
+        <Image
+          src={doctor.imageUrl || "/doctor-diagnosis.jpg"}
+          alt={doctor.name}
+          width={820}
+          height={460}
+          className="h-52 w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+        />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#071726]/60 via-transparent to-transparent" />
+
+        {/* Top-left badge */}
+        <div className="absolute left-4 top-4 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm">
+            <BadgeCheck className="h-3.5 w-3.5" /> Verificado
+          </span>
+          {doctor.medal !== "oro" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5 text-medical" />
+              {doctor.medal === "amatista" ? "Destacado" : "Premium"}
+            </span>
+          )}
         </div>
-        <p className="mt-5 leading-7 text-slate-600">{doctor.subSpecialty}</p>
-        <div className="mt-5 rounded-[1.5rem] border border-silver/80 bg-white/64 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-medical">Logros</p>
-          <div className="mt-3 grid gap-2 text-sm text-slate-600">
-            {(doctor.achievements.length ? doctor.achievements : [`${doctor.yearsExperience} años de trayectoria`, `Excelencia en ${doctor.specialty}`]).slice(0, 3).map((achievement) => (
-              <p key={achievement} className="flex items-center gap-2">
-                <Star className="h-4 w-4 fill-current text-amber-600" />
-                {achievement}
+
+        {/* Bottom-left: name over image */}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">{doctor.specialty}</p>
+              <h3 className="mt-0.5 text-xl font-bold leading-tight text-white">{doctor.name}</h3>
+            </div>
+            <div className="flex flex-none flex-col items-end gap-1.5">
+              <MedalShield medal={doctor.medal} compact />
+              {doctor.rating > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                  <Star className="h-3 w-3 fill-current" /> {doctor.rating.toFixed(1)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Info body */}
+      <div className="p-5">
+        {/* Subespecialidad */}
+        {doctor.subSpecialty && (
+          <p className="text-sm leading-5 text-medical">{doctor.subSpecialty}</p>
+        )}
+
+        {/* Meta info row */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <Hospital className="h-3.5 w-3.5 text-slate-400" />
+            {doctor.hospital}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+            {doctor.city}
+          </span>
+        </div>
+
+        {/* Achievements */}
+        {topAchievements.length > 0 && (
+          <div className="mt-4 space-y-1.5">
+            {topAchievements.map((item) => (
+              <p key={item} className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="h-1.5 w-1.5 flex-none rounded-full bg-medical/60" />
+                {item}
               </p>
             ))}
           </div>
-        </div>
-        <div className="mt-6 grid gap-3 text-slate-600">
-          <Line icon={<Hospital className="h-5 w-5" />} text={doctor.hospital} />
-          <Line icon={<MapPin className="h-5 w-5" />} text={doctor.city} />
-          <Line icon={<Calendar className="h-5 w-5" />} text={`${doctor.availability.length} horarios disponibles`} />
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {doctor.medal !== "oro" && (
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-              <Sparkles className="h-4 w-4" /> {doctor.medal === "amatista" ? "Perfil destacado" : "Mayor visibilidad por plan"}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-            <BadgeCheck className="h-4 w-4" /> Médico verificado
+        )}
+
+        {/* Cédula */}
+        {doctor.professionalLicense && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
+            <FileCheck2 className="h-3.5 w-3.5" /> Cédula {doctor.professionalLicense}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-silver/40 pt-4">
+          <span className={`flex items-center gap-1.5 text-xs font-semibold ${doctor.availability.length > 0 ? "text-emerald-600" : "text-slate-400"}`}>
+            <Calendar className="h-3.5 w-3.5" />
+            {doctor.availability.length > 0 ? `${doctor.availability.length} horarios libres` : "Sin horarios visibles"}
           </span>
-          {doctor.professionalLicense && (
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-              <FileCheck2 className="h-4 w-4" /> Cédula {doctor.professionalLicense}
-            </span>
-          )}
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 ${selected ? "bg-medical text-white" : "bg-[#071726] text-white group-hover:bg-[#0d2638]"}`}>
+            {selected ? "Seleccionado" : "Ver perfil"}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </span>
         </div>
-        <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white">
-          Ver disponibilidad <ChevronRight className="h-4 w-4" />
-        </span>
       </div>
     </button>
   );
