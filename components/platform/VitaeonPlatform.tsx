@@ -825,7 +825,7 @@ export default function VitaeonPlatform() {
               autoPlay muted loop playsInline
               poster="/doctor-diagnosis.jpg"
             >
-              <source src="/vitaeon-hero.mov" type="video/quicktime" />
+              <source src="/hero-video.mp4" type="video/mp4" />
             </video>
             <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/92 p-5 shadow-glass backdrop-blur-md sm:bottom-6 sm:left-6 sm:right-6 sm:p-6">
               <div className="flex items-center gap-3">
