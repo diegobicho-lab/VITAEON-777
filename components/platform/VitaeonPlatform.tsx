@@ -39,7 +39,6 @@ import {
   Wind,
   Zap
 } from "lucide-react";
-import { motion, useScroll, useTransform } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
@@ -1271,36 +1270,23 @@ function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => v
 }
 
 function ScrollOrbs() {
-  const { scrollY } = useScroll();
-
-  // Aparecen después de pasar el hero, se estabilizan como guiño sutil
-  const opacity  = useTransform(scrollY, [0, 220, 480, 700], [0, 0, 0.13, 0.09]);
-  const scale    = useTransform(scrollY, [150, 600], [0.55, 1.05]);
-
-  // Orb izquierdo: emerge del centro y se desplaza al lateral izquierdo
-  const leftX    = useTransform(scrollY, [150, 600], [0, -260]);
-  // Orb derecho: emerge del centro y se desplaza al lateral derecho
-  const rightX   = useTransform(scrollY, [150, 600], [0, 260]);
-  // Orb superior: sube ligeramente mientras se desvanece
-  const topY     = useTransform(scrollY, [150, 600], [0, -60]);
-  const topOp    = useTransform(scrollY, [0, 220, 500, 700], [0, 0, 0.07, 0.05]);
-
+  const [past, setPast] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setPast(window.scrollY > 320);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <div className="pointer-events-none fixed inset-0 overflow-hidden">
-      {/* Lateral izquierdo */}
-      <motion.div
-        className="absolute left-[4%] top-[28%] h-[500px] w-[500px] rounded-full bg-medical blur-[120px]"
-        style={{ opacity, x: leftX, scale }}
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+      <div
+        className={`absolute left-[-6%] top-[22%] h-[420px] w-[420px] rounded-full bg-medical blur-[90px] transition-all duration-[1800ms] ease-out ${
+          past ? "opacity-[0.10] translate-x-0" : "opacity-0 translate-x-[180px]"
+        }`}
       />
-      {/* Lateral derecho */}
-      <motion.div
-        className="absolute right-[4%] top-[38%] h-[420px] w-[420px] rounded-full bg-[#0e5580] blur-[120px]"
-        style={{ opacity, x: rightX, scale }}
-      />
-      {/* Tenue azul superior-centro */}
-      <motion.div
-        className="absolute left-[32%] top-[8%] h-[300px] w-[300px] rounded-full bg-[#1a80b8] blur-[100px]"
-        style={{ opacity: topOp, y: topY, scale }}
+      <div
+        className={`absolute right-[-6%] top-[32%] h-[360px] w-[360px] rounded-full bg-[#0e5580] blur-[90px] transition-all duration-[1800ms] ease-out ${
+          past ? "opacity-[0.10] translate-x-0" : "opacity-0 -translate-x-[180px]"
+        }`}
       />
     </div>
   );
