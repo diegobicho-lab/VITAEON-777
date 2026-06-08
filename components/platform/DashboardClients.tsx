@@ -390,7 +390,7 @@ const doctorPlans = [
     id: "obsidiana",
     name: "Obsidiana",
     price: "$250 MXN / mes",
-    description: "Visibilidad pagada de entrada para médicos que quieren presencia activa sin herramientas avanzadas de Amatista."
+    description: "Suscripción comercial para representantes médicos y servicios de catering. Permite aparecer en el directorio comercial de VITAEON sin acceso al panel médico."
   },
   {
     id: "diamante",
@@ -1754,7 +1754,11 @@ export function DoctorDashboardClient() {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Suscripción médica</p>
                   <h2 className="mt-2 text-2xl font-semibold text-deep">Plan activo: {planLabels[medal]}</h2>
-                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Obsidiana/Diamante/Amatista con checkout seguro.</p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {medal === "obsidiana"
+                      ? "Obsidiana es una suscripción comercial para representantes médicos y catering. No otorga acceso a funciones clínicas ni al panel médico."
+                      : "Elige Oro gratis o paga Obsidiana/Diamante/Amatista con checkout seguro."}
+                  </p>
                 </div>
                 <CreditCard className="h-8 w-8 text-medical" />
               </div>

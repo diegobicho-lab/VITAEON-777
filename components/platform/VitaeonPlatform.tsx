@@ -156,13 +156,13 @@ const doctorSubscriptionPlans: Array<{
     medal: "obsidiana",
     title: "Obsidiana",
     price: "$250 MXN / mes",
-    tone: "Presencia activa",
-    description: "Plan de entrada pagado para médicos que buscan presencia activa y una imagen profesional en VITAEON.",
+    tone: "Directorio comercial",
+    description: "Suscripción para representantes médicos y servicios de catering que desean aparecer en el directorio comercial de VITAEON.",
     benefits: [
-      "Todo lo del plan Oro",
+      "Perfil comercial independiente",
       "Suscripción mensual de $250 MXN",
-      "Insignia Obsidiana en perfil médico",
-      "Presencia activa dentro del directorio",
+      "Aparición en Representantes Médicos / Catering",
+      "Sin acceso al panel médico ni funciones clínicas",
       "Pago procesado de forma segura con Stripe"
     ]
   },
