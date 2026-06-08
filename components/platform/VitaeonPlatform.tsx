@@ -1397,65 +1397,70 @@ function ScrollOrbs() {
 }
 
 function HeroMockup() {
-  // Nodos principales (especialidades médicas): [cx,cy,color,label,lado,delay]
+  // Nodos en posiciones clave del ECG: [cx, cy, color, label, lado, delay]
   const specs: [number, number, string, string, "L"|"R", number][] = [
-    [140,  65, "#c084fc", "Neurología",        "R", 0.0],
-    [ 94, 155, "#fb7185", "Cardiología",        "L", 0.4],
-    [192, 155, "#93c5fd", "Neumología",         "R", 0.8],
-    [120, 238, "#86efac", "Gastroenterología",  "L", 1.2],
-    [164, 238, "#fcd34d", "Endocrinología",     "R", 1.6],
-    [140, 335, "#a78bfa", "Traumatología",      "R", 0.6],
+    [ 65, 158, "#fb7185", "Cardiología",        "R", 0.4],  // onda P
+    [118, 225, "#93c5fd", "Neumología",          "R", 0.8],  // dip Q
+    [140,  48, "#c084fc", "Neurología",          "R", 0.0],  // pico R (espiga)
+    [162, 252, "#86efac", "Gastroenterología",   "L", 1.2],  // dip S
+    [210, 148, "#fcd34d", "Endocrinología",       "L", 1.6],  // onda T
+    [255, 210, "#a78bfa", "Traumatología",        "L", 0.6],  // línea base final
   ];
 
-  // Nodos de constelación (fondo)
+  // Nodos de constelación agrupados cerca de la traza ECG
   const smalls: [number, number][] = [
-    [60,50],[105,38],[175,42],[220,58],[250,85],
-    [45,100],[85,88],[195,92],[235,120],[260,150],
-    [55,145],[175,175],[210,195],[248,195],
-    [50,200],[80,238],[110,262],[170,258],[205,258],[240,235],[265,270],
-    [70,292],[100,308],[175,308],[215,292],[245,318],
-    [85,358],[115,372],[165,368],[195,362],[230,372],
+    // izquierda / línea base
+    [18,210],[32,215],[22,200],[45,215],
+    // zona onda P
+    [48,182],[55,168],[72,142],[82,178],[50,205],
+    // zona QRS (espiga central — más densa)
+    [105,198],[112,172],[122,142],[128,108],
+    [133,82],[136,38],[144,42],[148,82],
+    [154,118],[158,158],[166,188],[170,248],[174,272],
+    // zona onda T
+    [192,192],[200,170],[208,132],[224,168],[236,185],[246,198],
+    // línea base derecha
+    [258,215],[268,208],[268,218],
   ];
 
-  // Backbone (especialidad ↔ especialidad)
-  const backbone: [number,number,number,number][] = [
-    [140,65, 94,155],[140,65,192,155],[94,155,192,155],
-    [94,155,120,238],[192,155,164,238],[120,238,164,238],
-    [120,238,140,335],[164,238,140,335],
+  // Traza ECG principal (segmentos de la onda cardíaca)
+  const ecgTrace: [number,number,number,number][] = [
+    [12,210, 40,210],      // línea base izq
+    [40,210, 65,158],      // subida onda P
+    [65,158, 92,210],      // bajada onda P + segmento PR
+    [92,210, 118,225],     // dip Q (pequeña bajada)
+    [118,225, 140,48],     // ESPIGA R (sube rápido)
+    [140,48,  162,252],    // CAÍDA RS (baja profundo)
+    [162,252, 186,210],    // vuelta a línea base (onda S)
+    [186,210, 210,148],    // subida onda T
+    [210,148, 255,210],    // bajada onda T + línea base
+    [255,210, 272,210],    // línea base der
   ];
 
-  // Líneas ambientales (especialidad → satélite + satélite ↔ satélite)
+  // Conexiones ambientales (nodos ↔ nodos satélite)
   const ambient: [number,number,number,number][] = [
-    [140,65,60,50],[140,65,105,38],[140,65,175,42],[140,65,220,58],
-    [140,65,85,88],[140,65,195,92],
-    [94,155,45,100],[94,155,85,88],[94,155,55,145],
-    [94,155,50,200],[94,155,80,238],
-    [192,155,195,92],[192,155,235,120],[192,155,260,150],
-    [192,155,175,175],[192,155,210,195],
-    [120,238,80,238],[120,238,110,262],[120,238,70,292],[120,238,100,308],
-    [164,238,175,175],[164,238,170,258],[164,238,205,258],
-    [164,238,175,308],[164,238,215,292],
-    [140,335,100,308],[140,335,175,308],[140,335,85,358],
-    [140,335,115,372],[140,335,165,368],[140,335,195,362],
-    [60,50,105,38],[105,38,175,42],[175,42,220,58],[220,58,250,85],
-    [45,100,55,145],[235,120,260,150],[260,150,248,195],
-    [210,195,248,195],[210,195,240,235],[248,195,240,235],
-    [50,200,80,238],[80,238,70,292],[240,235,265,270],
-    [70,292,100,308],[175,308,215,292],[215,292,245,318],
-    [245,318,230,372],[85,358,115,372],[115,372,165,368],
-    [165,368,195,362],[195,362,230,372],
+    [65,158,48,182],[65,158,55,168],[65,158,72,142],[65,158,82,178],
+    [65,158,32,215],[65,158,50,205],
+    [118,225,105,198],[118,225,112,172],[118,225,170,248],[118,225,174,272],
+    [140,48,133,82],[140,48,136,38],[140,48,144,42],[140,48,148,82],
+    [140,48,128,108],[140,48,154,118],
+    [162,252,170,248],[162,252,174,272],[162,252,158,158],[162,252,166,188],
+    [210,148,192,192],[210,148,200,170],[210,148,208,132],[210,148,224,168],
+    [255,210,236,185],[255,210,246,198],[255,210,258,215],[255,210,268,208],
+    // satélite ↔ satélite
+    [18,210,32,215],[32,215,48,182],[48,182,55,168],[55,168,72,142],
+    [72,142,82,178],[82,178,50,205],[50,205,105,198],
+    [105,198,112,172],[112,172,122,142],[122,142,128,108],
+    [128,108,133,82],[133,82,136,38],[136,38,144,42],[144,42,148,82],
+    [148,82,154,118],[154,118,158,158],[158,158,166,188],
+    [166,188,170,248],[170,248,174,272],[174,272,192,192],
+    [192,192,200,170],[200,170,208,132],[208,132,224,168],
+    [224,168,236,185],[236,185,246,198],[246,198,258,215],
+    [258,215,268,208],[268,208,268,218],
   ];
 
-  // Señales viajeras: [path, color, dur(s), begin(s)]
-  const signals: [string, string, number, number][] = [
-    ["M140,65 L94,155",   "#c084fc", 2.8, 0.0],
-    ["M140,65 L192,155",  "#93c5fd", 3.2, 0.6],
-    ["M94,155 L120,238",  "#fb7185", 2.6, 1.1],
-    ["M192,155 L164,238", "#fcd34d", 2.9, 0.4],
-    ["M120,238 L140,335", "#86efac", 3.4, 1.3],
-    ["M164,238 L140,335", "#a78bfa", 3.0, 0.9],
-    ["M164,238 L120,238", "#fcd34d", 2.3, 1.8],
-  ];
+  // Ruta completa del ECG para los pulsos animados
+  const ECG = "M12,210 L40,210 L65,158 L92,210 L118,225 L140,48 L162,252 L186,210 L210,148 L255,210 L272,210";
 
   return (
     <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
@@ -1470,47 +1475,44 @@ function HeroMockup() {
         <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── Red neuronal / constelación médica ── */}
-      <svg
-        viewBox="0 0 280 420"
-        className="relative z-10 h-[92%] w-auto"
-        style={{ filter: "drop-shadow(0 0 14px rgba(17,109,157,0.15))" }}
-      >
-        {/* ── Rutas ocultas para animateMotion ── */}
+      {/* ── ECG + constelación médica ── */}
+      <svg viewBox="0 0 280 420" className="relative z-10 h-[92%] w-auto"
+        style={{ filter: "drop-shadow(0 0 14px rgba(17,109,157,0.15))" }}>
+
         <defs>
-          {signals.map(([p], i) => (
-            <path key={i} id={`sp${i}`} d={p}/>
-          ))}
+          <path id="ecg-wave" d={ECG}/>
         </defs>
 
-        {/* ── Líneas ambientales ── */}
+        {/* ── Líneas de constelación ── */}
         {ambient.map(([x1,y1,x2,y2], i) => (
           <line key={`a${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
             stroke="rgba(255,255,255,0.055)" strokeWidth="0.55"/>
         ))}
 
-        {/* ── Backbone (más luminoso) ── */}
-        {backbone.map(([x1,y1,x2,y2], i) => (
-          <line key={`b${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke="rgba(255,255,255,0.13)" strokeWidth="0.75"/>
+        {/* ── Traza ECG (backbone brillante) ── */}
+        {ecgTrace.map(([x1,y1,x2,y2], i) => (
+          <line key={`e${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(255,255,255,0.18)" strokeWidth="0.9"/>
         ))}
 
-        {/* ── Señales viajeras ── */}
-        {signals.map(([_p, color, dur, begin], i) => (
-          <circle key={`sig${i}`} r="1.8" fill={color} opacity="0.85">
-            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`}>
-              <mpath href={`#sp${i}`}/>
+        {/* ── Pulsos del latido (3 ondas en loop) ── */}
+        {(["0s","1.8s","3.6s"]).map((begin, i) => (
+          <circle key={`p${i}`} r={i===0?2.4:1.9}
+            fill={i===0?"rgba(255,255,255,0.95)":i===1?"#fb7185":"#c084fc"}
+            opacity={i===0?0.95:0.72}>
+            <animateMotion dur="5.4s" repeatCount="indefinite" begin={begin}>
+              <mpath href="#ecg-wave"/>
             </animateMotion>
           </circle>
         ))}
 
-        {/* ── Nodos ambientales ── */}
+        {/* ── Nodos de constelación ── */}
         {smalls.map(([cx,cy], i) => (
           <circle key={`s${i}`} cx={cx} cy={cy} r="1.5"
             fill="rgba(255,255,255,0.20)"/>
         ))}
 
-        {/* ── Nodos de especialidad ── */}
+        {/* ── Nodos de especialidad médica ── */}
         {specs.map(([cx,cy,color,label,side,delay], i) => {
           const arm=28, tick=3;
           const x1 = side==="L" ? cx-9     : cx+9;
@@ -1525,15 +1527,15 @@ function HeroMockup() {
               <circle cx={cx} cy={cy} r={9}   fill="none" stroke={color} strokeWidth="0.85" opacity={0.52}/>
               <circle cx={cx} cy={cy} r={4.8} fill={color} opacity={0.82}/>
               <circle cx={cx} cy={cy} r={2.0} fill="rgba(255,255,255,0.68)"/>
-              <line x1={cx-8} y1={cy}   x2={cx-5} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.50"/>
-              <line x1={cx+5} y1={cy}   x2={cx+8} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.50"/>
-              <line x1={cx}   y1={cy-8} x2={cx}   y2={cy-5} stroke={color} strokeWidth="0.5" opacity="0.50"/>
-              <line x1={cx}   y1={cy+5} x2={cx}   y2={cy+8} stroke={color} strokeWidth="0.5" opacity="0.50"/>
+              <line x1={cx-8} y1={cy}   x2={cx-5} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.48"/>
+              <line x1={cx+5} y1={cy}   x2={cx+8} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.48"/>
+              <line x1={cx}   y1={cy-8} x2={cx}   y2={cy-5} stroke={color} strokeWidth="0.5" opacity="0.48"/>
+              <line x1={cx}   y1={cy+5} x2={cx}   y2={cy+8} stroke={color} strokeWidth="0.5" opacity="0.48"/>
               {label && <>
                 <line x1={x1} y1={cy} x2={x2} y2={cy}
-                  stroke={color} strokeWidth="0.5" opacity="0.38"/>
+                  stroke={color} strokeWidth="0.5" opacity="0.36"/>
                 <line x1={x2} y1={cy-tick} x2={x2} y2={cy+tick}
-                  stroke={color} strokeWidth="0.5" opacity="0.38"/>
+                  stroke={color} strokeWidth="0.5" opacity="0.36"/>
                 <text x={lx} y={cy+3.5}
                   fill={color} fontSize="6.0"
                   fontFamily="'Courier New', monospace"
