@@ -1397,21 +1397,20 @@ function ScrollOrbs() {
 }
 
 function HeroMockup() {
-  // Sistemas del cuerpo: [cx, cy, color, label, lado, delay(s), radio]
-  const systems: [number, number, string, string, "L"|"R", number, number][] = [
-    [140,  36, "#c084fc", "Neurología",        "R", 0.0, 7],
-    [118, 118, "#fb7185", "Cardiología",        "L", 0.3, 7],
-    [162, 108, "#93c5fd", "Neumología",         "R", 0.7, 5],
-    [140, 164, "#86efac", "Gastroenterología",  "L", 1.1, 5],
-    [140, 198, "#fcd34d", "Endocrinología",     "R", 1.7, 4],
-    [106, 300, "#a78bfa", "Traumatología",      "L", 0.5, 5],
-    [174, 300, "#a78bfa", "",                   "R", 0.5, 5],
+  // Nodos médicos: [cx, cy, color, label, lado, delay(s)]
+  const nodes: [number, number, string, string, "L" | "R", number][] = [
+    [140,  74, "#c084fc", "Neurología",        "R", 0.0],
+    [140, 110, "#fcd34d", "Endocrinología",     "L", 1.6],
+    [118, 138, "#fb7185", "Cardiología",        "L", 0.4],
+    [162, 130, "#93c5fd", "Neumología",         "R", 0.8],
+    [130, 178, "#86efac", "Gastroenterología",  "L", 1.2],
+    [170, 286, "#a78bfa", "Traumatología",      "R", 0.6],
   ];
 
   return (
     <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
 
-      {/* ── Morphing blob ── */}
+      {/* ── Morphing blob — SIN CAMBIOS ── */}
       <div
         className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)] [animation:blobMorph_9s_ease-in-out_infinite]"
         style={{ backgroundColor: "#071e30" }}
@@ -1421,72 +1420,175 @@ function HeroMockup() {
         <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── Cuerpo anatómico SVG ── */}
+      {/* ── Da Vinci · Hombre de Vitruvio ── */}
       <svg
         viewBox="0 0 280 420"
-        className="relative z-10 h-[88%] w-auto"
-        style={{ filter: "drop-shadow(0 0 18px rgba(17,109,157,0.25))" }}
+        className="relative z-10 h-[90%] w-auto"
+        style={{ filter: "drop-shadow(0 0 22px rgba(255,200,60,0.20))" }}
       >
-        {/* ── Silueta ── */}
-        {/* Cabeza */}
-        <ellipse cx="140" cy="36" rx="26" ry="29"
-          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.20)" strokeWidth="1.2" />
-        {/* Cuello */}
-        <rect x="131" y="63" width="18" height="14" rx="4"
-          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
-        {/* Torso */}
-        <path d="M94,74 C78,75 72,86 72,100 L72,218 C72,230 80,236 92,236 L188,236 C200,236 208,230 208,218 L208,100 C208,86 202,75 186,74 L162,68 L140,66 L118,68 Z"
-          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
-        {/* Brazo izquierdo */}
-        <path d="M72,100 C58,100 48,108 44,122 L38,205 C37,216 44,222 54,220 L66,218 L74,152 Z"
-          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        {/* Brazo derecho */}
-        <path d="M208,100 C222,100 232,108 236,122 L242,205 C243,216 236,222 226,220 L214,218 L206,152 Z"
-          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        {/* Pierna izquierda */}
-        <path d="M92,236 L80,380 C79,390 86,396 96,396 L108,396 C118,394 120,386 118,376 L114,236 Z"
-          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        {/* Pierna derecha */}
-        <path d="M166,236 L186,236 L188,376 C186,386 188,394 198,396 L210,396 C220,396 221,390 220,380 L208,236 Z"
-          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* ════════════════════════════════════════
+            GUÍAS GEOMÉTRICAS — círculo + cuadrado
+            El lenguaje visual de Da Vinci
+        ════════════════════════════════════════ */}
+        <circle cx="140" cy="188" r="122"
+          fill="none" stroke="rgba(255,215,90,0.11)" strokeWidth="0.7" strokeDasharray="1.5,5.5"/>
+        <rect x="16" y="66" width="248" height="248"
+          fill="none" stroke="rgba(255,215,90,0.08)" strokeWidth="0.6" strokeDasharray="2.5,6.5"/>
+        <line x1="140" y1="28"  x2="140" y2="395" stroke="rgba(255,215,90,0.04)" strokeWidth="0.4"/>
+        <line x1="8"   y1="188" x2="272" y2="188" stroke="rgba(255,215,90,0.04)" strokeWidth="0.4"/>
 
-        {/* ── Detalles anatómicos ── */}
-        {/* Columna vertebral (línea punteada) */}
-        <line x1="140" y1="76" x2="140" y2="234"
-          stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" strokeDasharray="3,4" />
-        {/* Costillas — muy sutiles */}
-        <path d="M112,98 Q100,115 110,130" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" fill="none" />
-        <path d="M168,98 Q180,115 170,130" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" fill="none" />
-        <path d="M114,110 Q103,124 112,138" stroke="rgba(255,255,255,0.05)" strokeWidth="0.7" fill="none" />
-        <path d="M166,110 Q177,124 168,138" stroke="rgba(255,255,255,0.05)" strokeWidth="0.7" fill="none" />
-        {/* Articulaciones (hombros, caderas, rodillas) */}
-        {([[72,98],[208,98],[100,236],[180,236],[100,308],[180,308]] as [number,number][]).map(([x,y],i) => (
-          <circle key={i} cx={x} cy={y} r="3.5"
-            fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.18)" strokeWidth="0.8" />
+        {/* ════════════════════════════════════════
+            POSICIÓN FANTASMA — brazos horizontales, piernas juntas
+            La segunda pose superpuesta de Da Vinci
+        ════════════════════════════════════════ */}
+        <path d="M104,122 L18,122"  stroke="rgba(255,215,90,0.15)" strokeWidth="0.65" strokeDasharray="3,4.5" fill="none"/>
+        <path d="M176,122 L262,122" stroke="rgba(255,215,90,0.15)" strokeWidth="0.65" strokeDasharray="3,4.5" fill="none"/>
+        <path d="M134,216 L126,346" stroke="rgba(255,215,90,0.11)" strokeWidth="0.65" strokeDasharray="3,4.5" fill="none"/>
+        <path d="M146,216 L154,346" stroke="rgba(255,215,90,0.11)" strokeWidth="0.65" strokeDasharray="3,4.5" fill="none"/>
+
+        {/* ════════════════════════════════════════
+            CABEZA — Cráneo con rasgos faciales
+        ════════════════════════════════════════ */}
+        <ellipse cx="140" cy="78" rx="22" ry="25"
+          fill="none" stroke="rgba(255,215,90,0.76)" strokeWidth="1.1"/>
+        <path d="M122,90 Q130,105 140,107 Q150,105 158,90"
+          fill="none" stroke="rgba(255,215,90,0.52)" strokeWidth="0.9"/>
+        <path d="M122,66 Q128,55 140,53 Q152,55 158,66"
+          fill="none" stroke="rgba(255,215,90,0.18)" strokeWidth="0.65" strokeDasharray="1,2.5"/>
+        <path d="M129,72 Q134,69 138,70" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.6"/>
+        <path d="M142,70 Q146,69 151,72" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.6"/>
+        <ellipse cx="133" cy="77" rx="5" ry="3.5" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.6"/>
+        <circle  cx="133" cy="77" r="1.6" fill="rgba(255,215,90,0.18)"/>
+        <ellipse cx="147" cy="77" rx="5" ry="3.5" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.6"/>
+        <circle  cx="147" cy="77" r="1.6" fill="rgba(255,215,90,0.18)"/>
+        <path d="M140,72 L140,88 Q137,92 133,92 Q138,91 140,90 Q142,91 147,92 Q143,92 140,88"
+          fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.6"/>
+        <path d="M134,96 Q140,100 146,96" fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.6"/>
+        <path d="M118,75 Q116,78 117,82 Q116,86 118,89" fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.6"/>
+        <path d="M162,75 Q164,78 163,82 Q164,86 162,89" fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.6"/>
+
+        {/* ════════════════════════════════════════
+            CUELLO + CLAVÍCULAS
+        ════════════════════════════════════════ */}
+        <path d="M134,103 L134,117" stroke="rgba(255,215,90,0.55)" strokeWidth="0.9" fill="none"/>
+        <path d="M146,103 L146,117" stroke="rgba(255,215,90,0.55)" strokeWidth="0.9" fill="none"/>
+        <path d="M134,117 Q122,115 104,119" stroke="rgba(255,215,90,0.40)" strokeWidth="0.8" fill="none"/>
+        <path d="M146,117 Q158,115 176,119" stroke="rgba(255,215,90,0.40)" strokeWidth="0.8" fill="none"/>
+
+        {/* ════════════════════════════════════════
+            TORSO
+        ════════════════════════════════════════ */}
+        <path d="M104,119 C 98,132 94,150 96,166 C 96,182 100,197 104,207"
+          fill="none" stroke="rgba(255,215,90,0.66)" strokeWidth="1.05"/>
+        <path d="M176,119 C 182,132 186,150 184,166 C 184,182 180,197 176,207"
+          fill="none" stroke="rgba(255,215,90,0.66)" strokeWidth="1.05"/>
+        <path d="M120,127 Q140,133 160,127" fill="none" stroke="rgba(255,215,90,0.20)" strokeWidth="0.6"/>
+        <path d="M104,207 Q118,221 140,223 Q162,221 176,207"
+          fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.95"/>
+        <path d="M128,219 Q140,225 152,219" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.6"/>
+
+        {/* ════════════════════════════════════════
+            OMBLIGO — Centro del círculo vitruviano
+        ════════════════════════════════════════ */}
+        <circle cx="140" cy="188" r="2.8" fill="none" stroke="rgba(255,215,90,0.52)" strokeWidth="0.8"/>
+        <circle cx="140" cy="188" r="1"   fill="rgba(255,215,90,0.58)"/>
+
+        {/* ════════════════════════════════════════
+            COLUMNA VERTEBRAL
+        ════════════════════════════════════════ */}
+        <path d="M140,117 L140,217"
+          fill="none" stroke="rgba(255,215,90,0.18)" strokeWidth="0.6" strokeDasharray="1.5,2.5"/>
+        {([125,133,141,149,157,165,173,181,189,199,209] as number[]).map((y, i) => (
+          <circle key={`v${i}`} cx="140" cy={y} r="1.0" fill="rgba(255,215,90,0.26)"/>
         ))}
 
-        {/* ── Sistemas del cuerpo ── */}
-        {systems.map(([cx, cy, color, label, side, delay, r], i) => {
-          const labelX = side === "L" ? cx - r - 22 : cx + r + 22;
-          const lineX1 = side === "L" ? cx - r - 2 : cx + r + 2;
-          const lineX2 = side === "L" ? cx - r - 18 : cx + r + 18;
+        {/* ════════════════════════════════════════
+            CAJA TORÁCICA — Arcos de costillas
+        ════════════════════════════════════════ */}
+        <path d="M128,132 Q109,148 111,167 Q113,173 126,173" fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.8"/>
+        <path d="M130,140 Q114,155 116,171"                  fill="none" stroke="rgba(255,215,90,0.16)" strokeWidth="0.7"/>
+        <path d="M132,148 Q118,161 120,175"                  fill="none" stroke="rgba(255,215,90,0.13)" strokeWidth="0.6"/>
+        <path d="M134,156 Q122,167 124,179"                  fill="none" stroke="rgba(255,215,90,0.10)" strokeWidth="0.5"/>
+        <path d="M152,132 Q171,148 169,167 Q167,173 154,173" fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.8"/>
+        <path d="M150,140 Q166,155 164,171"                  fill="none" stroke="rgba(255,215,90,0.16)" strokeWidth="0.7"/>
+        <path d="M148,148 Q162,161 160,175"                  fill="none" stroke="rgba(255,215,90,0.13)" strokeWidth="0.6"/>
+        <path d="M146,156 Q158,167 156,179"                  fill="none" stroke="rgba(255,215,90,0.10)" strokeWidth="0.5"/>
+        <path d="M139,127 L139,169 M141,127 L141,169"        fill="none" stroke="rgba(255,215,90,0.13)" strokeWidth="0.4"/>
+
+        {/* ════════════════════════════════════════
+            BRAZOS — Posición principal (ligeramente elevados)
+        ════════════════════════════════════════ */}
+        <path d="M104,121 C 86,120 68,127 50,135" fill="none" stroke="rgba(255,215,90,0.66)" strokeWidth="1.0"/>
+        <circle cx="52" cy="134" r="3.5" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.7"/>
+        <path d="M50,135 C 36,141 24,147 14,151"  fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.9"/>
+        <path d="M14,151 Q10,149 8,146 Q10,151 12,155" fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+
+        <path d="M176,121 C 194,120 212,127 230,135" fill="none" stroke="rgba(255,215,90,0.66)" strokeWidth="1.0"/>
+        <circle cx="228" cy="134" r="3.5" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.7"/>
+        <path d="M230,135 C 244,141 256,147 266,151"  fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.9"/>
+        <path d="M266,151 Q270,149 272,146 Q270,151 268,155" fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+
+        {/* ════════════════════════════════════════
+            ARTICULACIONES DE HOMBROS
+        ════════════════════════════════════════ */}
+        <circle cx="104" cy="121" r="4.2" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
+        <circle cx="176" cy="121" r="4.2" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
+
+        {/* ════════════════════════════════════════
+            PIERNAS — Posición principal (separadas ~16°)
+        ════════════════════════════════════════ */}
+        <path d="M122,221 C 116,242 110,265 108,291" fill="none" stroke="rgba(255,215,90,0.63)" strokeWidth="1.0"/>
+        <ellipse cx="107" cy="295" rx="5.5" ry="4.5" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
+        <path d="M107,300 C 104,317 102,333 100,351" fill="none" stroke="rgba(255,215,90,0.58)" strokeWidth="0.9"/>
+        <circle cx="100" cy="353" r="2.5" fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.6"/>
+        <path d="M100,353 Q95,359 89,361 Q81,361 79,357" fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+
+        <path d="M158,221 C 164,242 170,265 172,291" fill="none" stroke="rgba(255,215,90,0.63)" strokeWidth="1.0"/>
+        <ellipse cx="173" cy="295" rx="5.5" ry="4.5" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
+        <path d="M173,300 C 176,317 178,333 180,351" fill="none" stroke="rgba(255,215,90,0.58)" strokeWidth="0.9"/>
+        <circle cx="180" cy="353" r="2.5" fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.6"/>
+        <path d="M180,353 Q185,359 191,361 Q199,361 201,357" fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+
+        {/* ════════════════════════════════════════
+            ARTICULACIONES DE CADERAS
+        ════════════════════════════════════════ */}
+        <circle cx="118" cy="219" r="4" fill="none" stroke="rgba(255,215,90,0.25)" strokeWidth="0.7"/>
+        <circle cx="162" cy="219" r="4" fill="none" stroke="rgba(255,215,90,0.25)" strokeWidth="0.7"/>
+
+        {/* ════════════════════════════════════════
+            NODOS MÉDICOS — Estilo escáner de precisión
+        ════════════════════════════════════════ */}
+        {nodes.map(([cx, cy, color, label, side, delay], i) => {
+          const armLen = 26;
+          const tick   = 3;
+          const lineX1 = side === "L" ? cx - 9           : cx + 9;
+          const lineX2 = side === "L" ? cx - armLen - 4  : cx + armLen + 4;
+          const labelX = side === "L" ? lineX2 - 4       : lineX2 + 4;
           return (
             <g key={i}>
-              {/* Anillo exterior pulsante */}
-              <circle cx={cx} cy={cy} r={r + 5} fill={color}
-                style={{ animation: `sysPulse 2.4s ease-in-out ${delay}s infinite` }} />
-              {/* Punto interior */}
-              <circle cx={cx} cy={cy} r={r} fill={color} opacity="0.9" />
-              {/* Cruz / marker */}
-              <circle cx={cx} cy={cy} r={r - 2} fill="rgba(0,0,0,0.25)" />
-              {/* Label + línea */}
+              <circle cx={cx} cy={cy} r={11}
+                fill="none" stroke={color} strokeWidth="0.7" opacity={0.28}
+                style={{ animation: `sysPulse 2.4s ease-in-out ${delay}s infinite` }}
+              />
+              <circle cx={cx} cy={cy} r={6.5} fill="none" stroke={color} strokeWidth="0.9" opacity={0.60}/>
+              <circle cx={cx} cy={cy} r={2.5} fill={color} opacity={0.90}/>
+              <line x1={cx-6} y1={cy}   x2={cx-3} y2={cy}   stroke={color} strokeWidth="0.55" opacity="0.55"/>
+              <line x1={cx+3} y1={cy}   x2={cx+6} y2={cy}   stroke={color} strokeWidth="0.55" opacity="0.55"/>
+              <line x1={cx}   y1={cy-6} x2={cx}   y2={cy-3} stroke={color} strokeWidth="0.55" opacity="0.55"/>
+              <line x1={cx}   y1={cy+3} x2={cx}   y2={cy+6} stroke={color} strokeWidth="0.55" opacity="0.55"/>
               {label && (
                 <>
                   <line x1={lineX1} y1={cy} x2={lineX2} y2={cy}
-                    stroke={color} strokeWidth="0.7" opacity="0.55" />
-                  <text x={labelX} y={cy + 3.5}
-                    fill={color} fontSize="7.2" fontFamily="system-ui, sans-serif"
-                    textAnchor={side === "L" ? "end" : "start"} opacity="0.85">
+                    stroke={color} strokeWidth="0.55" opacity="0.40"/>
+                  <line x1={lineX2} y1={cy - tick} x2={lineX2} y2={cy + tick}
+                    stroke={color} strokeWidth="0.55" opacity="0.40"/>
+                  <text
+                    x={labelX} y={cy + 3.5}
+                    fill={color} fontSize="6.2"
+                    fontFamily="'Courier New', monospace"
+                    textAnchor={side === "L" ? "end" : "start"}
+                    opacity="0.82" letterSpacing="0.2"
+                  >
                     {label}
                   </text>
                 </>
@@ -1494,6 +1596,15 @@ function HeroMockup() {
             </g>
           );
         })}
+
+        {/* ── Marca de agua ── */}
+        <text x="140" y="410"
+          fill="rgba(255,215,90,0.12)" fontSize="4.8"
+          fontFamily="'Courier New', monospace"
+          textAnchor="middle" letterSpacing="1.8"
+        >
+          VITAEON · MEDICINA PREMIUM
+        </text>
       </svg>
     </div>
   );
