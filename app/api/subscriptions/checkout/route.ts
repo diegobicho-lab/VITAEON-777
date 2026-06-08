@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       plan: parsed.data.plan,
       platformOwnerRef
     };
+    const dashboardPath = parsed.data.plan === "obsidiana" ? "/dashboard/obsidiana" : "/dashboard/doctor";
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: user.email,
@@ -116,8 +117,8 @@ export async function POST(request: Request) {
       subscription_data: {
         metadata: subscriptionMetadata
       },
-      success_url: `${appUrl}/dashboard/doctor?subscription=success`,
-      cancel_url: `${appUrl}/dashboard/doctor?subscription=cancelled`,
+      success_url: `${appUrl}${dashboardPath}?subscription=success`,
+      cancel_url: `${appUrl}${dashboardPath}?subscription=cancelled`,
       metadata: subscriptionMetadata
     });
   } catch (error) {

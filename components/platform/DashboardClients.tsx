@@ -3428,6 +3428,7 @@ export function ObsidianDashboardClient() {
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [subscriptionAction, setSubscriptionAction] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -3502,6 +3503,47 @@ export function ObsidianDashboardClient() {
     }
   }
 
+  async function changeSubscription(plan: DoctorProfile["medal"]) {
+    setSubscriptionAction(plan);
+    setMessage("");
+    setError("");
+    try {
+      const response = await clientApi<{ checkoutUrl?: string; status?: string }>("/api/subscriptions/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan })
+      });
+      if (response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+        return;
+      }
+      setMessage("Suscripción actualizada correctamente. Te llevaremos al panel correspondiente.");
+      window.location.href = plan === "obsidiana" ? "/dashboard/obsidiana" : "/dashboard/doctor";
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cambiar la suscripción.");
+    } finally {
+      setSubscriptionAction("");
+    }
+  }
+
+  async function cancelSubscriptionRenewal() {
+    const confirmed = window.confirm("¿Quieres cancelar la renovación automática de Obsidiana? Tu acceso seguirá activo hasta terminar el periodo pagado.");
+    if (!confirmed) return;
+    setSubscriptionAction("cancel");
+    setMessage("");
+    setError("");
+    try {
+      const response = await clientApi<{ message: string }>("/api/subscriptions/cancel", {
+        method: "POST",
+        body: JSON.stringify({ plan: "obsidiana" })
+      });
+      setMessage(response.message);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cancelar la renovación.");
+    } finally {
+      setSubscriptionAction("");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f7fbfd] px-5 py-24 text-deep">
       <div className="mx-auto max-w-6xl">
@@ -3529,7 +3571,58 @@ export function ObsidianDashboardClient() {
           )}
 
           {!loading && (
-            <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <>
+            <section className="mt-8 rounded-[1.75rem] border border-silver/70 bg-slate-50 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Suscripción Obsidiana</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Representantes médicos y catering</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                    Obsidiana mantiene activo tu perfil comercial dentro de VITAEON. Desde aquí puedes cambiar a otro plan o cancelar la renovación automática cuando lo necesites.
+                  </p>
+                </div>
+                <Badge value="Obsidiana activa" />
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+                <div className="rounded-[1.5rem] bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold text-deep">Cambiar a otra suscripción</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Si tu cuenta pasará de perfil comercial a médico, elige un plan médico. VITAEON te llevará al flujo correspondiente sin mezclar el panel Obsidiana con el panel médico.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {doctorPlans.filter((plan) => plan.id !== "obsidiana").map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => changeSubscription(plan.id)}
+                        disabled={subscriptionAction.length > 0}
+                        className="rounded-full border border-silver bg-white px-5 py-3 text-sm font-semibold text-deep transition hover:-translate-y-0.5 hover:border-medical/40 disabled:opacity-60"
+                      >
+                        {subscriptionAction === plan.id ? "Abriendo..." : `Cambiar a ${plan.name}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-rose-100 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold text-deep">Cancelar suscripción</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Puedes cancelar la renovación automática en cualquier momento. Tu acceso continúa hasta finalizar el periodo ya pagado.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={cancelSubscriptionRenewal}
+                    disabled={subscriptionAction.length > 0}
+                    className="mt-4 rounded-full border border-rose-100 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 disabled:opacity-60"
+                  >
+                    {subscriptionAction === "cancel" ? "Cancelando..." : "Cancelar renovación"}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-[1.75rem] border border-silver/70 bg-white p-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="sm:col-span-2">
@@ -3611,6 +3704,7 @@ export function ObsidianDashboardClient() {
                 </div>
               </aside>
             </div>
+            </>
           )}
 
           {message && <div className="mt-6 rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">{message}</div>}
