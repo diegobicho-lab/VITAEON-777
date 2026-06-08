@@ -39,9 +39,16 @@ import {
   Wind,
   Zap
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
+
+// ADN 3D — cargado solo en browser (Canvas 2D, sin dependencias extra)
+const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
+  ssr: false,
+  loading: () => null,
+});
 import { clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
 
@@ -1397,71 +1404,6 @@ function ScrollOrbs() {
 }
 
 function HeroMockup() {
-  // Nodos en posiciones clave del ECG: [cx, cy, color, label, lado, delay]
-  const specs: [number, number, string, string, "L"|"R", number][] = [
-    [ 65, 158, "#fb7185", "Cardiología",        "R", 0.4],  // onda P
-    [118, 225, "#93c5fd", "Neumología",          "R", 0.8],  // dip Q
-    [140,  48, "#c084fc", "Neurología",          "R", 0.0],  // pico R (espiga)
-    [162, 252, "#86efac", "Gastroenterología",   "L", 1.2],  // dip S
-    [210, 148, "#fcd34d", "Endocrinología",       "L", 1.6],  // onda T
-    [255, 210, "#a78bfa", "Traumatología",        "L", 0.6],  // línea base final
-  ];
-
-  // Nodos de constelación agrupados cerca de la traza ECG
-  const smalls: [number, number][] = [
-    // izquierda / línea base
-    [18,210],[32,215],[22,200],[45,215],
-    // zona onda P
-    [48,182],[55,168],[72,142],[82,178],[50,205],
-    // zona QRS (espiga central — más densa)
-    [105,198],[112,172],[122,142],[128,108],
-    [133,82],[136,38],[144,42],[148,82],
-    [154,118],[158,158],[166,188],[170,248],[174,272],
-    // zona onda T
-    [192,192],[200,170],[208,132],[224,168],[236,185],[246,198],
-    // línea base derecha
-    [258,215],[268,208],[268,218],
-  ];
-
-  // Traza ECG principal (segmentos de la onda cardíaca)
-  const ecgTrace: [number,number,number,number][] = [
-    [12,210, 40,210],      // línea base izq
-    [40,210, 65,158],      // subida onda P
-    [65,158, 92,210],      // bajada onda P + segmento PR
-    [92,210, 118,225],     // dip Q (pequeña bajada)
-    [118,225, 140,48],     // ESPIGA R (sube rápido)
-    [140,48,  162,252],    // CAÍDA RS (baja profundo)
-    [162,252, 186,210],    // vuelta a línea base (onda S)
-    [186,210, 210,148],    // subida onda T
-    [210,148, 255,210],    // bajada onda T + línea base
-    [255,210, 272,210],    // línea base der
-  ];
-
-  // Conexiones ambientales (nodos ↔ nodos satélite)
-  const ambient: [number,number,number,number][] = [
-    [65,158,48,182],[65,158,55,168],[65,158,72,142],[65,158,82,178],
-    [65,158,32,215],[65,158,50,205],
-    [118,225,105,198],[118,225,112,172],[118,225,170,248],[118,225,174,272],
-    [140,48,133,82],[140,48,136,38],[140,48,144,42],[140,48,148,82],
-    [140,48,128,108],[140,48,154,118],
-    [162,252,170,248],[162,252,174,272],[162,252,158,158],[162,252,166,188],
-    [210,148,192,192],[210,148,200,170],[210,148,208,132],[210,148,224,168],
-    [255,210,236,185],[255,210,246,198],[255,210,258,215],[255,210,268,208],
-    // satélite ↔ satélite
-    [18,210,32,215],[32,215,48,182],[48,182,55,168],[55,168,72,142],
-    [72,142,82,178],[82,178,50,205],[50,205,105,198],
-    [105,198,112,172],[112,172,122,142],[122,142,128,108],
-    [128,108,133,82],[133,82,136,38],[136,38,144,42],[144,42,148,82],
-    [148,82,154,118],[154,118,158,158],[158,158,166,188],
-    [166,188,170,248],[170,248,174,272],[174,272,192,192],
-    [192,192,200,170],[200,170,208,132],[208,132,224,168],
-    [224,168,236,185],[236,185,246,198],[246,198,258,215],
-    [258,215,268,208],[268,208,268,218],
-  ];
-
-  // Ruta completa del ECG para los pulsos animados
-  const ECG = "M12,210 L40,210 L65,158 L92,210 L118,225 L140,48 L162,252 L186,210 L210,148 L255,210 L272,210";
-
   return (
     <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
 
@@ -1475,78 +1417,10 @@ function HeroMockup() {
         <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── ECG + constelación médica ── */}
-      <svg viewBox="0 0 280 420" className="relative z-10 h-[92%] w-auto"
-        style={{ filter: "drop-shadow(0 0 14px rgba(17,109,157,0.15))" }}>
-
-        <defs>
-          <path id="ecg-wave" d={ECG}/>
-        </defs>
-
-        {/* ── Líneas de constelación ── */}
-        {ambient.map(([x1,y1,x2,y2], i) => (
-          <line key={`a${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke="rgba(255,255,255,0.055)" strokeWidth="0.55"/>
-        ))}
-
-        {/* ── Traza ECG (backbone brillante) ── */}
-        {ecgTrace.map(([x1,y1,x2,y2], i) => (
-          <line key={`e${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke="rgba(255,255,255,0.18)" strokeWidth="0.9"/>
-        ))}
-
-        {/* ── Pulsos del latido (3 ondas en loop) ── */}
-        {(["0s","1.8s","3.6s"]).map((begin, i) => (
-          <circle key={`p${i}`} r={i===0?2.4:1.9}
-            fill={i===0?"rgba(255,255,255,0.95)":i===1?"#fb7185":"#c084fc"}
-            opacity={i===0?0.95:0.72}>
-            <animateMotion dur="5.4s" repeatCount="indefinite" begin={begin}>
-              <mpath href="#ecg-wave"/>
-            </animateMotion>
-          </circle>
-        ))}
-
-        {/* ── Nodos de constelación ── */}
-        {smalls.map(([cx,cy], i) => (
-          <circle key={`s${i}`} cx={cx} cy={cy} r="1.5"
-            fill="rgba(255,255,255,0.20)"/>
-        ))}
-
-        {/* ── Nodos de especialidad médica ── */}
-        {specs.map(([cx,cy,color,label,side,delay], i) => {
-          const arm=28, tick=3;
-          const x1 = side==="L" ? cx-9     : cx+9;
-          const x2 = side==="L" ? cx-arm-4 : cx+arm+4;
-          const lx = side==="L" ? x2-4     : x2+4;
-          return (
-            <g key={i}>
-              <circle cx={cx} cy={cy} r={16}
-                fill="none" stroke={color} strokeWidth="0.6" opacity={0.18}
-                style={{ animation: `sysPulse 2.4s ease-in-out ${delay}s infinite` }}
-              />
-              <circle cx={cx} cy={cy} r={9}   fill="none" stroke={color} strokeWidth="0.85" opacity={0.52}/>
-              <circle cx={cx} cy={cy} r={4.8} fill={color} opacity={0.82}/>
-              <circle cx={cx} cy={cy} r={2.0} fill="rgba(255,255,255,0.68)"/>
-              <line x1={cx-8} y1={cy}   x2={cx-5} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.48"/>
-              <line x1={cx+5} y1={cy}   x2={cx+8} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.48"/>
-              <line x1={cx}   y1={cy-8} x2={cx}   y2={cy-5} stroke={color} strokeWidth="0.5" opacity="0.48"/>
-              <line x1={cx}   y1={cy+5} x2={cx}   y2={cy+8} stroke={color} strokeWidth="0.5" opacity="0.48"/>
-              {label && <>
-                <line x1={x1} y1={cy} x2={x2} y2={cy}
-                  stroke={color} strokeWidth="0.5" opacity="0.36"/>
-                <line x1={x2} y1={cy-tick} x2={x2} y2={cy+tick}
-                  stroke={color} strokeWidth="0.5" opacity="0.36"/>
-                <text x={lx} y={cy+3.5}
-                  fill={color} fontSize="6.0"
-                  fontFamily="'Courier New', monospace"
-                  textAnchor={side==="L" ? "end" : "start"}
-                  opacity="0.82" letterSpacing="0.2"
-                >{label}</text>
-              </>}
-            </g>
-          );
-        })}
-      </svg>
+      {/* ── Doble hélice ADN ── */}
+      <div className="relative z-10" style={{ height: "92%", aspectRatio: "2 / 3" }}>
+        <DnaHero />
+      </div>
     </div>
   );
 }
