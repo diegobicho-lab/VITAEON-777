@@ -2577,14 +2577,16 @@ function DoctorAgendaPanel({
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Agenda clínica</p>
           <h2 className="mt-2 text-2xl font-semibold text-deep">Calendario mensual de pacientes</h2>
         </div>
-        <Calendar className="h-8 w-8 text-medical" />
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-medical/10">
+          <Calendar className="h-5 w-5 text-medical" />
+        </div>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <MetricMini label="Horarios" value={String(agenda?.summary.totalSlots ?? 0)} />
         <MetricMini label="Ocupados" value={String(agenda?.summary.booked ?? 0)} />
         <MetricMini label="Libres" value={String(agenda?.summary.available ?? 0)} />
       </div>
-      <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-4">
+      <div className="mt-6 rounded-[1.5rem] border border-silver/40 bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button onClick={() => shiftMonth(-1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronLeft className="h-4 w-4" /></button>
           <p className="text-lg font-semibold capitalize text-deep">{monthLabel}</p>
@@ -2609,7 +2611,10 @@ function DoctorAgendaPanel({
                 className={`min-h-24 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 ${selected ? "border-medical bg-white ring-4 ring-medical/10" : "border-silver bg-white"} ${outside ? "opacity-45" : ""}`}
               >
                 <span className="font-semibold text-deep">{date.getDate()}</span>
-                <span className="mt-3 block text-[11px] font-semibold text-slate-500">{status}</span>
+                <span className={`mt-3 flex items-center gap-1 text-[11px] font-semibold ${status === "Disponible" ? "text-emerald-600" : status === "Ocupado" ? "text-red-500" : status === "Parcial" ? "text-amber-600" : "text-slate-400"}`}>
+                  <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${status === "Disponible" ? "bg-emerald-400" : status === "Ocupado" ? "bg-red-400" : status === "Parcial" ? "bg-amber-400" : "bg-slate-300"}`} />
+                  {status}
+                </span>
                 {day?.booked ? <span className="mt-1 block text-[11px] text-medical">{day.booked} cita(s)</span> : null}
               </button>
             );
@@ -2618,8 +2623,8 @@ function DoctorAgendaPanel({
       </div>
       <div className={`mt-5 grid gap-4 ${showConfigurator ? "lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
         {showConfigurator && (
-        <div className="rounded-3xl bg-slate-50 p-5">
-          <p className="font-semibold text-deep">Configurar horarios</p>
+        <div className="rounded-3xl border border-silver/40 bg-slate-50 p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Configurar horarios</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Selecciona uno o varios días del mes. VITAEON generará horarios en zona America/Mexico_City, en bloques de {durationMinutes} minutos.
           </p>
@@ -2652,12 +2657,12 @@ function DoctorAgendaPanel({
             </label>
           </div>
           <div className="mt-4 rounded-3xl bg-white p-4">
-            <p className="text-sm font-semibold text-deep">Vista previa</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Vista previa</p>
             {preview.length === 0 ? (
               <p className="mt-2 text-sm text-red-600">La hora final debe ser posterior a la inicial.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
-                {preview.map((time) => <span key={time} className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{time}</span>)}
+                {preview.map((time) => <span key={time} className="rounded-full bg-medical/10 px-3 py-1 text-xs font-semibold text-medical">{time}</span>)}
               </div>
             )}
           </div>
@@ -2666,10 +2671,10 @@ function DoctorAgendaPanel({
             <button disabled={!selectedDate || !selectedDay} onClick={onMarkDayUnavailable} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Marcar día no disponible</button>
           </div>
           <div className="mt-5 border-t border-silver pt-5">
-            <p className="text-sm font-semibold text-deep">Repetir por semana</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Repetir por semana</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {["D", "L", "M", "M", "J", "V", "S"].map((label, index) => (
-                <button key={`${label}-${index}`} onClick={() => toggleWeekday(index)} className={`h-10 w-10 rounded-full text-sm font-semibold ${repeatWeekdays.includes(index) ? "bg-black text-white" : "bg-white text-deep"}`}>{label}</button>
+                <button key={`${label}-${index}`} onClick={() => toggleWeekday(index)} className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${repeatWeekdays.includes(index) ? "border-transparent bg-black text-white" : "border-silver bg-white text-deep hover:border-medical/40"}`}>{label}</button>
               ))}
             </div>
             <p className="mt-3 rounded-2xl bg-white p-3 text-xs leading-5 text-slate-600">
@@ -2682,12 +2687,18 @@ function DoctorAgendaPanel({
           </div>
         </div>
         )}
-        <div className="rounded-3xl bg-slate-50 p-5">
-          <p className="font-semibold text-deep">Detalle del día</p>
+        <div className="rounded-3xl border border-silver/40 bg-slate-50 p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Detalle del día</p>
           {!selectedDay ? <EmptyState text="No hay horarios en el día seleccionado." /> : (
             <div className="mt-4 grid gap-3">
               {selectedDay.slots.map((slot) => (
-                <div key={slot.id} className="rounded-2xl bg-white p-4">
+                <div key={slot.id} className={`overflow-hidden rounded-2xl border-l-4 bg-white p-4 shadow-sm ${
+                  slot.appointment?.status && ["ACCEPTED","CONFIRMED","COMPLETED","PAID"].includes(slot.appointment.status) ? "border-l-emerald-400" :
+                  slot.appointment?.status && ["CANCELLED","FAILED","REJECTED","NO_SHOW","AUTO_CANCELLED"].includes(slot.appointment.status) ? "border-l-red-400" :
+                  slot.appointment?.status && ["REFUND_PENDING","CANCELLATION_REQUESTED","RESCHEDULE_REQUESTED"].includes(slot.appointment.status) ? "border-l-sky-400" :
+                  slot.appointment?.status ? "border-l-amber-400" :
+                  slot.isActive ? "border-l-emerald-300" : "border-l-slate-200"
+                }`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-semibold text-deep">{new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(slot.startsAt))}</p>
                     <Badge value={slot.appointment?.status ?? (slot.isActive ? "DISPONIBLE" : "NO DISPONIBLE")} />
