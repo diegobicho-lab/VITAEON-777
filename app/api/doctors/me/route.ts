@@ -1,4 +1,4 @@
-import { PaymentStatus, SubscriptionStatus } from "@prisma/client";
+import { MedicalMedal, PaymentStatus, SubscriptionStatus } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -28,6 +28,9 @@ export async function GET() {
   });
 
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) {
+    return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
+  }
 
   if (doctor.subscriptionStatus === SubscriptionStatus.FAILED || doctor.subscriptionStatus === SubscriptionStatus.PENDING) {
     const latestPaidSubscription = await prisma.subscriptionPayment.findFirst({
@@ -67,6 +70,9 @@ export async function PATCH(request: Request) {
 
   const existingDoctor = await prisma.doctor.findUnique({ where: { userId: user.id }, include: { specialty: true } });
   if (!existingDoctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (existingDoctor.medal === MedicalMedal.obsidiana) {
+    return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
+  }
 
   const profileFields = [
     "fullName",

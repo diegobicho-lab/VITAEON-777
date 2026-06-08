@@ -1,4 +1,4 @@
-import { AppointmentStatus, PaymentProvider, PaymentStatus, Role } from "@prisma/client";
+import { AppointmentStatus, MedicalMedal, PaymentProvider, PaymentStatus, Role } from "@prisma/client";
 import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
 import { findNextAvailableSlot } from "@/lib/appointments/reschedule";
@@ -204,6 +204,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!appointment) return fail("APPOINTMENT_NOT_FOUND", "No encontramos la cita.", 404);
 
   const isAdmin = user.role === "ADMIN" || user.role === "STAFF";
+  if (user.role === "DOCTOR" && appointment.doctor.medal === MedicalMedal.obsidiana) {
+    return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
+  }
+
   if (terminalStatuses.has(appointment.status) && !isAdmin) {
     return fail("APPOINTMENT_CLOSED", "Esta cita ya está cerrada. Solo administración puede cambiarla.", 409);
   }

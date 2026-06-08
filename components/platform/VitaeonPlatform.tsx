@@ -58,6 +58,7 @@ type MedicalRepresentative = {
   phone: string;
   email: string;
   imageUrl?: string | null;
+  priceRange?: string | null;
 };
 type CateringService = {
   id: string;
@@ -67,6 +68,7 @@ type CateringService = {
   phone: string;
   email: string;
   imageUrl?: string | null;
+  priceRange?: string | null;
   createdAt?: string;
   plan?: "obsidiana";
 };
@@ -148,6 +150,20 @@ const doctorSubscriptionPlans: Array<{
       "Subir fotografía personal",
       "Escribir títulos médicos",
       "Visibilidad normal en resultados"
+    ]
+  },
+  {
+    medal: "obsidiana",
+    title: "Obsidiana",
+    price: "$250 MXN / mes",
+    tone: "Presencia activa",
+    description: "Plan de entrada pagado para médicos que buscan presencia activa y una imagen profesional en VITAEON.",
+    benefits: [
+      "Todo lo del plan Oro",
+      "Suscripción mensual de $250 MXN",
+      "Insignia Obsidiana en perfil médico",
+      "Presencia activa dentro del directorio",
+      "Pago procesado de forma segura con Stripe"
     ]
   },
   {
@@ -1184,6 +1200,7 @@ export default function VitaeonPlatform() {
                       <Line icon={<MapPin className="h-5 w-5" />} text={item.zone} />
                       <Line icon={<LogIn className="h-5 w-5" />} text={item.phone} />
                       <Line icon={<FileCheck2 className="h-5 w-5" />} text={item.email} />
+                      {item.priceRange && <Line icon={<CreditCard className="h-5 w-5" />} text={item.priceRange} />}
                     </div>
                   </article>
                 ))}
@@ -1210,6 +1227,7 @@ export default function VitaeonPlatform() {
                       <Line icon={<Leaf className="h-5 w-5" />} text={item.cityOrZone} />
                       <Line icon={<LogIn className="h-5 w-5" />} text={item.phone} />
                       <Line icon={<FileCheck2 className="h-5 w-5" />} text={item.email} />
+                      {item.priceRange && <Line icon={<CreditCard className="h-5 w-5" />} text={item.priceRange} />}
                     </div>
                   </article>
                 ))}
@@ -2031,7 +2049,7 @@ function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; se
           {doctor.medal !== "oro" && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 backdrop-blur-sm">
               <Sparkles className="h-3.5 w-3.5 text-medical" />
-              {doctor.medal === "amatista" ? "Destacado" : "Premium"}
+              {doctor.medal === "amatista" ? "Destacado" : doctor.medal === "obsidiana" ? "Obsidiana" : "Premium"}
             </span>
           )}
         </div>

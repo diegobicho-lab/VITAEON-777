@@ -18,7 +18,7 @@
 - Render y estilos: Tailwind se carga desde `app/globals.css`, el layout principal lo importa de forma directa y el build enlaza la hoja CSS final de Next.
 - Calendario médico: la agenda del doctor ahora tiene vista mensual, bloques por día, repetición semanal y citas dentro del día.
 - Secretaria Amatista: el asistente opera como secretaria médica interna con próxima cita, resumen del día, pendientes, huecos y notificaciones.
-- Suscripciones: Oro se activa gratis; Diamante/Amatista abren Checkout Stripe y se confirman por webhook.
+- Suscripciones: Oro se activa gratis; Obsidiana/Diamante/Amatista abren Checkout Stripe y se confirman por webhook.
 - Medicamentos: se agregó búsqueda exclusiva Amatista con integración externa configurable y fallback seguro.
 - Notificaciones: se agregó sistema interno para médicos y pacientes.
 
@@ -160,7 +160,7 @@ Pendientes cerrados en esta pasada:
 - Se agregó advertencia legal obligatoria y checkbox requerido dentro del panel médico.
 - Se agregó gestión de horarios no disponibles mediante `PATCH /api/availability`.
 - Se agregó manejo explícito de doble reserva con respuesta clara `SLOT_ALREADY_BOOKED`.
-- Se priorizan médicos Amatista/Diamante/Oro en `GET /api/doctors`.
+- Se priorizan médicos Amatista/Diamante/Obsidiana/Oro en `GET /api/doctors`.
 - El ticket de cita ya muestra paciente, doctor, especialidad, hospital, fecha, pago e importe.
 - Se agregaron páginas legales mínimas: aviso de privacidad, términos, consentimiento de datos y aviso de urgencias.
 
@@ -208,7 +208,7 @@ Pendientes cerrados en esta pasada:
 - Se preparó la arquitectura de canales futuros: email, WhatsApp, SMS y push.
 - Se agregó subida segura de imágenes para perfil, consultorio y cédula profesional visible.
 - Se actualiza `verifiedAt` al aprobar o retirar verificación médica desde admin.
-- Se implementó checkout de suscripción médica con Stripe para Diamante/Amatista y activación gratuita de Oro.
+- Se implementó checkout de suscripción médica con Stripe para Obsidiana/Diamante/Amatista y activación gratuita de Oro.
 - Se agregó manejo de `checkout.session.completed` y `checkout.session.expired` en webhook Stripe para actualizar plan y pago.
 - Se agregó búsqueda de medicamentos exclusiva de Amatista con servicio externo configurable y fallback seguro.
 - Se documentaron variables `APP_URL`, `MEDICATION_API_URL` y `MEDICATION_API_KEY`.
@@ -243,7 +243,7 @@ Cómo probar:
 2. Entra como médico y revisa el calendario mensual en Panel Médico.
 3. Crea bloques de disponibilidad por día y repetición semanal.
 4. Entra como paciente, agenda en esos horarios y vuelve al panel médico para ver la cita dentro del calendario.
-5. Cambia a plan Oro gratis o paga Diamante/Amatista con Stripe test.
+5. Cambia a plan Oro gratis o paga Obsidiana/Diamante/Amatista con Stripe test.
 6. Configura webhook Stripe hacia `/api/webhooks/stripe` para activar planes pagados automáticamente.
 7. Con plan Amatista, abre secretaria virtual y búsqueda de medicamentos.
 8. Sube fotos de perfil, consultorio y cédula desde el formulario médico.
@@ -696,14 +696,14 @@ Cambios aplicados:
 - Se agregó selector visual por tabs/pills para alternar entre representantes médicos y catering sin romper la estética premium actual.
 - `GET /api/medical-representatives` ahora devuelve representantes y catering desde base de datos, filtrando únicamente registros `ACTIVE` con suscripción Obsidiana `ACTIVE`.
 - Se agregaron modelos `MarketplaceListing` y `MarketplaceSubscriptionPayment` para representantes médicos, servicios de catering y pagos Obsidiana.
-- Se agregó la suscripción `obsidiana`, separada de los planes médicos Oro, Diamante y Amatista.
-- `POST /api/marketplace-subscriptions/checkout` activa Obsidiana gratis si `OBSIDIANA_PRICE_CENTS=0`; si se define monto, abre Checkout mensual en Stripe hacia la cuenta administradora de VITAEON.
+- Se agregó la suscripción `obsidiana` como plan médico y como plan comercial para representantes/catering, con precio de $250 MXN (`25000` centavos).
+- `POST /api/marketplace-subscriptions/checkout` abre Checkout mensual en Stripe hacia la cuenta administradora de VITAEON; si falta `OBSIDIANA_PRICE_CENTS`, el backend usa `25000` como precio seguro por defecto.
 - Se agregó base administrativa con `GET/POST/PATCH /api/admin/marketplace-listings` para crear, revisar, activar, pausar o rechazar representantes y catering.
 - El webhook de Stripe reconoce `marketplace_obsidiana` para activar o fallar suscripciones Obsidiana sin mezclar pagos de citas ni suscripciones médicas.
 
 Riesgos pendientes:
 - Falta conectar una vista específica en el panel admin para gestionar representantes/catering desde interfaz, aunque la API segura ya quedó preparada.
-- Si Obsidiana deja de ser gratis, debe definirse `OBSIDIANA_PRICE_CENTS` en Vercel y confirmar webhook Stripe con eventos de checkout/suscripción.
+- Debe mantenerse `OBSIDIANA_PRICE_CENTS=25000` en Vercel para documentar claramente el precio vigente y confirmar webhook Stripe con eventos de checkout/suscripción.
 - No publicar representantes ni catering sin revisión administrativa y datos de contacto verificados.
 - Completar onboarding Connect de cada médico antes de cobrar citas en línea.
 - Pasar de pagos únicos de planes a Billing recurrente si se desea suscripción mensual automática.

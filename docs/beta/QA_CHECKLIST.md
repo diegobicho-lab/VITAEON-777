@@ -29,7 +29,7 @@
 - Marcar paciente no asistió.
 - Ver estado de pagos.
 - Responder opiniones.
-- Cambiar plan Oro/Diamante/Amatista en modo test.
+- Cambiar plan Oro/Obsidiana/Diamante/Amatista en modo test.
 
 ## Admin
 

@@ -50,7 +50,7 @@ export default async function SpecialtyPage({ params }: PageProps) {
   const specialty = await getSpecialty(slug);
   if (!specialty) notFound();
 
-  const medalPriority = { amatista: 3, diamante: 2, oro: 1 };
+  const medalPriority = { amatista: 4, diamante: 3, obsidiana: 2, oro: 1 };
   const doctors = specialty.doctors.sort((a, b) => {
     const plan = medalPriority[b.medal] - medalPriority[a.medal];
     if (plan !== 0) return plan;

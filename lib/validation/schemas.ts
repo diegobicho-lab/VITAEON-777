@@ -22,7 +22,7 @@ export const registerSchema = z.object({
   name: z.string().min(3).max(120),
   role: z.enum(["PATIENT", "DOCTOR"]).default("PATIENT"),
   phone: z.string().min(8).max(30).optional(),
-  medal: z.enum(["oro", "diamante", "amatista"]).optional()
+  medal: z.enum(["oro", "obsidiana", "diamante", "amatista"]).optional()
 });
 
 export const appointmentCreateSchema = z.object({
@@ -175,7 +175,7 @@ export const doctorProfileUpdateSchema = z.object({
   consultationPriceCents: z.number().int().min(0).max(2500000).optional(),
   consultationDurationMinutes: z.number().int().min(15).max(180).optional(),
   professionalLicense: z.string().min(4).max(80).optional(),
-  medal: z.enum(["oro", "diamante", "amatista"]).optional(),
+  medal: z.enum(["oro", "obsidiana", "diamante", "amatista"]).optional(),
   achievements: z.array(z.string().min(3).max(160)).max(8).optional(),
   certifications: z.array(z.string().min(3).max(160)).max(12).optional(),
   legalDeclarationAccepted: z.boolean().optional()
@@ -199,7 +199,7 @@ export const doctorAssistantSchema = z.object({
 });
 
 export const subscriptionCheckoutSchema = z.object({
-  plan: z.enum(["oro", "diamante", "amatista"])
+  plan: z.enum(["oro", "obsidiana", "diamante", "amatista"])
 });
 
 export const marketplaceListingSchema = z.object({
@@ -211,6 +211,7 @@ export const marketplaceListingSchema = z.object({
   phone: z.string().trim().max(40).optional(),
   email: emailSchema.optional(),
   imageUrl: z.string().trim().max(500).optional(),
+  priceRange: z.string().trim().max(120).optional(),
   status: z.enum(["PENDING", "ACTIVE", "INACTIVE", "REJECTED"]).optional()
 });
 
@@ -222,6 +223,19 @@ export const marketplaceStatusSchema = z.object({
 
 export const marketplaceSubscriptionCheckoutSchema = z.object({
   listingId: z.string().min(1)
+});
+
+export const obsidianProfileSchema = z.object({
+  serviceType: z.enum(["MEDICAL_REPRESENTATIVE", "CATERING"]),
+  businessName: z.string().trim().min(3).max(160),
+  description: z.string().trim().min(8).max(1200),
+  cityOrZone: z.string().trim().min(3).max(160),
+  contactName: z.string().trim().max(160).optional(),
+  phone: z.string().trim().min(8).max(40),
+  email: emailSchema.optional(),
+  logoUrl: z.string().trim().max(500).optional(),
+  priceRange: z.string().trim().max(120).optional(),
+  isActive: z.boolean().default(false)
 });
 
 export const cancellationRequestSchema = z.object({

@@ -6,7 +6,7 @@ export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 
 export type VerificationStatus = "UNVERIFIED" | "IN_REVIEW" | "VERIFIED" | "REJECTED";
 
-export type MedicalMedal = "oro" | "diamante" | "amatista";
+export type MedicalMedal = "oro" | "obsidiana" | "diamante" | "amatista";
 
 export interface ApiResponse<T> {
   ok: boolean;

@@ -11,12 +11,14 @@ import { subscriptionCheckoutSchema } from "@/lib/validation/schemas";
 
 const planPrices = {
   oro: 0,
+  obsidiana: 25000,
   diamante: 25000,
   amatista: 39900
 };
 
 const planLabels = {
   oro: "Oro",
+  obsidiana: "Obsidiana",
   diamante: "Diamante",
   amatista: "Amatista"
 };

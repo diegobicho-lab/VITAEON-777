@@ -2,6 +2,7 @@
 
 import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Upload, Users, XCircle } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { clientApi } from "@/services/client/api";
@@ -62,7 +63,7 @@ type DoctorProfile = {
   consultationDurationMinutes: number;
   verificationStatus: string;
   verifiedAt?: string | null;
-  medal: "oro" | "diamante" | "amatista";
+  medal: "oro" | "obsidiana" | "diamante" | "amatista";
   subscriptionStatus: string;
   achievements: string[];
   certifications: string[];
@@ -278,6 +279,24 @@ type ReviewSummary = {
   }>;
 };
 
+type ObsidianProfile = {
+  id: string;
+  serviceType: "MEDICAL_REPRESENTATIVE" | "CATERING";
+  businessName: string;
+  description: string;
+  cityOrZone: string;
+  priceRange?: string | null;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  logoUrl?: string | null;
+  isActive: boolean;
+  status: string;
+  subscriptionStatus: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type ClinicalHistoryRecord = {
   id: string;
   patientId: string;
@@ -355,6 +374,7 @@ type PrescriptionRecord = {
 
 const planLabels = {
   oro: "Oro",
+  obsidiana: "Obsidiana",
   diamante: "Diamante",
   amatista: "Amatista"
 };
@@ -365,6 +385,12 @@ const doctorPlans = [
     name: "Oro",
     price: "$0 MXN",
     description: "Perfil básico, especialidad, hospital, fotografía, títulos médicos y visibilidad normal."
+  },
+  {
+    id: "obsidiana",
+    name: "Obsidiana",
+    price: "$250 MXN / mes",
+    description: "Visibilidad pagada de entrada para médicos que quieren presencia activa sin herramientas avanzadas de Amatista."
   },
   {
     id: "diamante",
@@ -1728,7 +1754,7 @@ export function DoctorDashboardClient() {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Suscripción médica</p>
                   <h2 className="mt-2 text-2xl font-semibold text-deep">Plan activo: {planLabels[medal]}</h2>
-                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Diamante/Amatista con renovación quincenal segura.</p>
+                  <p className="mt-2 text-sm text-slate-600">Elige Oro gratis o paga Obsidiana/Diamante/Amatista con checkout seguro.</p>
                 </div>
                 <CreditCard className="h-8 w-8 text-medical" />
               </div>
@@ -2266,7 +2292,7 @@ export function AdminDashboardClient() {
           </section>
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Ingresos por suscripciones médicas</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Trazabilidad administrativa de planes Oro, Diamante y Amatista procesados desde backend/Stripe.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Trazabilidad administrativa de planes Oro, Obsidiana, Diamante y Amatista procesados desde backend/Stripe.</p>
             <div className="mt-5 grid gap-3">
               {subscriptionPayments.length === 0 && <EmptyState text="No hay pagos de suscripción registrados." />}
               {subscriptionPayments.slice(0, 10).map((payment) => (
@@ -3384,6 +3410,213 @@ function AppointmentList({
   );
 }
 
+export function ObsidianDashboardClient() {
+  const [profile, setProfile] = useState<ObsidianProfile | null>(null);
+  const [serviceType, setServiceType] = useState<ObsidianProfile["serviceType"]>("MEDICAL_REPRESENTATIVE");
+  const [businessName, setBusinessName] = useState("");
+  const [description, setDescription] = useState("");
+  const [cityOrZone, setCityOrZone] = useState("León, Guanajuato");
+  const [priceRange, setPriceRange] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [isActive, setIsActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadProfile().catch((caught) => {
+      setError(caught instanceof Error ? caught.message : "No fue posible cargar tu perfil Obsidiana.");
+      setLoading(false);
+    });
+  }, []);
+
+  async function loadProfile() {
+    setLoading(true);
+    setError("");
+    const data = await clientApi<ObsidianProfile | null>("/api/obsidiana-profile");
+    if (data) {
+      setProfile(data);
+      setServiceType(data.serviceType);
+      setBusinessName(data.businessName);
+      setDescription(data.description);
+      setCityOrZone(data.cityOrZone);
+      setPriceRange(data.priceRange ?? "");
+      setContactName(data.contactName ?? "");
+      setPhone(data.phone ?? "");
+      setEmail(data.email ?? "");
+      setLogoUrl(data.logoUrl ?? "");
+      setIsActive(data.isActive);
+    }
+    setLoading(false);
+  }
+
+  async function uploadLogo(file?: File) {
+    if (!file) return;
+    setMessage("");
+    setError("");
+    const form = new FormData();
+    form.append("kind", "commercial-logo");
+    form.append("file", file);
+    const response = await clientApi<{ url: string }>("/api/uploads/images", {
+      method: "POST",
+      body: form
+    });
+    setLogoUrl(response.url);
+    setMessage("Logo cargado correctamente. Guarda el perfil para publicarlo.");
+  }
+
+  async function saveProfile() {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      const saved = await clientApi<ObsidianProfile>("/api/obsidiana-profile", {
+        method: "PUT",
+        body: JSON.stringify({
+          serviceType,
+          businessName,
+          description,
+          cityOrZone,
+          priceRange,
+          contactName,
+          phone,
+          email: email || undefined,
+          logoUrl,
+          isActive
+        })
+      });
+      setProfile(saved);
+      setMessage("Perfil Obsidiana guardado correctamente.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible guardar el perfil Obsidiana.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#f7fbfd] px-5 py-24 text-deep">
+      <div className="mx-auto max-w-6xl">
+        <Link href="/" className="text-sm font-semibold text-slate-500 transition hover:text-deep">Volver al inicio</Link>
+
+        <section className="mt-8 rounded-[2rem] border border-silver/70 bg-white p-6 shadow-premium md:p-9">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Panel Obsidiana</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight text-deep md:text-5xl">Representantes Médicos / Catering</h1>
+              <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+                Administra tu perfil comercial para aparecer en el directorio de VITAEON sin acceder al panel médico.
+              </p>
+            </div>
+            <div className="rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+              {profile ? `Estado: ${profile.status}` : "Perfil pendiente"}
+            </div>
+          </div>
+
+          {loading && (
+            <div className="mt-8 flex items-center gap-3 rounded-3xl bg-slate-50 p-5 text-slate-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Cargando tu perfil comercial...
+            </div>
+          )}
+
+          {!loading && (
+            <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-[1.75rem] border border-silver/70 bg-white p-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="sm:col-span-2">
+                    <span className="text-sm font-semibold text-slate-600">Tipo de servicio</span>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      {[
+                        { id: "MEDICAL_REPRESENTATIVE", label: "Representante médico" },
+                        { id: "CATERING", label: "Catering" }
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setServiceType(item.id as ObsidianProfile["serviceType"])}
+                          className={`rounded-full border px-5 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${
+                            serviceType === item.id ? "border-deep bg-deep text-white" : "border-silver bg-white text-deep"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                  <Field label="Nombre comercial o representante" value={businessName} onChange={setBusinessName} placeholder="Ej. Aspen León / Banquetes..." />
+                  <Field label="Ciudad o zona" value={cityOrZone} onChange={setCityOrZone} placeholder="León, Guanajuato" />
+                  <Field label="Teléfono de contacto" value={phone} onChange={setPhone} placeholder="477..." />
+                  <Field label="Correo opcional" value={email} onChange={setEmail} placeholder="contacto@..." />
+                  <Field label="Precio o rango de cobro" value={priceRange} onChange={setPriceRange} placeholder="Ej. Desde $250 / evento" />
+                  <Field label="Nombre de contacto opcional" value={contactName} onChange={setContactName} placeholder="Nombre de quien atiende" />
+                  <label className="sm:col-span-2">
+                    <span className="text-sm font-semibold text-slate-600">Descripción</span>
+                    <textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      placeholder="Describe de forma clara lo que ofreces a la red médica."
+                      className="mt-2 min-h-36 w-full rounded-3xl bg-slate-50 px-5 py-4 outline-none transition focus:bg-white focus:ring-2 focus:ring-medical/20"
+                    />
+                  </label>
+                  <label className="sm:col-span-2 flex items-center gap-3 rounded-3xl bg-slate-50 px-5 py-4">
+                    <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="h-5 w-5 accent-medical" />
+                    <span className="font-semibold text-deep">Mostrar públicamente cuando esté aprobado y con suscripción activa</span>
+                  </label>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-silver px-5 py-3 font-semibold text-deep transition hover:-translate-y-0.5">
+                    <Upload className="h-5 w-5" />
+                    Subir logo o imagen
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadLogo(event.target.files?.[0]).catch((caught) => setError(caught instanceof Error ? caught.message : "No fue posible subir el logo."))} className="hidden" />
+                  </label>
+                  <button onClick={saveProfile} disabled={saving} className="rounded-full bg-black px-6 py-3 font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-60">
+                    {saving ? "Guardando..." : "Guardar perfil"}
+                  </button>
+                </div>
+              </div>
+
+              <aside className="rounded-[1.75rem] border border-silver/70 bg-slate-50 p-5">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Vista previa</p>
+                <div className="mt-5 rounded-[1.5rem] bg-white p-5 shadow-sm">
+                  <div className="relative h-36 overflow-hidden rounded-[1.25rem] bg-slate-100">
+                    {logoUrl ? (
+                      <Image src={logoUrl} alt="Logo Obsidiana" fill className="object-cover" unoptimized />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-slate-400">Logo opcional</div>
+                    )}
+                  </div>
+                  <div className="mt-5 flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-semibold text-deep">{businessName || "Nombre comercial"}</h2>
+                      <p className="mt-1 text-sm font-semibold text-medical">{serviceType === "CATERING" ? "Catering" : "Representante médico"}</p>
+                    </div>
+                    <Badge value={isActive ? "Activo" : "Inactivo"} />
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">{description || "Tu descripción aparecerá aquí."}</p>
+                  <div className="mt-5 grid gap-3 text-sm text-slate-600">
+                    <p><strong>Zona:</strong> {cityOrZone || "Pendiente"}</p>
+                    <p><strong>Contacto:</strong> {phone || "Pendiente"}</p>
+                    {priceRange && <p><strong>Rango:</strong> {priceRange}</p>}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          )}
+
+          {message && <div className="mt-6 rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">{message}</div>}
+          {error && <ErrorState message={error} />}
+        </section>
+      </div>
+    </main>
+  );
+}
+
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="dashboard-stat rounded-[1.75rem]">
@@ -3396,11 +3629,35 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
   );
 }
 
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label>
+      <span className="text-sm font-semibold text-slate-600">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-2 w-full rounded-full bg-slate-50 px-5 py-3.5 outline-none transition focus:bg-white focus:ring-2 focus:ring-medical/20"
+      />
+    </label>
+  );
+}
+
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex-none text-red-500">⚠</span>
+        <span className="mt-0.5 flex-none text-red-500">!</span>
         <p>{message}</p>
       </div>
     </div>

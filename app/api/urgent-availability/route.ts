@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { publicDoctorWhere } from "@/lib/doctors/public-doctor-filter";
 import { urgentAvailabilitySchema } from "@/lib/validation/schemas";
 
-const medalPriority = { amatista: 3, diamante: 2, oro: 1 };
+const medalPriority = { amatista: 4, diamante: 3, obsidiana: 2, oro: 1 };
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

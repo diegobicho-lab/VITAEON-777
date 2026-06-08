@@ -1,3 +1,4 @@
+import { MedicalMedal } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, include: { specialty: true } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   await autoCancelExpiredAppointments();
 

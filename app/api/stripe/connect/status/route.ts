@@ -1,3 +1,4 @@
+import { MedicalMedal } from "@prisma/client";
 import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
@@ -18,6 +19,7 @@ export async function GET() {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "Primero completa tu perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
   if (!doctor.stripeAccountId) {
     return ok({
       stripeAccountId: null,

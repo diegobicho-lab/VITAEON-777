@@ -23,7 +23,7 @@ El proyecto fue migrado de un prototipo SPA servido por CDN a una arquitectura N
 - Secretaria médica virtual para plan Amatista con agenda del día, próxima cita, huecos disponibles y notificaciones internas.
 - Notificaciones internas para pacientes y médicos.
 - Fotos de perfil, consultorio y cédula profesional visible para perfil médico.
-- Checkout de suscripción médica preparado con Stripe para Diamante y Amatista; Oro se activa sin cobro.
+- Checkout de suscripción médica preparado con Stripe para Obsidiana, Diamante y Amatista; Oro se activa sin cobro.
 - Búsqueda de medicamentos preparada para fuente autorizada externa, con fallback seguro si no existe API configurada.
 - Home enriquecida con indicadores de confianza, cómo funciona y FAQ sin depender de perfiles médicos ficticios.
 - Descuento de bienvenida del 35% para pacientes nuevos en su primera consulta con la Dra. Susana Pérez Guadarrama, Medicina Interna.
@@ -219,12 +219,13 @@ Los alias de pacientes, resumen clínico y mensajes se guardan cifrados con AES-
 El plan activo del médico se guarda en `Doctor.medal` como distintivo operativo:
 
 - `oro`: perfil básico, una especialidad, un hospital, fotografía, títulos médicos y visibilidad normal.
+- `obsidiana`: plan médico de $250 MXN mensuales, con presencia activa e insignia Obsidiana sin desbloquear herramientas avanzadas de Amatista.
 - `diamante`: todo lo anterior con prioridad sobre perfiles Oro dentro de la especialidad.
-- `amatista`: prioridad superior a Diamante/Oro, agenda médica personalizada y asistente de IA para calendario.
+- `amatista`: prioridad superior a Diamante/Obsidiana/Oro, agenda médica personalizada y asistente de IA para calendario.
 
 El backend publica solo perfiles verificados con declaración legal aceptada. Cada médico tiene un único `Doctor` por `userId`, con una sola especialidad y un solo hospital. El backend bloquea el asistente para médicos que no tengan plan Amatista.
 
-Los pagos de suscripción se registran en `SubscriptionPayment`. Stripe confirma Diamante/Amatista vía `checkout.session.completed` en el webhook; Oro se marca como plan gratuito sin tarjeta.
+Los pagos de suscripción se registran en `SubscriptionPayment`. Stripe confirma Obsidiana/Diamante/Amatista vía `checkout.session.completed` en el webhook; Oro se marca como plan gratuito sin tarjeta.
 
 Antes de guardar datos profesionales, el médico debe aceptar esta declaración dentro del panel:
 

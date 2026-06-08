@@ -78,7 +78,7 @@
 - Se agregaron headers de seguridad ampliados en `next.config.mjs`.
 - Se agregaron pruebas unitarias y e2e base.
 - Se agregó el directorio comercial “Representantes Médicos / Catering” con tabs visuales, estados vacíos premium, publicación pública solo con estado activo y suscripción Obsidiana activa.
-- Se agregó la suscripción mensual Obsidiana para representantes médicos y catering, separada de planes médicos y preparada para Stripe hacia la cuenta administradora de VITAEON.
+- Se agregó la suscripción mensual Obsidiana de $250 MXN (`25000` centavos) para representantes médicos, catering y médicos, preparada para Stripe hacia la cuenta administradora de VITAEON.
 
 ## Prioridades técnicas
 

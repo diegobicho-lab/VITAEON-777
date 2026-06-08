@@ -15,8 +15,8 @@ import { marketplaceSubscriptionCheckoutSchema } from "@/lib/validation/schemas"
 
 function obsidianaPriceCents() {
   const raw = process.env.OBSIDIANA_PRICE_CENTS;
-  const parsed = raw ? Number.parseInt(raw, 10) : 0;
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  const parsed = raw ? Number.parseInt(raw, 10) : 25000;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 25000;
 }
 
 export async function POST(request: Request) {

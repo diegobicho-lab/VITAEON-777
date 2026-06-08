@@ -11,6 +11,7 @@ function mapRepresentative(item: {
   phone: string | null;
   email: string | null;
   imageUrl: string | null;
+  priceRange: string | null;
   createdAt: Date;
 }) {
   return {
@@ -22,6 +23,7 @@ function mapRepresentative(item: {
     phone: item.phone ?? "Contacto pendiente",
     email: item.email ?? "Correo pendiente",
     imageUrl: item.imageUrl,
+    priceRange: item.priceRange,
     createdAt: item.createdAt.toISOString(),
     plan: "obsidiana"
   };
@@ -35,6 +37,7 @@ function mapCatering(item: {
   phone: string | null;
   email: string | null;
   imageUrl: string | null;
+  priceRange: string | null;
   createdAt: Date;
 }) {
   return {
@@ -45,6 +48,7 @@ function mapCatering(item: {
     phone: item.phone ?? "Contacto pendiente",
     email: item.email ?? "Correo pendiente",
     imageUrl: item.imageUrl,
+    priceRange: item.priceRange,
     createdAt: item.createdAt.toISOString(),
     plan: "obsidiana"
   };

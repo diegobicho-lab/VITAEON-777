@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { MedicalMedal } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
@@ -14,7 +15,7 @@ const allowedTypes = new Map([
   ["image/webp", "webp"]
 ]);
 
-const allowedKinds = new Set(["profile", "office", "license", "prescription-header", "prescription-signature"]);
+const allowedKinds = new Set(["profile", "office", "license", "commercial-logo", "prescription-header", "prescription-signature"]);
 const maxBytes = 3 * 1024 * 1024;
 
 function getStorageConfig() {
@@ -101,6 +102,11 @@ export async function POST(request: Request) {
   if (!allowedTypes.has(file.type)) return fail("INVALID_FILE_TYPE", "Solo se aceptan imágenes JPG, PNG o WebP.", 422);
   if (file.size > maxBytes) return fail("FILE_TOO_LARGE", "La imagen debe pesar máximo 3 MB.", 422);
 
+  const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, select: { id: true, medal: true } });
+  if (doctor?.medal === MedicalMedal.obsidiana && kind !== "commercial-logo") {
+    return fail("OBSIDIAN_LOGO_ONLY", "Obsidiana solo puede subir imagen o logo comercial.", 403);
+  }
+
   const extension = allowedTypes.get(file.type);
   const filename = `${kind}-${randomUUID()}.${extension}`;
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -135,7 +141,6 @@ export async function POST(request: Request) {
 
   const imageField = getImageField(kind);
   if (imageField) {
-    const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, select: { id: true } });
     if (doctor) {
       await prisma.doctor.update({
         where: { id: doctor.id },

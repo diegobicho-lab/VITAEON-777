@@ -1,3 +1,4 @@
+import { MedicalMedal } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -11,6 +12,7 @@ export async function GET() {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   const slots = await prisma.availabilitySlot.findMany({
     where: { doctorId: doctor.id },
@@ -34,6 +36,7 @@ export async function POST(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   if (parsed.data.startsAt < new Date()) {
     return fail("PAST_SLOT", "No puedes publicar disponibilidad en una fecha pasada.", 422);
@@ -76,6 +79,7 @@ export async function PATCH(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   const existing = await prisma.availabilitySlot.findFirst({
     where: { id: parsed.data.slotId, doctorId: doctor.id },
@@ -115,6 +119,7 @@ export async function DELETE(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   if (repeatRevert.success) {
     const result = await prisma.availabilitySlot.deleteMany({

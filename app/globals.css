@@ -448,6 +448,12 @@ select {
   background: linear-gradient(135deg, #ffffff, #aee7ff 46%, #4c9fd2);
 }
 
+.shield-medal-obsidiana,
+.medal-obsidian {
+  color: #ffffff;
+  background: linear-gradient(135deg, #334155, #0f172a 52%, #020617);
+}
+
 .shield-medal-amatista,
 .medal-amethyst {
   color: #ffffff;

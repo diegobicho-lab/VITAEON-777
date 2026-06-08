@@ -5,6 +5,7 @@ import type { Role } from "@/types/domain";
 const protectedRoutes: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/dashboard/patient", roles: ["PATIENT", "ADMIN"] },
   { prefix: "/dashboard/doctor", roles: ["DOCTOR", "ADMIN"] },
+  { prefix: "/dashboard/obsidiana", roles: ["DOCTOR", "ADMIN"] },
   { prefix: "/dashboard/admin", roles: ["ADMIN", "STAFF"] }
 ];
 

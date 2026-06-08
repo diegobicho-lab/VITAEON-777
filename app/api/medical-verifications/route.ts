@@ -1,4 +1,4 @@
-import { Role, VerificationStatus } from "@prisma/client";
+import { MedicalMedal, Role, VerificationStatus } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -23,6 +23,7 @@ export async function GET() {
   if (user.role === "DOCTOR") {
     const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
     if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+    if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
     const verification = await prisma.medicalVerification.findUnique({ where: { doctorId: doctor.id } });
     return ok(verification);
   }
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
+  if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
   const body = await request.json().catch(() => null);
   const parsed = doctorVerificationSchema.safeParse({ ...body, doctorId: doctor.id });

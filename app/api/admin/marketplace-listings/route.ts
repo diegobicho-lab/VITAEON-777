@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       phone: parsed.data.phone,
       email: parsed.data.email,
       imageUrl: parsed.data.imageUrl,
+      priceRange: parsed.data.priceRange,
       status: parsed.data.status ? MarketplaceListingStatus[parsed.data.status] : MarketplaceListingStatus.PENDING
     },
     update: {
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
       phone: parsed.data.phone,
       email: parsed.data.email,
       imageUrl: parsed.data.imageUrl,
+      priceRange: parsed.data.priceRange,
       status: parsed.data.status ? MarketplaceListingStatus[parsed.data.status] : undefined
     }
   });
