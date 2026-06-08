@@ -1397,101 +1397,104 @@ function ScrollOrbs() {
 }
 
 function HeroMockup() {
+  // Sistemas del cuerpo: [cx, cy, color, label, lado, delay(s), radio]
+  const systems: [number, number, string, string, "L"|"R", number, number][] = [
+    [140,  36, "#c084fc", "Neurología",        "R", 0.0, 7],
+    [118, 118, "#fb7185", "Cardiología",        "L", 0.3, 7],
+    [162, 108, "#93c5fd", "Neumología",         "R", 0.7, 5],
+    [140, 164, "#86efac", "Gastroenterología",  "L", 1.1, 5],
+    [140, 198, "#fcd34d", "Endocrinología",     "R", 1.7, 4],
+    [106, 300, "#a78bfa", "Traumatología",      "L", 0.5, 5],
+    [174, 300, "#a78bfa", "",                   "R", 0.5, 5],
+  ];
+
   return (
     <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
 
-      {/* ── Morphing blob — forma orgánica con gradiente ── */}
+      {/* ── Morphing blob ── */}
       <div
         className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)] [animation:blobMorph_9s_ease-in-out_infinite]"
-        style={{ backgroundColor: "#0a1c2e" }}
+        style={{ backgroundColor: "#071e30" }}
       >
-        <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/45 blur-[64px] [animation:orbA_9s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/55 blur-[72px] [animation:orbB_11s_ease-in-out_infinite]" />
-        <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/28 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[20%] left-[5%] h-40 w-40 rounded-full bg-emerald-800/20 blur-[44px] [animation:orbA_14s_ease-in-out_infinite_reverse]" />
+        <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/40 blur-[64px] [animation:orbA_9s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/50 blur-[72px] [animation:orbB_11s_ease-in-out_infinite]" />
+        <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── Tarjetas 3D flotantes ── */}
-      <div className="relative z-10 w-full px-7 sm:px-9" style={{ perspective: "700px" }}>
+      {/* ── Cuerpo anatómico SVG ── */}
+      <svg
+        viewBox="0 0 280 420"
+        className="relative z-10 h-[88%] w-auto"
+        style={{ filter: "drop-shadow(0 0 18px rgba(17,109,157,0.25))" }}
+      >
+        {/* ── Silueta ── */}
+        {/* Cabeza */}
+        <ellipse cx="140" cy="36" rx="26" ry="29"
+          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.20)" strokeWidth="1.2" />
+        {/* Cuello */}
+        <rect x="131" y="63" width="18" height="14" rx="4"
+          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
+        {/* Torso */}
+        <path d="M94,74 C78,75 72,86 72,100 L72,218 C72,230 80,236 92,236 L188,236 C200,236 208,230 208,218 L208,100 C208,86 202,75 186,74 L162,68 L140,66 L118,68 Z"
+          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
+        {/* Brazo izquierdo */}
+        <path d="M72,100 C58,100 48,108 44,122 L38,205 C37,216 44,222 54,220 L66,218 L74,152 Z"
+          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* Brazo derecho */}
+        <path d="M208,100 C222,100 232,108 236,122 L242,205 C243,216 236,222 226,220 L214,218 L206,152 Z"
+          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* Pierna izquierda */}
+        <path d="M92,236 L80,380 C79,390 86,396 96,396 L108,396 C118,394 120,386 118,376 L114,236 Z"
+          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* Pierna derecha */}
+        <path d="M166,236 L186,236 L188,376 C186,386 188,394 198,396 L210,396 C220,396 221,390 220,380 L208,236 Z"
+          fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
 
-        {/* Doctor — profundidad trasera */}
-        <div
-          className="mb-3 [animation:floatA_5s_ease-in-out_infinite]"
-          style={{ transform: "rotateX(7deg) rotateY(-6deg) translateZ(-20px)" }}
-        >
-          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/12 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-medical/30 text-sm font-bold text-[#67b8e8]">
-                AM
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Dr. Arturo Medina</p>
-                <p className="text-xs text-white/50">Cardiología · Hosp. Ángeles</p>
-              </div>
-              <div className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-500/18 px-2.5 py-1">
-                <BadgeCheck className="h-3 w-3 text-emerald-400" />
-                <span className="text-[0.6rem] font-bold text-emerald-400">Verificado</span>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-4 border-t border-white/8 pt-3">
-              <div className="flex items-center gap-1.5">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                <span className="text-xs font-semibold text-white/80">4.9</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-white/35" />
-                <span className="text-xs text-white/45">14 años exp.</span>
-              </div>
-              <span className="ml-auto text-xs font-bold text-white/75">$1,200 MXN</span>
-            </div>
-          </div>
-        </div>
+        {/* ── Detalles anatómicos ── */}
+        {/* Columna vertebral (línea punteada) */}
+        <line x1="140" y1="76" x2="140" y2="234"
+          stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" strokeDasharray="3,4" />
+        {/* Costillas — muy sutiles */}
+        <path d="M112,98 Q100,115 110,130" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" fill="none" />
+        <path d="M168,98 Q180,115 170,130" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" fill="none" />
+        <path d="M114,110 Q103,124 112,138" stroke="rgba(255,255,255,0.05)" strokeWidth="0.7" fill="none" />
+        <path d="M166,110 Q177,124 168,138" stroke="rgba(255,255,255,0.05)" strokeWidth="0.7" fill="none" />
+        {/* Articulaciones (hombros, caderas, rodillas) */}
+        {([[72,98],[208,98],[100,236],[180,236],[100,308],[180,308]] as [number,number][]).map(([x,y],i) => (
+          <circle key={i} cx={x} cy={y} r="3.5"
+            fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.18)" strokeWidth="0.8" />
+        ))}
 
-        {/* Slots — profundidad media */}
-        <div
-          className="mb-3 [animation:floatB_4s_ease-in-out_0.7s_infinite]"
-          style={{ transform: "rotateX(3deg) rotateY(-3deg) translateZ(12px)" }}
-        >
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Lun 9 jun", time: "10:00 am", active: true },
-              { label: "Mar 10 jun", time: "12:30 pm", active: false },
-              { label: "Jue 12 jun", time: "9:00 am",  active: false },
-            ].map((s) => (
-              <div
-                key={s.time}
-                className={`rounded-xl p-2.5 text-center ring-1 ${
-                  s.active ? "bg-medical ring-medical/50" : "bg-white/7 ring-white/8"
-                }`}
-              >
-                <p className={`text-[0.5rem] font-semibold leading-tight ${s.active ? "text-white/75" : "text-white/30"}`}>{s.label}</p>
-                <p className={`mt-0.5 text-xs font-bold ${s.active ? "text-white" : "text-white/50"}`}>{s.time}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Confirmación — profundidad delantera */}
-        <div
-          className="[animation:floatC_6s_ease-in-out_1.4s_infinite]"
-          style={{ transform: "rotateX(1deg) rotateY(-1deg) translateZ(36px)" }}
-        >
-          <div className="flex items-center gap-3 rounded-2xl bg-white/95 p-4 shadow-[0_10px_40px_rgba(0,0,0,0.22)] backdrop-blur-md">
-            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-50">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-deep">Cita confirmada</p>
-              <p className="text-xs text-slate-500">Lun 9 jun · 10:00 am · Dr. Medina</p>
-            </div>
-            <span className="relative ml-auto flex h-2 w-2 flex-none">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-          </div>
-        </div>
-
-      </div>
+        {/* ── Sistemas del cuerpo ── */}
+        {systems.map(([cx, cy, color, label, side, delay, r], i) => {
+          const labelX = side === "L" ? cx - r - 22 : cx + r + 22;
+          const lineX1 = side === "L" ? cx - r - 2 : cx + r + 2;
+          const lineX2 = side === "L" ? cx - r - 18 : cx + r + 18;
+          return (
+            <g key={i}>
+              {/* Anillo exterior pulsante */}
+              <circle cx={cx} cy={cy} r={r + 5} fill={color}
+                style={{ animation: `sysPulse 2.4s ease-in-out ${delay}s infinite` }} />
+              {/* Punto interior */}
+              <circle cx={cx} cy={cy} r={r} fill={color} opacity="0.9" />
+              {/* Cruz / marker */}
+              <circle cx={cx} cy={cy} r={r - 2} fill="rgba(0,0,0,0.25)" />
+              {/* Label + línea */}
+              {label && (
+                <>
+                  <line x1={lineX1} y1={cy} x2={lineX2} y2={cy}
+                    stroke={color} strokeWidth="0.7" opacity="0.55" />
+                  <text x={labelX} y={cy + 3.5}
+                    fill={color} fontSize="7.2" fontFamily="system-ui, sans-serif"
+                    textAnchor={side === "L" ? "end" : "start"} opacity="0.85">
+                    {label}
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }

@@ -186,6 +186,11 @@ select {
   60%       { border-radius: 50% 50% 35% 65% / 65% 35% 65% 35%; }
   80%       { border-radius: 40% 60% 60% 40% / 55% 45% 55% 45%; }
 }
+@keyframes sysPulse {
+  0%, 100% { opacity: 0.10; }
+  50%       { opacity: 0.45; }
+}
+
 @keyframes floatA {
   0%, 100% { transform: translateY(0px);   }
   50%       { transform: translateY(-14px); }
