@@ -803,6 +803,7 @@ export function DoctorDashboardClient() {
   const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [subscriptionAction, setSubscriptionAction] = useState("");
   const assistantEnabled = medal === "amatista";
   const collaborationEnabled = medal === "amatista";
   const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
@@ -985,6 +986,25 @@ export function DoctorDashboardClient() {
     setMedal(plan);
     setMessage("Plan actualizado correctamente.");
     await load();
+  }
+
+  async function cancelSubscriptionRenewal() {
+    const confirmed = window.confirm("¿Quieres cancelar la renovación automática de tu suscripción? Tu acceso seguirá activo hasta terminar el periodo pagado.");
+    if (!confirmed) return;
+    setSubscriptionAction("cancel");
+    setMessage("");
+    try {
+      const response = await clientApi<{ message: string }>("/api/subscriptions/cancel", {
+        method: "POST",
+        body: JSON.stringify({ plan: medal })
+      });
+      setMessage(response.message);
+      await load();
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "No fue posible cancelar la renovación.");
+    } finally {
+      setSubscriptionAction("");
+    }
   }
 
   async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION" | "APPROVE_REFUND" | "REJECT_REFUND", reason?: string) {
@@ -1780,8 +1800,29 @@ export function DoctorDashboardClient() {
                 ))}
               </div>
               <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                Las renovaciones quincenales de Diamante y Amatista se procesan en Stripe Billing con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
+                Las renovaciones de Obsidiana, Diamante y Amatista se procesan en Stripe Billing con la cuenta principal configurada en backend. VITAEON no guarda tarjetas ni expone datos financieros.
               </p>
+              {medal !== "oro" && (
+                <div className="mt-5 rounded-[1.5rem] border border-rose-100 bg-rose-50/60 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-600">Control de suscripción</p>
+                      <h3 className="mt-2 text-xl font-semibold text-deep">Cancelar renovación automática</h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                        Puedes cancelar en cualquier momento. Tu plan seguirá disponible hasta terminar el periodo ya pagado y no se hará el siguiente cobro automático.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={cancelSubscriptionRenewal}
+                      disabled={subscriptionAction === "cancel"}
+                      className="rounded-full border border-rose-100 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      {subscriptionAction === "cancel" ? "Cancelando..." : "Cancelar renovación"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
