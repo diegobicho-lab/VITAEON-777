@@ -1397,14 +1397,64 @@ function ScrollOrbs() {
 }
 
 function HeroMockup() {
-  // Nodos médicos: [cx, cy, color, label, lado, delay(s)]
-  const nodes: [number, number, string, string, "L" | "R", number][] = [
-    [140,  58, "#c084fc", "Neurología",        "R", 0.0],
-    [140,  96, "#fcd34d", "Endocrinología",     "L", 1.6],
-    [116, 126, "#fb7185", "Cardiología",        "L", 0.4],
-    [162, 120, "#93c5fd", "Neumología",         "R", 0.8],
-    [132, 172, "#86efac", "Gastroenterología",  "L", 1.2],
-    [176, 298, "#a78bfa", "Traumatología",      "R", 0.6],
+  // Nodos principales (especialidades médicas): [cx,cy,color,label,lado,delay]
+  const specs: [number, number, string, string, "L"|"R", number][] = [
+    [140,  65, "#c084fc", "Neurología",        "R", 0.0],
+    [ 94, 155, "#fb7185", "Cardiología",        "L", 0.4],
+    [192, 155, "#93c5fd", "Neumología",         "R", 0.8],
+    [120, 238, "#86efac", "Gastroenterología",  "L", 1.2],
+    [164, 238, "#fcd34d", "Endocrinología",     "R", 1.6],
+    [140, 335, "#a78bfa", "Traumatología",      "R", 0.6],
+  ];
+
+  // Nodos de constelación (fondo)
+  const smalls: [number, number][] = [
+    [60,50],[105,38],[175,42],[220,58],[250,85],
+    [45,100],[85,88],[195,92],[235,120],[260,150],
+    [55,145],[175,175],[210,195],[248,195],
+    [50,200],[80,238],[110,262],[170,258],[205,258],[240,235],[265,270],
+    [70,292],[100,308],[175,308],[215,292],[245,318],
+    [85,358],[115,372],[165,368],[195,362],[230,372],
+  ];
+
+  // Backbone (especialidad ↔ especialidad)
+  const backbone: [number,number,number,number][] = [
+    [140,65, 94,155],[140,65,192,155],[94,155,192,155],
+    [94,155,120,238],[192,155,164,238],[120,238,164,238],
+    [120,238,140,335],[164,238,140,335],
+  ];
+
+  // Líneas ambientales (especialidad → satélite + satélite ↔ satélite)
+  const ambient: [number,number,number,number][] = [
+    [140,65,60,50],[140,65,105,38],[140,65,175,42],[140,65,220,58],
+    [140,65,85,88],[140,65,195,92],
+    [94,155,45,100],[94,155,85,88],[94,155,55,145],
+    [94,155,50,200],[94,155,80,238],
+    [192,155,195,92],[192,155,235,120],[192,155,260,150],
+    [192,155,175,175],[192,155,210,195],
+    [120,238,80,238],[120,238,110,262],[120,238,70,292],[120,238,100,308],
+    [164,238,175,175],[164,238,170,258],[164,238,205,258],
+    [164,238,175,308],[164,238,215,292],
+    [140,335,100,308],[140,335,175,308],[140,335,85,358],
+    [140,335,115,372],[140,335,165,368],[140,335,195,362],
+    [60,50,105,38],[105,38,175,42],[175,42,220,58],[220,58,250,85],
+    [45,100,55,145],[235,120,260,150],[260,150,248,195],
+    [210,195,248,195],[210,195,240,235],[248,195,240,235],
+    [50,200,80,238],[80,238,70,292],[240,235,265,270],
+    [70,292,100,308],[175,308,215,292],[215,292,245,318],
+    [245,318,230,372],[85,358,115,372],[115,372,165,368],
+    [165,368,195,362],[195,362,230,372],
+  ];
+
+  // Señales viajeras: [path, color, dur(s), begin(s)]
+  const signals: [string, string, number, number][] = [
+    ["M140,65 L94,155",   "#c084fc", 2.8, 0.0],
+    ["M140,65 L192,155",  "#93c5fd", 3.2, 0.6],
+    ["M94,155 L120,238",  "#fb7185", 2.6, 1.1],
+    ["M192,155 L164,238", "#fcd34d", 2.9, 0.4],
+    ["M120,238 L140,335", "#86efac", 3.4, 1.3],
+    ["M164,238 L140,335", "#a78bfa", 3.0, 0.9],
+    ["M164,238 L120,238", "#fcd34d", 2.3, 1.8],
   ];
 
   return (
@@ -1420,212 +1470,80 @@ function HeroMockup() {
         <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── Da Vinci · Hombre de Vitruvio (refinado) ── */}
+      {/* ── Red neuronal / constelación médica ── */}
       <svg
         viewBox="0 0 280 420"
-        className="relative z-10 h-[90%] w-auto"
-        style={{ filter: "drop-shadow(0 0 24px rgba(255,200,60,0.22))" }}
+        className="relative z-10 h-[92%] w-auto"
+        style={{ filter: "drop-shadow(0 0 14px rgba(17,109,157,0.15))" }}
       >
-        {/* ── Guías geométricas ── */}
-        <circle cx="140" cy="186" r="130"
-          fill="none" stroke="rgba(255,215,90,0.12)" strokeWidth="0.7" strokeDasharray="1.5,5.5"/>
-        <rect x="14" y="56" width="252" height="252"
-          fill="none" stroke="rgba(255,215,90,0.08)" strokeWidth="0.6" strokeDasharray="2.5,6.5"/>
-        <line x1="140" y1="20"  x2="140" y2="405" stroke="rgba(255,215,90,0.04)" strokeWidth="0.4"/>
-        <line x1="6"   y1="186" x2="274" y2="186" stroke="rgba(255,215,90,0.04)" strokeWidth="0.4"/>
+        {/* ── Rutas ocultas para animateMotion ── */}
+        <defs>
+          {signals.map(([p], i) => (
+            <path key={i} id={`sp${i}`} d={p}/>
+          ))}
+        </defs>
 
-        {/* ── Pose fantasma: brazos horizontales + piernas juntas ── */}
-        <path d="M98,104 L14,104"  stroke="rgba(255,215,90,0.14)" strokeWidth="0.6" strokeDasharray="3,4.5" fill="none"/>
-        <path d="M182,104 L266,104" stroke="rgba(255,215,90,0.14)" strokeWidth="0.6" strokeDasharray="3,4.5" fill="none"/>
-        <path d="M133,216 L129,378" stroke="rgba(255,215,90,0.10)" strokeWidth="0.6" strokeDasharray="3,4.5" fill="none"/>
-        <path d="M147,216 L151,378" stroke="rgba(255,215,90,0.10)" strokeWidth="0.6" strokeDasharray="3,4.5" fill="none"/>
-
-        {/* ── Cabeza ── */}
-        <ellipse cx="140" cy="58" rx="19" ry="21"
-          fill="none" stroke="rgba(255,215,90,0.78)" strokeWidth="1.1"/>
-        {/* Mandíbula */}
-        <path d="M124,67 Q130,79 140,81 Q150,79 156,67"
-          fill="none" stroke="rgba(255,215,90,0.50)" strokeWidth="0.9"/>
-        {/* Cabello */}
-        <path d="M122,50 Q127,38 140,36 Q153,38 158,50"
-          fill="none" stroke="rgba(255,215,90,0.17)" strokeWidth="0.65" strokeDasharray="1,2.5"/>
-        {/* Cejas */}
-        <path d="M129,50 Q133,47 137,48" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.65"/>
-        <path d="M143,48 Q147,47 151,50" fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.65"/>
-        {/* Ojos */}
-        <ellipse cx="132" cy="55" rx="4.5" ry="3" fill="none" stroke="rgba(255,215,90,0.32)" strokeWidth="0.65"/>
-        <circle  cx="132" cy="55" r="1.5" fill="rgba(255,215,90,0.20)"/>
-        <ellipse cx="148" cy="55" rx="4.5" ry="3" fill="none" stroke="rgba(255,215,90,0.32)" strokeWidth="0.65"/>
-        <circle  cx="148" cy="55" r="1.5" fill="rgba(255,215,90,0.20)"/>
-        {/* Nariz */}
-        <path d="M140,50 L140,64 Q137,67 134,67 Q138,66 140,65 Q142,66 146,67 Q143,67 140,64"
-          fill="none" stroke="rgba(255,215,90,0.22)" strokeWidth="0.6"/>
-        {/* Boca */}
-        <path d="M134,72 Q140,76 146,72"
-          fill="none" stroke="rgba(255,215,90,0.27)" strokeWidth="0.65"/>
-        {/* Orejas */}
-        <path d="M121,52 Q119,55 120,59 Q119,63 121,66" fill="none" stroke="rgba(255,215,90,0.23)" strokeWidth="0.6"/>
-        <path d="M159,52 Q161,55 160,59 Q161,63 159,66" fill="none" stroke="rgba(255,215,90,0.23)" strokeWidth="0.6"/>
-
-        {/* ── Cuello ── */}
-        <path d="M134,78 L133,92" stroke="rgba(255,215,90,0.56)" strokeWidth="0.95" fill="none"/>
-        <path d="M146,78 L147,92" stroke="rgba(255,215,90,0.56)" strokeWidth="0.95" fill="none"/>
-        {/* Clavículas */}
-        <path d="M133,92 Q118,90 98,96"  stroke="rgba(255,215,90,0.42)" strokeWidth="0.8" fill="none"/>
-        <path d="M147,92 Q162,90 182,96" stroke="rgba(255,215,90,0.42)" strokeWidth="0.8" fill="none"/>
-
-        {/* ── Torso — proporciones masculinas ── */}
-        {/* Lado izquierdo: hombro → cintura → cadera */}
-        <path d="M98,96 C 92,110 90,132 92,154 C 93,170 96,188 100,206"
-          fill="none" stroke="rgba(255,215,90,0.68)" strokeWidth="1.05"/>
-        {/* Lado derecho */}
-        <path d="M182,96 C 188,110 190,132 188,154 C 187,170 184,188 180,206"
-          fill="none" stroke="rgba(255,215,90,0.68)" strokeWidth="1.05"/>
-        {/* Línea pectoral */}
-        <path d="M112,105 Q140,111 168,105"
-          fill="none" stroke="rgba(255,215,90,0.20)" strokeWidth="0.6"/>
-        {/* Arco pélvico */}
-        <path d="M100,206 Q116,220 140,222 Q164,220 180,206"
-          fill="none" stroke="rgba(255,215,90,0.62)" strokeWidth="1.0"/>
-        {/* Entrepierna */}
-        <path d="M129,218 Q140,224 151,218"
-          fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.6"/>
-
-        {/* ── Ombligo ── */}
-        <circle cx="140" cy="183" r="2.6" fill="none" stroke="rgba(255,215,90,0.54)" strokeWidth="0.8"/>
-        <circle cx="140" cy="183" r="1.0" fill="rgba(255,215,90,0.60)"/>
-
-        {/* ── Columna vertebral ── */}
-        <path d="M140,94 L140,214"
-          fill="none" stroke="rgba(255,215,90,0.16)" strokeWidth="0.55" strokeDasharray="1.5,2.5"/>
-        {([106,114,122,130,138,146,154,162,170,180,190,200] as number[]).map((y, i) => (
-          <circle key={`v${i}`} cx="140" cy={y} r="0.9" fill="rgba(255,215,90,0.28)"/>
+        {/* ── Líneas ambientales ── */}
+        {ambient.map(([x1,y1,x2,y2], i) => (
+          <line key={`a${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(255,255,255,0.055)" strokeWidth="0.55"/>
         ))}
 
-        {/* ── Caja torácica ── */}
-        <path d="M126,108 Q106,126 108,148 Q110,156 124,156"
-          fill="none" stroke="rgba(255,215,90,0.23)" strokeWidth="0.8"/>
-        <path d="M128,117 Q110,133 112,153"
-          fill="none" stroke="rgba(255,215,90,0.17)" strokeWidth="0.7"/>
-        <path d="M130,126 Q114,140 116,158"
-          fill="none" stroke="rgba(255,215,90,0.13)" strokeWidth="0.6"/>
-        <path d="M132,135 Q118,147 120,163"
-          fill="none" stroke="rgba(255,215,90,0.09)" strokeWidth="0.5"/>
-        <path d="M154,108 Q174,126 172,148 Q170,156 156,156"
-          fill="none" stroke="rgba(255,215,90,0.23)" strokeWidth="0.8"/>
-        <path d="M152,117 Q170,133 168,153"
-          fill="none" stroke="rgba(255,215,90,0.17)" strokeWidth="0.7"/>
-        <path d="M150,126 Q166,140 164,158"
-          fill="none" stroke="rgba(255,215,90,0.13)" strokeWidth="0.6"/>
-        <path d="M148,135 Q162,147 160,163"
-          fill="none" stroke="rgba(255,215,90,0.09)" strokeWidth="0.5"/>
-        {/* Esternón */}
-        <path d="M139,104 L139,156 M141,104 L141,156"
-          fill="none" stroke="rgba(255,215,90,0.11)" strokeWidth="0.4"/>
+        {/* ── Backbone (más luminoso) ── */}
+        {backbone.map(([x1,y1,x2,y2], i) => (
+          <line key={`b${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(255,255,255,0.13)" strokeWidth="0.75"/>
+        ))}
 
-        {/* ── Brazos — elevados ~13° sobre horizontal ── */}
-        {/* Izquierdo: hombro (98,96) → codo (46,84) → muñeca (10,76) */}
-        <path d="M98,96 C 80,93 64,89 46,84"
-          fill="none" stroke="rgba(255,215,90,0.68)" strokeWidth="1.05"/>
-        <circle cx="48" cy="84" r="3.8"
-          fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.7"/>
-        <path d="M46,84 C 32,81 20,78 10,76"
-          fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.9"/>
-        {/* Mano izquierda */}
-        <path d="M10,76 Q6,74 4,71 Q6,76 8,79"
-          fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+        {/* ── Señales viajeras ── */}
+        {signals.map(([_p, color, dur, begin], i) => (
+          <circle key={`sig${i}`} r="1.8" fill={color} opacity="0.85">
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`}>
+              <mpath href={`#sp${i}`}/>
+            </animateMotion>
+          </circle>
+        ))}
 
-        {/* Derecho: hombro (182,96) → codo (234,84) → muñeca (270,76) */}
-        <path d="M182,96 C 200,93 216,89 234,84"
-          fill="none" stroke="rgba(255,215,90,0.68)" strokeWidth="1.05"/>
-        <circle cx="232" cy="84" r="3.8"
-          fill="none" stroke="rgba(255,215,90,0.30)" strokeWidth="0.7"/>
-        <path d="M234,84 C 248,81 260,78 270,76"
-          fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.9"/>
-        {/* Mano derecha */}
-        <path d="M270,76 Q274,74 276,71 Q274,76 272,79"
-          fill="none" stroke="rgba(255,215,90,0.44)" strokeWidth="0.8"/>
+        {/* ── Nodos ambientales ── */}
+        {smalls.map(([cx,cy], i) => (
+          <circle key={`s${i}`} cx={cx} cy={cy} r="1.5"
+            fill="rgba(255,255,255,0.20)"/>
+        ))}
 
-        {/* ── Articulaciones de hombros ── */}
-        <circle cx="98"  cy="97"  r="4.5" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
-        <circle cx="182" cy="97"  r="4.5" fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
-
-        {/* ── Piernas — separación natural ~13° ── */}
-        {/* Muslo izquierdo: cadera (118,216) → rodilla (105,300) */}
-        <path d="M118,216 C 114,236 108,262 105,292"
-          fill="none" stroke="rgba(255,215,90,0.65)" strokeWidth="1.05"/>
-        <ellipse cx="104" cy="296" rx="5.5" ry="4.5"
-          fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
-        {/* Tibia izq: rodilla → tobillo (96,370) */}
-        <path d="M104,301 C 101,318 98,340 95,362"
-          fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.95"/>
-        <circle cx="95" cy="364" r="2.5"
-          fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.6"/>
-        {/* Pie izquierdo */}
-        <path d="M95,364 Q90,371 83,373 Q74,373 72,368"
-          fill="none" stroke="rgba(255,215,90,0.45)" strokeWidth="0.85"/>
-
-        {/* Muslo derecho: cadera (162,216) → rodilla (175,300) */}
-        <path d="M162,216 C 166,236 172,262 175,292"
-          fill="none" stroke="rgba(255,215,90,0.65)" strokeWidth="1.05"/>
-        <ellipse cx="176" cy="296" rx="5.5" ry="4.5"
-          fill="none" stroke="rgba(255,215,90,0.28)" strokeWidth="0.7"/>
-        {/* Tibia der */}
-        <path d="M176,301 C 179,318 182,340 185,362"
-          fill="none" stroke="rgba(255,215,90,0.60)" strokeWidth="0.95"/>
-        <circle cx="185" cy="364" r="2.5"
-          fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.6"/>
-        {/* Pie derecho */}
-        <path d="M185,364 Q190,371 197,373 Q206,373 208,368"
-          fill="none" stroke="rgba(255,215,90,0.45)" strokeWidth="0.85"/>
-
-        {/* ── Articulaciones de caderas ── */}
-        <circle cx="114" cy="214" r="4.2" fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.7"/>
-        <circle cx="166" cy="214" r="4.2" fill="none" stroke="rgba(255,215,90,0.26)" strokeWidth="0.7"/>
-
-        {/* ── Nodos médicos — escáner de precisión ── */}
-        {nodes.map(([cx, cy, color, label, side, delay], i) => {
-          const arm  = 28;
-          const tick = 3;
-          const x1 = side === "L" ? cx - 9       : cx + 9;
-          const x2 = side === "L" ? cx - arm - 4 : cx + arm + 4;
-          const lx = side === "L" ? x2 - 4       : x2 + 4;
+        {/* ── Nodos de especialidad ── */}
+        {specs.map(([cx,cy,color,label,side,delay], i) => {
+          const arm=28, tick=3;
+          const x1 = side==="L" ? cx-9     : cx+9;
+          const x2 = side==="L" ? cx-arm-4 : cx+arm+4;
+          const lx = side==="L" ? x2-4     : x2+4;
           return (
             <g key={i}>
-              <circle cx={cx} cy={cy} r={10}
-                fill="none" stroke={color} strokeWidth="0.7" opacity={0.25}
+              <circle cx={cx} cy={cy} r={16}
+                fill="none" stroke={color} strokeWidth="0.6" opacity={0.18}
                 style={{ animation: `sysPulse 2.4s ease-in-out ${delay}s infinite` }}
               />
-              <circle cx={cx} cy={cy} r={6}   fill="none" stroke={color} strokeWidth="0.9" opacity={0.62}/>
-              <circle cx={cx} cy={cy} r={2.4} fill={color} opacity={0.92}/>
-              <line x1={cx-5.5} y1={cy}     x2={cx-2.8} y2={cy}     stroke={color} strokeWidth="0.55" opacity="0.55"/>
-              <line x1={cx+2.8} y1={cy}     x2={cx+5.5} y2={cy}     stroke={color} strokeWidth="0.55" opacity="0.55"/>
-              <line x1={cx}     y1={cy-5.5} x2={cx}     y2={cy-2.8} stroke={color} strokeWidth="0.55" opacity="0.55"/>
-              <line x1={cx}     y1={cy+2.8} x2={cx}     y2={cy+5.5} stroke={color} strokeWidth="0.55" opacity="0.55"/>
-              {label && (
-                <>
-                  <line x1={x1} y1={cy} x2={x2} y2={cy}
-                    stroke={color} strokeWidth="0.55" opacity="0.38"/>
-                  <line x1={x2} y1={cy-tick} x2={x2} y2={cy+tick}
-                    stroke={color} strokeWidth="0.55" opacity="0.38"/>
-                  <text x={lx} y={cy + 3.5}
-                    fill={color} fontSize="6.0"
-                    fontFamily="'Courier New', monospace"
-                    textAnchor={side === "L" ? "end" : "start"}
-                    opacity="0.82" letterSpacing="0.2"
-                  >{label}</text>
-                </>
-              )}
+              <circle cx={cx} cy={cy} r={9}   fill="none" stroke={color} strokeWidth="0.85" opacity={0.52}/>
+              <circle cx={cx} cy={cy} r={4.8} fill={color} opacity={0.82}/>
+              <circle cx={cx} cy={cy} r={2.0} fill="rgba(255,255,255,0.68)"/>
+              <line x1={cx-8} y1={cy}   x2={cx-5} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.50"/>
+              <line x1={cx+5} y1={cy}   x2={cx+8} y2={cy}   stroke={color} strokeWidth="0.5" opacity="0.50"/>
+              <line x1={cx}   y1={cy-8} x2={cx}   y2={cy-5} stroke={color} strokeWidth="0.5" opacity="0.50"/>
+              <line x1={cx}   y1={cy+5} x2={cx}   y2={cy+8} stroke={color} strokeWidth="0.5" opacity="0.50"/>
+              {label && <>
+                <line x1={x1} y1={cy} x2={x2} y2={cy}
+                  stroke={color} strokeWidth="0.5" opacity="0.38"/>
+                <line x1={x2} y1={cy-tick} x2={x2} y2={cy+tick}
+                  stroke={color} strokeWidth="0.5" opacity="0.38"/>
+                <text x={lx} y={cy+3.5}
+                  fill={color} fontSize="6.0"
+                  fontFamily="'Courier New', monospace"
+                  textAnchor={side==="L" ? "end" : "start"}
+                  opacity="0.82" letterSpacing="0.2"
+                >{label}</text>
+              </>}
             </g>
           );
         })}
-
-        {/* ── Marca ── */}
-        <text x="140" y="410"
-          fill="rgba(255,215,90,0.11)" fontSize="4.6"
-          fontFamily="'Courier New', monospace"
-          textAnchor="middle" letterSpacing="1.8"
-        >VITAEON · MEDICINA PREMIUM</text>
       </svg>
     </div>
   );
