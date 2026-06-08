@@ -1671,11 +1671,13 @@ export function DoctorDashboardClient() {
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Resumen clínico</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-deep">Tu operación de hoy</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">Agenda, disponibilidad y alertas principales en una vista ligera.</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-medical">Resumen clínico</p>
+                  <h2 className="mt-2 text-2xl font-bold text-deep">Tu operación de hoy</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Agenda, disponibilidad y alertas principales en una vista ligera.</p>
                 </div>
-                <Calendar className="h-8 w-8 text-medical" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-medical/10">
+                  <Calendar className="h-5 w-5 text-medical" />
+                </div>
               </div>
               <div className="mt-6 grid gap-4 md:grid-cols-4">
                 <MetricMini label="Citas" value={String(appointments.length)} />
@@ -1684,30 +1686,41 @@ export function DoctorDashboardClient() {
                 <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl bg-slate-50 p-5">
-                  <p className="font-semibold text-deep">Próximas citas</p>
-                  <div className="mt-3 grid gap-3">
-                    {appointments.slice(0, 3).map((appointment) => (
-                      <div key={appointment.id} className="rounded-2xl bg-white p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-deep">{appointment.patient.user.name}</p>
-                            <p className="mt-1 text-sm text-slate-600">{dateTime(appointment.availabilitySlot.startsAt)}</p>
+                <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Próximas citas</p>
+                  <div className="mt-3 grid gap-2.5">
+                    {appointments.slice(0, 3).map((appointment) => {
+                      const s = appointment.status;
+                      const isOk  = ["ACCEPTED","CONFIRMED","COMPLETED","PAID"].includes(s);
+                      const isErr = ["CANCELLED","FAILED","REJECTED","NO_SHOW","AUTO_CANCELLED"].includes(s);
+                      const isRef = ["REFUND_PENDING","CANCELLATION_REQUESTED","RESCHEDULE_REQUESTED"].includes(s);
+                      const accent = isOk ? "border-l-emerald-400" : isErr ? "border-l-red-400" : isRef ? "border-l-sky-400" : "border-l-amber-400";
+                      return (
+                        <div key={appointment.id} className={`overflow-hidden rounded-2xl border-l-4 bg-white px-4 py-3.5 shadow-sm ${accent}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-deep">{appointment.patient.user.name}</p>
+                              <p className="mt-0.5 text-xs text-slate-500">{dateTime(appointment.availabilitySlot.startsAt)}</p>
+                            </div>
+                            <Badge value={appointment.status} />
                           </div>
-                          <Badge value={appointment.status} />
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {appointments.length === 0 && <EmptyState text="No hay citas asignadas." />}
                   </div>
                 </div>
-                <div className="rounded-3xl bg-slate-50 p-5">
-                  <p className="font-semibold text-deep">Alertas</p>
-                  <div className="mt-3 grid gap-3">
+                <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Alertas</p>
+                  <div className="mt-3 grid gap-2.5">
                     {notifications.slice(0, 4).map((item) => (
-                      <p key={item.id} className="rounded-2xl bg-white p-4 text-sm leading-6 text-slate-600">
-                        <span className="font-semibold text-deep">{item.title}</span><br />{item.message}
-                      </p>
+                      <div key={item.id} className="flex gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-sm">
+                        <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-medical" />
+                        <div>
+                          <p className="text-sm font-semibold leading-snug text-deep">{item.title}</p>
+                          <p className="mt-0.5 text-xs leading-5 text-slate-500">{item.message}</p>
+                        </div>
+                      </div>
                     ))}
                     {notifications.length === 0 && <EmptyState text="Sin alertas pendientes." />}
                   </div>
@@ -3364,7 +3377,13 @@ function DoctorReviewPanel({
 }
 
 function MetricMini({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-3xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold text-deep">{value}</p></div>;
+  return (
+    <div className="rounded-2xl border border-silver/50 bg-white p-5 shadow-sm transition hover:shadow-md">
+      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-bold tabular-nums text-deep">{value}</p>
+      <div className="mt-3 h-[3px] w-8 rounded-full bg-medical/50" />
+    </div>
+  );
 }
 
 function AppointmentList({
