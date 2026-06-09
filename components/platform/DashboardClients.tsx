@@ -1728,13 +1728,13 @@ export function DoctorDashboardClient() {
                   <Calendar className="h-5 w-5 text-medical" />
                 </div>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
                 <MetricMini label="Citas" value={String(appointments.length)} />
                 <MetricMini label="Pendientes" value={String(appointments.filter((item) => pendingAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Confirmadas" value={String(appointments.filter((item) => confirmedAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
               </div>
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Próximas citas</p>
                   <div className="mt-3 grid gap-2.5">
@@ -1844,7 +1844,7 @@ export function DoctorDashboardClient() {
                 </div>
                 <CreditCard className="h-8 w-8 text-medical" />
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {doctorPlans.map((plan) => (
                   <button
                     key={plan.id}
@@ -1955,7 +1955,7 @@ export function DoctorDashboardClient() {
                 </div>
                 <ShieldCheck className="h-8 w-8 text-medical" />
               </div>
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Nombre profesional visible" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <input value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Precio MXN" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)} className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
@@ -2256,7 +2256,7 @@ export function AdminDashboardClient() {
     <Shell eyebrow="Administración" title="Centro de control VITAEON">
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
         <div className="mt-8 grid gap-6">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             <Metric icon={<ShieldCheck />} label="Verificaciones" value={String(verifications.length)} />
             <Metric icon={<Calendar />} label="Citas" value={String(appointments.length)} />
             <Metric icon={<BadgeCheck />} label="Médicos" value={String(doctors.length)} />
@@ -2319,7 +2319,7 @@ export function AdminDashboardClient() {
                     </div>
                     <Badge value={verification.status} />
                   </div>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-4 flex flex-wrap gap-3">
                     <button onClick={() => review(verification.id, "VERIFIED")} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 font-semibold text-white"><CheckCircle2 className="h-4 w-4" /> Aprobar</button>
                     <button onClick={() => review(verification.id, "REJECTED")} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 font-semibold text-white"><XCircle className="h-4 w-4" /> Rechazar</button>
                   </div>
@@ -2641,10 +2641,15 @@ function DoctorAgendaPanel({
           <p className="text-lg font-semibold capitalize text-deep">{monthLabel}</p>
           <button onClick={() => shiftMonth(1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronRight className="h-4 w-4" /></button>
         </div>
-        <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => <span key={day}>{day}</span>)}
+        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.14em]">
+          {["D", "L", "M", "X", "J", "V", "S"].map((day, i) => (
+            <span key={i}>
+              <span className="sm:hidden">{day}</span>
+              <span className="hidden sm:inline">{["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][i]}</span>
+            </span>
+          ))}
         </div>
-        <div className="mt-2 grid grid-cols-7 gap-2">
+        <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((date) => {
             const key = date.toISOString().slice(0, 10);
             const day = dayMap.get(key);
@@ -2657,14 +2662,14 @@ function DoctorAgendaPanel({
                 key={key}
                 onClick={() => !past && onSelectDate(key)}
                 disabled={past}
-                className={`min-h-24 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 ${selected ? "border-medical bg-white ring-4 ring-medical/10" : "border-silver bg-white"} ${outside ? "opacity-45" : ""}`}
+                className={`min-h-[3.5rem] rounded-xl border p-1.5 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 sm:min-h-24 sm:rounded-2xl sm:p-3 ${selected ? "border-medical bg-white ring-2 ring-medical/10 sm:ring-4" : "border-silver bg-white"} ${outside ? "opacity-45" : ""}`}
               >
-                <span className="font-semibold text-deep">{date.getDate()}</span>
-                <span className={`mt-3 flex items-center gap-1 text-[11px] font-semibold ${status === "Disponible" ? "text-emerald-600" : status === "Ocupado" ? "text-red-500" : status === "Parcial" ? "text-amber-600" : "text-slate-400"}`}>
+                <span className="text-xs font-semibold text-deep sm:text-sm">{date.getDate()}</span>
+                <span className={`mt-1 flex items-center gap-0.5 text-[9px] font-semibold sm:mt-3 sm:gap-1 sm:text-[11px] ${status === "Disponible" ? "text-emerald-600" : status === "Ocupado" ? "text-red-500" : status === "Parcial" ? "text-amber-600" : "text-slate-400"}`}>
                   <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${status === "Disponible" ? "bg-emerald-400" : status === "Ocupado" ? "bg-red-400" : status === "Parcial" ? "bg-amber-400" : "bg-slate-300"}`} />
-                  {status}
+                  <span className="hidden sm:inline">{status}</span>
                 </span>
-                {day?.booked ? <span className="mt-1 block text-[11px] text-medical">{day.booked} cita(s)</span> : null}
+                {day?.booked ? <span className="mt-0.5 hidden text-[11px] text-medical sm:block">{day.booked} cita(s)</span> : null}
               </button>
             );
           })}
@@ -3665,7 +3670,7 @@ export function ObsidianDashboardClient() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7fbfd] px-5 py-24 text-deep">
+    <main className="min-h-screen bg-[#f7fbfd] px-4 pb-24 pt-28 text-deep sm:px-5 sm:pt-32">
       <div className="mx-auto max-w-6xl">
         <Link href="/" className="text-sm font-semibold text-slate-500 transition hover:text-deep">Volver al inicio</Link>
 

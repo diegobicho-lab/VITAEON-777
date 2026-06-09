@@ -832,6 +832,23 @@ select {
   input, select, textarea {
     font-size: 16px; /* prevents iOS zoom */
   }
+
+  /* ─── Prevent horizontal overflow on mobile ─── */
+  body { overflow-x: hidden; }
+
+  /* ─── Dashboard stat — compact on mobile ─── */
+  .dashboard-stat {
+    padding: 1rem;
+  }
+
+  /* ─── Dashboard card — reduce padding on mobile ─── */
+  .dashboard-card {
+    padding: 1.125rem;
+  }
+
+  /* ─── Premium card hover — disable lift on touch ─── */
+  .premium-card:hover { transform: none; }
+  .doctor-card-game:hover { transform: none; }
 }
 
 /* ─── Print ───────────────────────────────────────────────────── */

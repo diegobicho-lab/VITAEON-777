@@ -40,7 +40,7 @@ import {
   Zap
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 
@@ -484,6 +484,7 @@ export default function VitaeonPlatform() {
     phone: "",
     medal: "oro" as DoctorListItem["medal"]
   });
+  const doctorDetailRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     async function bootstrap() {
@@ -607,6 +608,11 @@ export default function VitaeonPlatform() {
     setSelectedSlotId(doctor.availability[0]?.id ?? "");
     setSpecialtyId(doctor.specialtyId);
     setHospitalId(doctor.hospitalId);
+    if (window.innerWidth < 1024) {
+      requestAnimationFrame(() => {
+        doctorDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   }
 
   function openAuth(audience?: AuthAudience) {
@@ -1000,7 +1006,7 @@ export default function VitaeonPlatform() {
             </div>
           </div>
 
-          <aside className="h-fit rounded-[2rem] border border-silver/70 bg-white shadow-soft lg:sticky lg:top-28">
+          <aside ref={doctorDetailRef} className="h-fit rounded-[2rem] border border-silver/70 bg-white shadow-soft lg:sticky lg:top-28">
             {selectedDoctor ? (
               <DoctorDetail
                 doctor={selectedDoctor}
@@ -1029,11 +1035,11 @@ export default function VitaeonPlatform() {
         </section>
 
         {ticket && (
-          <section id="appointment-ticket" className={`mx-auto mt-12 max-w-7xl scroll-mt-32 rounded-[2rem] border bg-white p-8 shadow-premium ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "border-amber-100" : "border-emerald-100"}`}>
-            <div className="flex items-start justify-between gap-6">
+          <section id="appointment-ticket" className={`mx-auto mt-12 max-w-7xl scroll-mt-32 rounded-[2rem] border bg-white p-5 shadow-premium sm:p-8 ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "border-amber-100" : "border-emerald-100"}`}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
-                <h2 className="mt-3 text-4xl font-semibold text-deep">
+                <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">
                   Tu ticket de consulta está listo.
                 </h2>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
@@ -1042,7 +1048,7 @@ export default function VitaeonPlatform() {
               </div>
               <CheckCircle2 className={`h-10 w-10 ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-600" : "text-emerald-600"}`} />
             </div>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <Summary label="Médico" value={ticket.doctor} />
               <Summary label="Especialidad" value={ticket.specialty} />
               <Summary label="Hospital" value={ticket.hospital} />
@@ -1237,7 +1243,7 @@ export default function VitaeonPlatform() {
             <p className="leading-7 text-slate-600">
               Directorio profesional para conectar médicos con representantes y servicios de catering activos dentro de VITAEON.
             </p>
-            <div className="inline-flex w-fit rounded-full border border-silver bg-slate-50 p-1 shadow-sm">
+            <div className="flex rounded-full border border-silver bg-slate-50 p-1 shadow-sm">
               {[
                 { id: "representatives", label: "Representantes Médicos" },
                 { id: "catering", label: "Catering" }
@@ -1246,7 +1252,7 @@ export default function VitaeonPlatform() {
                   key={item.id}
                   type="button"
                   onClick={() => setCommercialDirectoryTab(item.id as "representatives" | "catering")}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={`flex-1 rounded-full px-3 py-2 text-sm font-semibold transition sm:flex-none sm:px-4 ${
                     commercialDirectoryTab === item.id
                       ? "bg-white text-deep shadow-sm"
                       : "text-slate-500 hover:text-deep"
@@ -1839,7 +1845,7 @@ function SubscriptionShowcase() {
     <section id="suscripciones" className="mx-auto mt-16 max-w-7xl">
       <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Suscripciones médicas</p>
       <h2 className="mt-3 max-w-4xl text-4xl font-semibold text-deep">Distintivos premium para médicos que desean crecer con orden, presencia y confianza.</h2>
-      <div className="mt-8 grid gap-5 md:grid-cols-3">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {doctorSubscriptionPlans.map((plan) => <PlanCard key={plan.title} plan={plan} />)}
       </div>
     </section>
@@ -2227,17 +2233,17 @@ function DoctorDetail(props: {
       )}
 
       {/* ── Stats ──────────────────────────── */}
-      <div className="mt-5 grid grid-cols-3 gap-2.5">
-        <div className="rounded-2xl bg-[#071726] p-4 text-center text-white">
-          <p className="text-lg font-bold leading-tight">{money(doctor.priceCents)}</p>
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl bg-[#071726] p-3 text-center text-white sm:p-4">
+          <p className="break-all text-base font-bold leading-tight sm:text-lg">{money(doctor.priceCents)}</p>
           <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-white/55">por consulta</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-4 text-center">
-          <p className="text-lg font-bold leading-tight text-deep">{doctor.consultationDurationMinutes}<span className="text-sm font-normal text-slate-400"> min</span></p>
+        <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
+          <p className="text-base font-bold leading-tight text-deep sm:text-lg">{doctor.consultationDurationMinutes}<span className="text-sm font-normal text-slate-400"> min</span></p>
           <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">duración</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-4 text-center">
-          <p className="text-lg font-bold leading-tight text-deep">{doctor.yearsExperience}<span className="text-sm font-normal text-slate-400"> años</span></p>
+        <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
+          <p className="text-base font-bold leading-tight text-deep sm:text-lg">{doctor.yearsExperience}<span className="text-sm font-normal text-slate-400"> años</span></p>
           <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">experiencia</p>
         </div>
       </div>
