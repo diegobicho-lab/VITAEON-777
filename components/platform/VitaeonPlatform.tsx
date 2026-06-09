@@ -25,6 +25,7 @@ import {
   Loader2,
   LogIn,
   MapPin,
+  Menu,
   Microscope,
   Scissors,
   Search,
@@ -37,6 +38,7 @@ import {
   Users,
   WalletCards,
   Wind,
+  X,
   Zap
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -1374,6 +1376,7 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
   const dashboardPath = user
     ? `/dashboard/${user.role === "DOCTOR" ? "doctor" : user.role === "ADMIN" || user.role === "STAFF" ? "admin" : "patient"}`
     : null;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 px-4 py-3 sm:px-5 sm:py-4">
@@ -1397,25 +1400,63 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
             </a>
           )}
         </div>
-        {user ? (
-          <div className="flex items-center gap-2">
-            {dashboardPath && (
-              <a href={dashboardPath} className="hidden rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium sm:inline-flex">
-                {user.name.split(" ")[0]}
-              </a>
-            )}
-            <button onClick={onLogout} className="rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-soft transition hover:-translate-y-0.5 hover:text-deep">
-              Salir
-            </button>
-          </div>
-        ) : (
-          <button onClick={onLogin} className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638]">
-            <LogIn className="h-4 w-4" />
-            <span className="hidden sm:inline">Iniciar sesión</span>
-            <span className="sm:hidden">Entrar</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-silver bg-white shadow-soft transition hover:bg-slate-50 md:hidden"
+            aria-label="Menú"
+          >
+            {mobileMenuOpen ? <X className="h-4 w-4 text-deep" /> : <Menu className="h-4 w-4 text-deep" />}
           </button>
-        )}
+          {user ? (
+            <>
+              {dashboardPath && (
+                <a href={dashboardPath} className="hidden rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium sm:inline-flex">
+                  {user.name.split(" ")[0]}
+                </a>
+              )}
+              <button onClick={onLogout} className="rounded-full border border-silver bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-soft transition hover:-translate-y-0.5 hover:text-deep">
+                Salir
+              </button>
+            </>
+          ) : (
+            <button onClick={onLogin} className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638]">
+              <LogIn className="h-4 w-4" />
+              <span className="hidden sm:inline">Iniciar sesión</span>
+              <span className="sm:hidden">Entrar</span>
+            </button>
+          )}
+        </div>
       </nav>
+      {mobileMenuOpen && (
+        <div className="mx-auto mt-2 max-w-7xl rounded-[1.5rem] border border-silver/70 bg-white/95 px-2 py-2 shadow-premium backdrop-blur-md md:hidden">
+          <a
+            href="#busqueda"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-deep"
+          >
+            <Search className="h-4 w-4 text-medical" />
+            Especialistas
+          </a>
+          <a
+            href="#especialidades"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-deep"
+          >
+            <Stethoscope className="h-4 w-4 text-medical" />
+            Áreas médicas
+          </a>
+          {dashboardPath && (
+            <a
+              href={dashboardPath}
+              className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-deep transition hover:bg-slate-100"
+            >
+              <ChevronRight className="h-4 w-4 text-medical" />
+              Mi panel
+            </a>
+          )}
+        </div>
+      )}
     </header>
   );
 }
