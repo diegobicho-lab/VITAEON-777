@@ -542,12 +542,12 @@ function buildTimePreview(startTime: string, endTime: string, durationMinutes: 4
 }
 
 const appointmentLabels: Record<string, string> = {
-  PENDING: "Esperando confirmación",
+  PENDING: "Pendiente",
   PENDING_DOCTOR_ACCEPTANCE: "Esperando aceptación médica",
   ACCEPTED: "Cita aceptada",
   CONFIRMED: "Confirmada",
   RESCHEDULED: "Reagendada",
-  COMPLETED: "Completada",
+  COMPLETED: "Cita completada",
   NO_SHOW: "El médico marcó que el paciente no asistió",
   RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
   CANCELLATION_REQUESTED: "Cancelación solicitada",
@@ -585,6 +585,15 @@ function readableStatus(value: string) {
   return appointmentLabels[value] ?? value.replaceAll("_", " ").toLowerCase();
 }
 
+function appointmentReadableStatus(value: string) {
+  if (value === "PENDING") return "Esperando aceptación médica";
+  if (value === "COMPLETED") return "Cita completada";
+  if (value === "ACCEPTED") return "Cita aceptada";
+  if (value === "CONFIRMED") return "Cita confirmada";
+  if (value === "RESCHEDULED") return "Cita reagendada";
+  return readableStatus(value);
+}
+
 function Badge({ value }: { value: string }) {
   const success = ["ACCEPTED", "CONFIRMED", "COMPLETED", "PAID", "VERIFIED", "ACTIVE", "ACTIVO"].includes(value);
   const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW", "AUTO_CANCELLED"].includes(value);
@@ -613,6 +622,14 @@ function paymentReadableStatus(status: string, provider: string) {
   if (provider === "TRANSFER" && status === "PAID") return "Transferencia confirmada";
   if (provider === "TRANSFER") return "Transferencia pendiente";
   return readableStatus(status);
+}
+
+function paymentProviderLabel(provider?: string) {
+  if (provider === "STRIPE") return "Pago en línea";
+  if (provider === "CASH") return "Efectivo";
+  if (provider === "TRANSFER") return "Transferencia";
+  if (provider === "MERCADO_PAGO") return "Mercado Pago";
+  return "Pago pendiente";
 }
 
 function PaymentBadge({ status, provider }: { status: string; provider: string }) {
@@ -678,6 +695,16 @@ export function PatientDashboardClient() {
     load();
   }, []);
 
+  useEffect(() => {
+    function refreshOnFocus() {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    }
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => document.removeEventListener("visibilitychange", refreshOnFocus);
+  }, []);
+
   async function updatePatientAppointment(id: string, action: "REQUEST_CANCELLATION" | "REQUEST_RESCHEDULE") {
     await clientApi(`/api/appointments/${id}`, {
       method: "PATCH",
@@ -701,15 +728,23 @@ export function PatientDashboardClient() {
                   <h2 className="text-2xl font-semibold text-deep">{appointment.doctor.fullName}</h2>
                   <p className="mt-2 text-slate-600">{appointment.doctor.specialty.name} · {appointment.doctor.hospital.name}</p>
                 </div>
-                <div className="flex gap-2"><Badge value={appointment.status} /><Badge value={appointment.payments[0]?.status ?? "PENDING"} /></div>
+                <div className="flex gap-2">
+                  <Badge value={appointment.status} />
+                  <PaymentBadge status={appointment.payments[0]?.status ?? "PENDING"} provider={appointment.payments[0]?.provider ?? "PENDING"} />
+                </div>
               </div>
               <p className="mt-5 flex items-center gap-3 text-slate-600"><Calendar className="h-5 w-5" /> {dateTime(appointment.availabilitySlot.startsAt)}</p>
               <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Ticket</p>
                 <p className="mt-2 text-sm text-slate-600">Folio: {appointment.id}</p>
-                <p className="mt-1 text-sm text-slate-600">Estado de cita: {readableStatus(appointment.status)}</p>
-                <p className="mt-1 text-sm text-slate-600">Pago: {appointment.payments[0]?.provider ?? "PENDING"} · {money(appointment.payments[0]?.amountCents ?? 0)}</p>
-                <p className="mt-1 text-sm text-slate-600">Estado de pago: {readableStatus(appointment.payments[0]?.status ?? "PENDING")}</p>
+                <p className="mt-1 text-sm text-slate-600">Estado de cita: {appointmentReadableStatus(appointment.status)}</p>
+                <p className="mt-1 text-sm text-slate-600">Pago: {paymentProviderLabel(appointment.payments[0]?.provider)} · {money(appointment.payments[0]?.amountCents ?? 0)}</p>
+                <p className="mt-1 text-sm text-slate-600">Estado de pago: {paymentReadableStatus(appointment.payments[0]?.status ?? "PENDING", appointment.payments[0]?.provider ?? "PENDING")}</p>
+                {appointment.status === "COMPLETED" && (
+                  <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    Consulta finalizada. El médico marcó esta cita como completada.
+                  </p>
+                )}
                 {appointment.acceptedAutomatically && (
                   <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                     Pago confirmado. Tu cita fue aceptada automáticamente por confirmación en línea.

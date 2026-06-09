@@ -364,11 +364,11 @@ function dateTime(value: string) {
 }
 
 const publicStatusLabels: Record<string, string> = {
-  PENDING: "Esperando confirmación",
+  PENDING: "Pendiente",
   PENDING_DOCTOR_ACCEPTANCE: "Esperando aceptación médica",
   ACCEPTED: "Cita aceptada",
   CONFIRMED: "Confirmada",
-  COMPLETED: "Completada",
+  COMPLETED: "Cita completada",
   NO_SHOW: "El médico marcó que el paciente no asistió",
   RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
   CANCELLATION_REQUESTED: "Cancelación solicitada",
@@ -381,6 +381,24 @@ const publicStatusLabels: Record<string, string> = {
 
 function publicStatus(value: string) {
   return publicStatusLabels[value] ?? value;
+}
+
+function publicAppointmentStatus(value: string) {
+  if (value === "PENDING") return "Esperando aceptación médica";
+  if (value === "COMPLETED") return "Cita completada";
+  if (value === "ACCEPTED") return "Cita aceptada";
+  if (value === "CONFIRMED") return "Cita confirmada";
+  if (value === "RESCHEDULED") return "Cita reagendada";
+  return publicStatus(value);
+}
+
+function publicPaymentStatus(value: string, method: PaymentMethod) {
+  if (value === "PAID") return method === "STRIPE" ? "Pago en línea confirmado" : "Pago confirmado";
+  if (value === "FAILED") return "Pago fallido";
+  if (value === "REFUNDED") return "Pago reembolsado";
+  if (method === "CASH") return "Pago pendiente en efectivo";
+  if (method === "STRIPE") return "Pago en línea pendiente";
+  return publicStatus(value);
 }
 
 function normalizeText(value: string) {
@@ -1032,8 +1050,8 @@ export default function VitaeonPlatform() {
               <Summary label="Fecha y hora" value={dateTime(ticket.startsAt)} />
               <Summary label="Duración aproximada" value={`${Math.max(0, Math.round((new Date(ticket.endsAt).getTime() - new Date(ticket.startsAt).getTime()) / 60_000))} minutos`} />
               <Summary label="Pago" value={ticketPaymentLabel(ticket)} />
-              <Summary label="Estado de cita" value={publicStatus(ticket.appointmentStatus)} />
-              <Summary label="Estado de pago" value={publicStatus(ticket.paymentStatus)} />
+              <Summary label="Estado de cita" value={publicAppointmentStatus(ticket.appointmentStatus)} />
+              <Summary label="Estado de pago" value={publicPaymentStatus(ticket.paymentStatus, ticket.paymentMethod)} />
               {ticket.discountCents ? <Summary label="Descuento" value={`-${money(ticket.discountCents)}`} /> : null}
               <Summary label="Total" value={money(ticket.amountCents)} />
             </div>
