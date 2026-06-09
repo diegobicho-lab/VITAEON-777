@@ -6,7 +6,7 @@ import { doctorSearchSchema } from "@/lib/validation/schemas";
 const medalPriority = {
   amatista: 4,
   diamante: 3,
-  obsidiana: 2,
+  obsidiana: 0,
   oro: 1
 };
 
@@ -123,7 +123,7 @@ export async function GET(request: Request) {
       reviewAverage,
       reviewCount: doctor.reviews.length,
       medal: doctor.medal,
-      planPriorityLabel: doctor.medal === "amatista" ? "Perfil destacado" : doctor.medal === "diamante" ? "Mayor visibilidad por plan" : doctor.medal === "obsidiana" ? "Perfil con visibilidad Obsidiana" : "Visibilidad normal",
+      planPriorityLabel: doctor.medal === "amatista" ? "Perfil destacado" : doctor.medal === "diamante" ? "Mayor visibilidad por plan" : "Visibilidad normal",
       verificationStatus: doctor.verificationStatus,
       professionalLicense: doctor.professionalLicense,
       university: doctor.university,

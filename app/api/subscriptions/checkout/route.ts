@@ -23,6 +23,18 @@ const planLabels = {
   amatista: "Amatista"
 };
 
+function recurringForPlan(plan: keyof typeof planPrices) {
+  if (plan === "obsidiana") return { interval: "month" as const, interval_count: 1 };
+  return { interval: "week" as const, interval_count: 2 };
+}
+
+function descriptionForPlan(plan: keyof typeof planPrices) {
+  if (plan === "obsidiana") {
+    return "Suscripción comercial mensual para representantes médicos y servicios de catering.";
+  }
+  return "Suscripción médica VITAEON con renovación automática cada 14 días.";
+}
+
 export async function POST(request: Request) {
   const limit = await rateLimitByIp("subscriptions:checkout", { limit: 10, windowMs: 60_000 });
   if (!limit.allowed) return fail("RATE_LIMITED", "Demasiados intentos de suscripción. Intenta en un momento.", 429);
@@ -102,13 +114,10 @@ export async function POST(request: Request) {
           price_data: {
             currency: "mxn",
             unit_amount: amountCents,
-            recurring: {
-              interval: "week",
-              interval_count: 2
-            },
+            recurring: recurringForPlan(parsed.data.plan),
             product_data: {
               name: `VITAEON Plan ${planLabels[parsed.data.plan]}`,
-              description: "Suscripción médica VITAEON con renovación automática cada 14 días."
+              description: descriptionForPlan(parsed.data.plan)
             }
           },
           quantity: 1

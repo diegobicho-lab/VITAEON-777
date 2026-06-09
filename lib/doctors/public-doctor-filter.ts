@@ -1,6 +1,7 @@
-import { Prisma, VerificationStatus } from "@prisma/client";
+import { MedicalMedal, Prisma, VerificationStatus } from "@prisma/client";
 
 export const publicDoctorWhere = {
+  medal: { not: MedicalMedal.obsidiana },
   verificationStatus: VerificationStatus.VERIFIED,
   isVerified: true,
   legalDeclarationAccepted: true,

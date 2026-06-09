@@ -165,11 +165,16 @@ export async function POST(request: Request) {
   );
 
   if (!doctorCanReceiveDestinationCharge) {
-    console.error("[Stripe appointment payment warning]", {
+    console.error("[Stripe appointment payment blocked]", {
       appointmentId: appointment.id,
       doctorId: appointment.doctor.id,
-      reason: "Doctor does not have an active Stripe Connect account. Payment will be collected by the platform and marked for manual payout review."
+      reason: "Doctor does not have an active Stripe Connect account. Online appointment payments are blocked to avoid collecting doctor funds in the platform account."
     });
+    return fail(
+      "DOCTOR_PAYOUT_ACCOUNT_REQUIRED",
+      "Este médico aún no tiene configurada su cuenta para recibir pagos en línea. Puedes elegir pago en efectivo o intentar más tarde.",
+      409
+    );
   }
 
   const platformFeePercentage = Number(process.env.STRIPE_PLATFORM_FEE_PERCENTAGE ?? "0");
@@ -186,7 +191,7 @@ export async function POST(request: Request) {
       paymentId: payment.id,
       doctorId: appointment.doctor.id,
       patientUserId: user.id,
-      payoutMode: doctorCanReceiveDestinationCharge ? "stripe_connect_destination" : "platform_pending_doctor_connect"
+      payoutMode: "stripe_connect_destination"
     },
     automatic_payment_methods: { enabled: true }
   };
@@ -220,7 +225,7 @@ export async function POST(request: Request) {
       provider: PaymentProvider.STRIPE,
       providerPaymentIntentId: intent.id,
       doctorId: appointment.doctor.id,
-      transferStatus: doctorCanReceiveDestinationCharge ? "pending_destination_charge" : "pending_manual_payout_doctor_connect"
+      transferStatus: "pending_destination_charge"
     }
   });
 
@@ -232,7 +237,7 @@ export async function POST(request: Request) {
     metadata: {
       appointmentId: appointment.id,
       stripePaymentIntentId: intent.id,
-      payoutMode: doctorCanReceiveDestinationCharge ? "stripe_connect_destination" : "platform_pending_doctor_connect"
+      payoutMode: "stripe_connect_destination"
     }
   });
 

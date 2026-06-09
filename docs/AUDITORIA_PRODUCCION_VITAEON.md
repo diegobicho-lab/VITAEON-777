@@ -109,8 +109,8 @@
 - Recuperación de contraseña ya está implementada con token seguro, expiración, auditoría y correo SMTP; falta validarla con proveedor SMTP real.
 - Rate limiting actual es en memoria y no sirve para despliegues multi-instancia.
 - Storage privado está abstraído, pero requiere proveedor real para generar URLs firmadas.
-- Stripe necesita prueba con webhook real antes de producción.
-- Las suscripciones están implementadas como Checkout de pago único; si se requiere cobro recurrente mensual, migrar a Stripe Billing Subscriptions.
+- Stripe necesita prueba continua con webhook real antes de producción pública.
+- Las suscripciones pagadas ya usan Stripe Checkout en modo `subscription`; Diamante/Amatista se renuevan cada 14 días y Obsidiana queda mensual para uso comercial.
 - Email SMTP quedó implementado para eventos mínimos de beta; WhatsApp, SMS y push siguen pendientes hasta configurar proveedores reales.
 - La búsqueda de medicamentos no inventa datos; requiere una fuente autorizada configurada para resultados reales.
 - Faltan pruebas de penetración, monitoreo, alertas y backups auditados.
@@ -251,7 +251,7 @@ Cómo probar:
 
 Riesgos abiertos:
 
-- En producción, el cobro recurrente debe migrarse a Stripe Billing si los planes serán mensuales.
+- En producción, confirmar en Stripe que Diamante/Amatista sigan quincenales y Obsidiana mensual, con webhooks en `200`.
 - Faltan proveedores reales para recordatorios externos.
 - Faltan URLs firmadas privadas para ver documentos sensibles en panel admin.
 - Falta integración real con fuente autorizada de medicamentos.
@@ -706,4 +706,4 @@ Riesgos pendientes:
 - Debe mantenerse `OBSIDIANA_PRICE_CENTS=25000` en Vercel para documentar claramente el precio vigente y confirmar webhook Stripe con eventos de checkout/suscripción.
 - No publicar representantes ni catering sin revisión administrativa y datos de contacto verificados.
 - Completar onboarding Connect de cada médico antes de cobrar citas en línea.
-- Pasar de pagos únicos de planes a Billing recurrente si se desea suscripción mensual automática.
+- Mantener separadas las suscripciones: Diamante/Amatista como planes médicos quincenales y Obsidiana como plan comercial mensual para representantes/catering.

@@ -73,8 +73,11 @@ const legacyDemoEmails = [
 const legacyDemoHospitals = ["VITAEON Center", "Clínica Altum", "VITAEON Digital"];
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@vitaeon.mx";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "VitaeonBeta2026!";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    throw new Error("SEED_ADMIN_EMAIL y SEED_ADMIN_PASSWORD son obligatorios para ejecutar el seed de beta.");
+  }
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   await prisma.doctor.deleteMany({ where: { slug: { in: legacyDemoDoctorSlugs } } });
