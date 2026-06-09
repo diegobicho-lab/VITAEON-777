@@ -567,6 +567,20 @@ const appointmentLabels: Record<string, string> = {
   ACTIVO: "Activo"
 };
 
+const pendingAppointmentStatuses = [
+  "PENDING",
+  "PENDING_DOCTOR_ACCEPTANCE",
+  "RESCHEDULE_REQUESTED",
+  "CANCELLATION_REQUESTED",
+  "REFUND_PENDING"
+];
+
+const confirmedAppointmentStatuses = [
+  "ACCEPTED",
+  "CONFIRMED",
+  "RESCHEDULED"
+];
+
 function readableStatus(value: string) {
   return appointmentLabels[value] ?? value.replaceAll("_", " ").toLowerCase();
 }
@@ -1681,8 +1695,8 @@ export function DoctorDashboardClient() {
               </div>
               <div className="mt-6 grid gap-4 md:grid-cols-4">
                 <MetricMini label="Citas" value={String(appointments.length)} />
-                <MetricMini label="Pendientes" value={String(appointments.filter((item) => item.status === "PENDING").length)} />
-                <MetricMini label="Confirmadas" value={String(appointments.filter((item) => item.status === "CONFIRMED").length)} />
+                <MetricMini label="Pendientes" value={String(appointments.filter((item) => pendingAppointmentStatuses.includes(item.status)).length)} />
+                <MetricMini label="Confirmadas" value={String(appointments.filter((item) => confirmedAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">

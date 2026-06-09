@@ -518,8 +518,30 @@ export default function VitaeonPlatform() {
   );
   const searchSuggestions = useMemo(() => {
     if (query.trim().length > 1 || specialtyId || hospitalId) return [];
-    return ["Susana", "Medicina Interna", "Dolor de cadera", "Diabetes", "Nutrición", "Hospital Ángeles", "León"].slice(0, 6);
+    return [
+      { label: "Dolor de rodilla", helper: "Trauma y ortopedia" },
+      { label: "Diabetes", helper: "Endocrino o interna" },
+      { label: "Bajar de peso", helper: "Nutrición y metabolismo" },
+      { label: "Presión alta", helper: "Interna o cardiología" },
+      { label: "Ansiedad", helper: "Salud mental" },
+      { label: "Hospital Ángeles", helper: "Buscar por clínica" }
+    ].slice(0, 6);
   }, [query, specialtyId, hospitalId]);
+  const activeSpecialtyName = useMemo(
+    () => specialties.find((specialty) => specialty.id === specialtyId)?.name ?? "",
+    [specialties, specialtyId]
+  );
+  const activeHospitalName = useMemo(
+    () => hospitals.find((hospital) => hospital.id === hospitalId)?.name ?? "",
+    [hospitals, hospitalId]
+  );
+  const hasActiveSearch = Boolean(query.trim() || specialtyId || hospitalId);
+
+  function clearSearchFilters() {
+    setQuery("");
+    setSpecialtyId("");
+    setHospitalId("");
+  }
 
   useEffect(() => {
     setSelectedSlotId(selectedDoctor?.availability[0]?.id ?? "");
@@ -880,9 +902,26 @@ export default function VitaeonPlatform() {
         </section>
 
         <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 rounded-[2rem] p-5 shadow-premium">
-          <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr]">
+          <div className="mb-4 flex flex-col gap-2 px-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-medical">Buscador asistido</p>
+              <h2 className="mt-1 text-xl font-bold text-deep">Encuentra atención por síntoma, médico o lugar</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Escribe como lo dirías normalmente: dolor, servicio, subespecialidad, hospital o nombre del médico.
+              </p>
+            </div>
+            {hasActiveSearch && (
+              <button
+                onClick={clearSearchFilters}
+                className="w-fit rounded-full border border-silver/70 bg-white px-4 py-2 text-xs font-bold text-slate-500 shadow-soft transition hover:-translate-y-0.5 hover:text-deep"
+              >
+                Limpiar búsqueda
+              </button>
+            )}
+          </div>
+          <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr_1fr]">
             <FieldIcon icon={<Search className="h-4 w-4" />}>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Médico, subespecialidad o servicio" className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:shadow-none focus:ring-0" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. dolor de cadera, diabetes, Susana, nutrición" className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:shadow-none focus:ring-0" />
             </FieldIcon>
             <FieldIcon icon={<Stethoscope className="h-4 w-4" />}>
               <select value={specialtyId} onChange={(event) => chooseSpecialty(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
@@ -901,13 +940,24 @@ export default function VitaeonPlatform() {
               </select>
             </FieldIcon>
           </div>
-          {searchSuggestions.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+          {hasActiveSearch ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[1.4rem] border border-silver/60 bg-white/70 p-3 text-xs text-slate-500">
+              <span className="font-bold text-deep">Filtro activo:</span>
+              {query.trim() && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{query.trim()}</span>}
+              {activeSpecialtyName && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{activeSpecialtyName}</span>}
+              {activeHospitalName && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{activeHospitalName}</span>}
+            </div>
+          ) : searchSuggestions.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 px-1 text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Prueba con búsquedas comunes</p>
+              <div className="flex flex-wrap gap-2">
               {searchSuggestions.map((suggestion) => (
-                <button key={suggestion} onClick={() => setQuery(suggestion)} className="rounded-full border border-silver/60 bg-white px-4 py-2 text-xs font-semibold text-slate-500 shadow-soft transition hover:-translate-y-0.5 hover:border-silver hover:text-deep">
-                  {suggestion}
+                <button key={suggestion.label} onClick={() => setQuery(suggestion.label)} className="group rounded-full border border-silver/60 bg-white px-4 py-2 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-silver hover:text-deep">
+                  <span className="block text-xs font-bold text-deep">{suggestion.label}</span>
+                  <span className="block text-[0.68rem] font-semibold text-slate-400 transition group-hover:text-slate-500">{suggestion.helper}</span>
                 </button>
               ))}
+              </div>
             </div>
           )}
         </section>
