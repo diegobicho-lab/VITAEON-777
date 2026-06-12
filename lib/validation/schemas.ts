@@ -322,6 +322,11 @@ export const adminDoctorStatusSchema = z.object({
   isActive: z.boolean()
 });
 
+export const adminPatientStatusSchema = z.object({
+  patientId: z.string().min(1),
+  isActive: z.boolean()
+});
+
 export const urgentAvailabilitySchema = z.object({
   specialtyId: z.string().min(1)
 });

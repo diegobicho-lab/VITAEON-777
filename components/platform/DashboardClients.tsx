@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
 import { clientApi } from "@/services/client/api";
 
 type Appointment = {
@@ -819,7 +820,7 @@ export function DoctorDashboardClient() {
   const [affiliateCode, setAffiliateCode] = useState("");
   const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
   const [reviewReply, setReviewReply] = useState("");
-  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "notificaciones">("resumen");
+  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones">("resumen");
   const [achievementsText, setAchievementsText] = useState("");
   const [certificationsText, setCertificationsText] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
@@ -1588,6 +1589,7 @@ export function DoctorDashboardClient() {
     ["suscripcion", "Suscripción"],
     ["cobros", "Cobros"],
     ["opiniones", "Opiniones"],
+    ["recursos", "Recursos Clínicos"],
     ["notificaciones", "Notificaciones"]
   ] as const;
 
@@ -2046,6 +2048,8 @@ export function DoctorDashboardClient() {
             <DoctorReviewPanel reviews={doctorReviews} reply={reviewReply} setReply={setReviewReply} onReply={replyToReview} />
           )}
 
+          {activeSection === "recursos" && <ClinicalResourcesSection />}
+
           {activeSection === "notificaciones" && (
             <div className="grid gap-6">
               <section className="dashboard-card rounded-[1.75rem] border-silver/70">
@@ -2252,6 +2256,12 @@ export function AdminDashboardClient() {
     await load();
   }
 
+  async function togglePatientActive(patientId: string, isActive: boolean) {
+    await clientApi("/api/patients", { method: "PATCH", body: JSON.stringify({ patientId, isActive }) });
+    setMessage(isActive ? "Paciente beta activado." : "Paciente beta pausado.");
+    await load();
+  }
+
   return (
     <Shell eyebrow="Administración" title="Centro de control VITAEON">
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
@@ -2421,9 +2431,17 @@ export function AdminDashboardClient() {
                 <div key={patient.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
                   <div>
                     <p className="font-semibold text-deep">{patient.name}</p>
-                    <p className="mt-1 text-sm text-slate-600">{patient.email} · {patient.appointmentsCount} citas</p>
+                    <p className="mt-1 text-sm text-slate-600">{patient.email} · {patient.appointmentsCount} citas · {patient.isActive ? "Activo" : "Pausado"}</p>
                   </div>
-                  <Badge value={patient.isActive ? "ACTIVO" : "INACTIVO"} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge value={patient.isActive ? "ACTIVO" : "PAUSADO"} />
+                    <button
+                      onClick={() => togglePatientActive(patient.id, !patient.isActive)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold ${patient.isActive ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
+                    >
+                      {patient.isActive ? "Pausar" : "Activar"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -2486,6 +2504,7 @@ function BetaPrivateMode({
 }) {
   const verifiedDoctors = doctors.filter((doctor) => doctor.verificationStatus === "VERIFIED").length;
   const pausedDoctors = doctors.filter((doctor) => !doctor.isActive).length;
+  const pausedPatients = patients.filter((patient) => !patient.isActive).length;
   const completedAppointments = appointments.filter((appointment) => appointment.status === "COMPLETED").length;
   const pendingPayments = payments.filter((payment) => payment.status === "PENDING").length;
   const confirmedPayments = payments.filter((payment) => payment.status === "PAID").length;
@@ -2500,6 +2519,7 @@ function BetaPrivateMode({
     ["Médicos verificados", verifiedDoctors],
     ["Médicos pausados", pausedDoctors],
     ["Pacientes registrados", patients.length],
+    ["Pacientes pausados", pausedPatients],
     ["Citas creadas", appointments.length],
     ["Citas completadas", completedAppointments],
     ["Pagos pendientes", pendingPayments + pendingSubscriptionPayments],
