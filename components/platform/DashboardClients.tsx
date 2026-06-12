@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Upload, Users, XCircle } from "lucide-react";
+import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Hash, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Upload, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -586,6 +586,20 @@ function readableStatus(value: string) {
   return appointmentLabels[value] ?? value.replaceAll("_", " ").toLowerCase();
 }
 
+function statusTextColor(status: string) {
+  if (["ACCEPTED","CONFIRMED","COMPLETED","PAID"].includes(status)) return "text-emerald-700";
+  if (["CANCELLED","FAILED","REJECTED","NO_SHOW","AUTO_CANCELLED"].includes(status)) return "text-red-700";
+  if (["REFUND_PENDING","CANCELLATION_REQUESTED","RESCHEDULE_REQUESTED"].includes(status)) return "text-sky-700";
+  return "text-amber-700";
+}
+
+function appointmentAccentBg(status: string) {
+  if (["ACCEPTED","CONFIRMED","COMPLETED","PAID"].includes(status)) return "bg-emerald-400";
+  if (["CANCELLED","FAILED","REJECTED","NO_SHOW","AUTO_CANCELLED"].includes(status)) return "bg-red-400";
+  if (["REFUND_PENDING","CANCELLATION_REQUESTED","RESCHEDULE_REQUESTED"].includes(status)) return "bg-sky-400";
+  return "bg-amber-400";
+}
+
 function appointmentReadableStatus(value: string) {
   if (value === "PENDING") return "Esperando aceptación médica";
   if (value === "COMPLETED") return "Cita completada";
@@ -600,14 +614,16 @@ function Badge({ value }: { value: string }) {
   const danger = ["CANCELLED", "FAILED", "REJECTED", "NO_SHOW", "AUTO_CANCELLED"].includes(value);
   const refund = ["REFUND_PENDING", "CANCELLATION_REQUESTED", "RESCHEDULE_REQUESTED"].includes(value);
   const tone = success
-    ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : danger
-      ? "border border-red-100 bg-red-50 text-red-700"
+      ? "border-red-200 bg-red-50 text-red-700"
       : refund
-        ? "border border-sky-100 bg-sky-50 text-sky-700"
-        : "border border-amber-100 bg-amber-50 text-amber-700";
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : "border-amber-200 bg-amber-50 text-amber-700";
+  const dot = success ? "bg-emerald-500" : danger ? "bg-red-500" : refund ? "bg-sky-500" : "bg-amber-500";
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold leading-none ${tone}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold leading-none ${tone}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
       {readableStatus(value)}
     </span>
   );
@@ -638,22 +654,29 @@ function PaymentBadge({ status, provider }: { status: string; provider: string }
   const failed = status === "FAILED";
   const refunded = status === "REFUNDED";
   const tone = paid
-    ? "bg-emerald-50 text-emerald-700"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : failed
-      ? "bg-red-50 text-red-700"
+      ? "border-red-200 bg-red-50 text-red-700"
       : refunded
-        ? "bg-sky-50 text-sky-700"
-        : "bg-amber-50 text-amber-700";
-  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{paymentReadableStatus(status, provider)}</span>;
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : "border-amber-200 bg-amber-50 text-amber-700";
+  const dot = paid ? "bg-emerald-500" : failed ? "bg-red-500" : refunded ? "bg-sky-500" : "bg-amber-500";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold leading-none ${tone}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      {paymentReadableStatus(status, provider)}
+    </span>
+  );
 }
 
-function Shell({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+function Shell({ eyebrow, title, children, headerExtra }: { eyebrow: string; title: string; children: ReactNode; headerExtra?: ReactNode }) {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#faf9f7_0%,#ffffff_50%,#eef5f8_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
       <section className="mx-auto max-w-7xl">
         <header className="mb-8 border-b border-silver/40 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>
           <h1 className="mt-3 text-4xl font-bold text-deep sm:text-5xl">{title}</h1>
+          {headerExtra}
         </header>
         {children}
       </section>
@@ -717,58 +740,115 @@ export function PatientDashboardClient() {
     await load();
   }
 
+  const totalCitas = appointments.length;
+  const completadas = appointments.filter((a) => a.status === "COMPLETED").length;
+  const activas = appointments.filter((a) => ["PENDING", "ACCEPTED", "CONFIRMED"].includes(a.status)).length;
+
   return (
-    <Shell eyebrow="Pacientes" title="Tu expediente premium">
+    <Shell
+      eyebrow="Pacientes"
+      title="Tu expediente premium"
+      headerExtra={!loading && !error && appointments.length > 0 ? (
+        <div className="mt-6 flex flex-wrap gap-3">
+          <div className="flex flex-col rounded-2xl border border-silver/60 bg-white/80 px-5 py-3 shadow-sm">
+            <span className="text-2xl font-bold text-deep">{totalCitas}</span>
+            <span className="mt-0.5 text-xs text-slate-500">Citas totales</span>
+          </div>
+          <div className="flex flex-col rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-3">
+            <span className="text-2xl font-bold text-emerald-700">{completadas}</span>
+            <span className="mt-0.5 text-xs text-emerald-600">Completadas</span>
+          </div>
+          <div className="flex flex-col rounded-2xl border border-amber-100 bg-amber-50/60 px-5 py-3">
+            <span className="text-2xl font-bold text-amber-700">{activas}</span>
+            <span className="mt-0.5 text-xs text-amber-600">Activas</span>
+          </div>
+        </div>
+      ) : undefined}
+    >
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
         <div className="mt-8 grid gap-5">
           {appointments.length === 0 && <EmptyState text="Aún no tienes citas registradas." />}
           {appointments.map((appointment) => (
-            <article key={appointment.id} className="dashboard-card rounded-[1.75rem] border-silver/70">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-deep">{appointment.doctor.fullName}</h2>
-                  <p className="mt-2 text-slate-600">{appointment.doctor.specialty.name} · {appointment.doctor.hospital.name}</p>
+            <article key={appointment.id} className="relative overflow-hidden rounded-[1.75rem] border border-silver/70 bg-white/95 shadow-[0_4px_24px_rgba(8,32,51,0.05)] transition-shadow duration-300 hover:shadow-[0_12px_48px_rgba(8,32,51,0.09)]">
+              {/* Status accent strip */}
+              <div className={`absolute inset-y-0 left-0 w-1 ${appointmentAccentBg(appointment.status)}`} />
+              <div className="p-6 pl-7">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-deep sm:text-2xl">{appointment.doctor.fullName}</h2>
+                    <p className="mt-1.5 text-sm text-slate-500">{appointment.doctor.specialty.name} · {appointment.doctor.hospital.name}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge value={appointment.status} />
+                    <PaymentBadge status={appointment.payments[0]?.status ?? "PENDING"} provider={appointment.payments[0]?.provider ?? "PENDING"} />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Badge value={appointment.status} />
-                  <PaymentBadge status={appointment.payments[0]?.status ?? "PENDING"} provider={appointment.payments[0]?.provider ?? "PENDING"} />
-                </div>
-              </div>
-              <p className="mt-5 flex items-center gap-3 text-slate-600"><Calendar className="h-5 w-5" /> {dateTime(appointment.availabilitySlot.startsAt)}</p>
-              <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Ticket</p>
-                <p className="mt-2 text-sm text-slate-600">Folio: {appointment.id}</p>
-                <p className="mt-1 text-sm text-slate-600">Estado de cita: {appointmentReadableStatus(appointment.status)}</p>
-                <p className="mt-1 text-sm text-slate-600">Pago: {paymentProviderLabel(appointment.payments[0]?.provider)} · {money(appointment.payments[0]?.amountCents ?? 0)}</p>
-                <p className="mt-1 text-sm text-slate-600">Estado de pago: {paymentReadableStatus(appointment.payments[0]?.status ?? "PENDING", appointment.payments[0]?.provider ?? "PENDING")}</p>
-                {appointment.status === "COMPLETED" && (
-                  <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                    Consulta finalizada. El médico marcó esta cita como completada.
-                  </p>
-                )}
-                {appointment.acceptedAutomatically && (
-                  <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                    Pago confirmado. Tu cita fue aceptada automáticamente por confirmación en línea.
-                  </p>
-                )}
-                {appointment.discountCents ? (
-                  <p className="mt-1 text-sm font-semibold text-emerald-700">
-                    {appointment.discountLabel}: -{money(appointment.discountCents)}
-                  </p>
-                ) : null}
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas.
+                <p className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                  <Calendar className="h-4 w-4 shrink-0 text-medical" />
+                  {dateTime(appointment.availabilitySlot.startsAt)}
                 </p>
-              </div>
-              {appointment.status === "NO_SHOW" && (
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Solicitar reagendar</button>
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
+
+                {/* Ticket ficha */}
+                <div className="mt-5 overflow-hidden rounded-2xl border border-silver/60 bg-white">
+                  <div className="border-b border-silver/50 bg-slate-50/80 px-5 py-2.5">
+                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.28em] text-slate-400">Ticket de cita</p>
+                  </div>
+                  <div className="divide-y divide-silver/40 px-5">
+                    <div className="flex items-center gap-3 py-3">
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="w-28 shrink-0 text-xs text-slate-400">Folio</span>
+                      <span className="truncate font-mono text-xs text-slate-600">{appointment.id}</span>
+                    </div>
+                    <div className="flex items-center gap-3 py-3">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="w-28 shrink-0 text-xs text-slate-400">Estado de cita</span>
+                      <span className={`text-xs font-semibold ${statusTextColor(appointment.status)}`}>{appointmentReadableStatus(appointment.status)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 py-3">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="w-28 shrink-0 text-xs text-slate-400">Pago</span>
+                      <span className="text-xs text-slate-600">{paymentProviderLabel(appointment.payments[0]?.provider)} · {money(appointment.payments[0]?.amountCents ?? 0)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 py-3">
+                      <Wallet className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="w-28 shrink-0 text-xs text-slate-400">Estado de pago</span>
+                      <span className="text-xs text-slate-600">{paymentReadableStatus(appointment.payments[0]?.status ?? "PENDING", appointment.payments[0]?.provider ?? "PENDING")}</span>
+                    </div>
+                    {appointment.discountCents ? (
+                      <div className="flex items-center gap-3 py-3">
+                        <Tag className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="w-28 shrink-0 text-xs text-slate-400">{appointment.discountLabel}</span>
+                        <span className="text-xs font-semibold text-emerald-700">-{money(appointment.discountCents)}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {appointment.status === "COMPLETED" && (
+                    <div className="mx-4 mb-4 mt-2 flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Consulta finalizada. El médico marcó esta cita como completada.
+                    </div>
+                  )}
+                  {appointment.acceptedAutomatically && (
+                    <div className="mx-4 mb-4 mt-2 flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Pago confirmado. Tu cita fue aceptada automáticamente por confirmación en línea.
+                    </div>
+                  )}
+                  <p className="px-5 pb-4 pt-1 text-xs leading-5 text-slate-400">
+                    Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas.
+                  </p>
                 </div>
-              )}
-              {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
-                <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelación</button>
-              )}
+
+                {appointment.status === "NO_SHOW" && (
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Solicitar reagendar</button>
+                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
+                  </div>
+                )}
+                {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelación</button>
+                )}
+              </div>
             </article>
           ))}
         </div>
