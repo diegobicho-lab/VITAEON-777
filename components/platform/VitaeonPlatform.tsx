@@ -45,6 +45,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 // ADN 3D — cargado solo en browser (Canvas 2D, sin dependencias extra)
 const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
@@ -488,6 +489,16 @@ export default function VitaeonPlatform() {
   });
   const doctorDetailRef = useRef<HTMLElement>(null);
 
+  // Parallax cursor del hero
+  const heroMouseX = useMotionValue(0);
+  const heroMouseY = useMotionValue(0);
+  const heroSmoothX = useSpring(heroMouseX, { stiffness: 80, damping: 20 });
+  const heroSmoothY = useSpring(heroMouseY, { stiffness: 80, damping: 20 });
+  const heroTextX = useTransform(heroSmoothX, [-0.5, 0.5], [-4, 4]);
+  const heroTextY = useTransform(heroSmoothY, [-0.5, 0.5], [-3, 3]);
+  const heroImageX = useTransform(heroSmoothX, [-0.5, 0.5], [6, -6]);
+  const heroImageY = useTransform(heroSmoothY, [-0.5, 0.5], [4, -4]);
+
   useEffect(() => {
     async function bootstrap() {
       setLoading(true);
@@ -615,6 +626,16 @@ export default function VitaeonPlatform() {
         doctorDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+  }
+
+  function handleHeroMouseMove(e: React.MouseEvent<HTMLElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    heroMouseX.set((e.clientX - rect.left) / rect.width - 0.5);
+    heroMouseY.set((e.clientY - rect.top) / rect.height - 0.5);
+  }
+  function handleHeroMouseLeave() {
+    heroMouseX.set(0);
+    heroMouseY.set(0);
   }
 
   function openAuth(audience?: AuthAudience) {
@@ -873,8 +894,17 @@ export default function VitaeonPlatform() {
       <Header user={user} onLogin={() => openAuth()} onLogout={logout} />
 
       <main className="px-4 pb-24 pt-28 sm:px-5 sm:pt-32">
-        <section className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-10 rounded-[2rem] px-5 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:rounded-[2.5rem] lg:px-12 lg:py-12">
-          <div className="soft-reveal">
+        <section
+          className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-10 rounded-[2rem] px-5 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:rounded-[2.5rem] lg:px-12 lg:py-12"
+          onMouseMove={handleHeroMouseMove}
+          onMouseLeave={handleHeroMouseLeave}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+            style={{ x: heroTextX, y: heroTextY }}
+          >
             {/* Badge con dot pulsante */}
             <div className="inline-flex items-center gap-2.5 rounded-full border border-silver/80 bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-soft">
               <span className="relative flex h-2 w-2 flex-none">
@@ -887,11 +917,33 @@ export default function VitaeonPlatform() {
             {/* Eyebrow serif */}
             <p className="mt-5 font-serif text-base italic text-medical/70">Red médica privada</p>
 
-            {/* H1 — propuesta de valor */}
+            {/* H1 con stagger por segmento */}
             <h1 className="mt-2 text-4xl font-extrabold leading-[1.09] tracking-tight text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
-              Encuentra el{" "}
-              <span className="hero-gradient-text">especialista</span>
-              {" "}que necesitas
+              <motion.span
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.75, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                style={{ display: "inline-block" }}
+              >
+                Encuentra el{" "}
+              </motion.span>
+              <motion.span
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.75, delay: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                style={{ display: "inline-block" }}
+                className="hero-gradient-text"
+              >
+                especialista
+              </motion.span>
+              <motion.span
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.75, delay: 0.48, ease: [0.22, 1, 0.36, 1] }}
+                style={{ display: "inline-block" }}
+              >
+                {" "}que necesitas
+              </motion.span>
             </h1>
 
             {/* Subtítulo */}
@@ -899,28 +951,31 @@ export default function VitaeonPlatform() {
               Médicos con cédula profesional verificada, agenda digital y atención privada. Solo en León.
             </p>
 
-            {/* CTAs */}
+            {/* CTAs con bloom */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => setBookingOpen(true)}
-                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#071726] px-8 py-4 font-semibold text-white shadow-glass transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#071726] px-8 py-4 font-semibold text-white shadow-glass transition-all duration-300 hover:-translate-y-1 hover:bg-[#0d2638] hover:shadow-[0_0_0_8px_rgba(7,23,38,0.10),0_16px_40px_rgba(7,23,38,0.30)] active:scale-[0.97]"
               >
                 <Calendar className="h-4 w-4" />
                 Agendar cita
               </button>
               <a
                 href="#busqueda"
-                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:shadow-premium"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-medical/30 hover:shadow-[0_0_0_6px_rgba(17,109,157,0.08),0_8px_32px_rgba(17,109,157,0.12)]"
               >
                 <Search className="h-4 w-4" />
                 Buscar especialista
               </a>
             </div>
             <HeroStats onRepresentativesClick={openRepresentatives} />
-          </div>
-          <div className="editorial-image relative">
-            <HeroMockup />
-          </div>
+          </motion.div>
+          <motion.div style={{ x: heroImageX, y: heroImageY }}>
+            <div className="editorial-image relative">
+              <div className="dna-halo-ring" aria-hidden="true" />
+              <HeroMockup />
+            </div>
+          </motion.div>
         </section>
 
         <section className="mx-auto mt-10 max-w-7xl">

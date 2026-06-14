@@ -154,12 +154,18 @@ select {
     linear-gradient(180deg, #faf9f7 0%, #ffffff 58%, #f4f8fa 100%);
 }
 
-/* ─── Hero gradient text ──────────────────────────────────────── */
+/* ─── Hero gradient text — shimmer ───────────────────────────── */
 .hero-gradient-text {
-  background: linear-gradient(135deg, #1a80b8 0%, #116D9D 55%, #0e5580 100%);
+  background: linear-gradient(90deg, #1a80b8 0%, #0ea5e9 40%, #1a80b8 100%);
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  animation: hero-shimmer 3s linear infinite;
+}
+
+@keyframes hero-shimmer {
+  to { background-position: -200% center; }
 }
 
 /* ─── Hero panel orbs ─────────────────────────────────────────── */
@@ -545,6 +551,59 @@ select {
 }
 
 .pixieset-section > * { position: relative; z-index: 1; }
+
+/* ─── Pixieset breathing orb ─────────────────────────────────── */
+.pixieset-section::after {
+  content: "";
+  position: absolute;
+  top: -15%;
+  right: -5%;
+  width: 55%;
+  height: 70%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(17, 109, 157, 0.055) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: hero-breathe 22s ease-in-out infinite alternate;
+}
+
+@keyframes hero-breathe {
+  from { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  to   { transform: translate(-10%, 8%) scale(1.3); opacity: 1; }
+}
+
+/* ─── DNA halo ring ──────────────────────────────────────────── */
+.dna-halo-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 88%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 1.5px solid rgba(14, 165, 233, 0.3);
+  animation: dna-halo-pulse 2.8s ease-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.dna-halo-ring::after {
+  content: "";
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  animation: dna-halo-outer 2.8s ease-out 0.9s infinite;
+}
+
+@keyframes dna-halo-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.88); opacity: 0.75; }
+  100% { transform: translate(-50%, -50%) scale(1.18); opacity: 0; }
+}
+
+@keyframes dna-halo-outer {
+  0%   { transform: scale(0.88); opacity: 0.5; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
 
 /* ─── Soft reveal / editorial ─────────────────────────────────── */
 .soft-reveal { animation: soft-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) both; }
