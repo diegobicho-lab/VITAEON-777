@@ -440,6 +440,15 @@ function suggestSpecialty(symptom: string) {
   return { primary, alternatives, redFlag };
 }
 
+const SUGGESTION_ICONS: Record<string, ReactNode> = {
+  "Dolor de rodilla": <Bone className="h-4 w-4" />,
+  "Diabetes":         <Activity className="h-4 w-4" />,
+  "Bajar de peso":    <Leaf className="h-4 w-4" />,
+  "Presión alta":     <HeartPulse className="h-4 w-4" />,
+  "Ansiedad":         <Brain className="h-4 w-4" />,
+  "Hospital Ángeles": <Hospital className="h-4 w-4" />,
+};
+
 export default function VitaeonPlatform() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -488,6 +497,7 @@ export default function VitaeonPlatform() {
     medal: "oro" as DoctorListItem["medal"]
   });
   const doctorDetailRef = useRef<HTMLElement>(null);
+  const resultsRef = useRef<HTMLElement>(null);
 
   // Parallax cursor del hero
   const heroMouseX = useMotionValue(0);
@@ -636,6 +646,19 @@ export default function VitaeonPlatform() {
   function handleHeroMouseLeave() {
     heroMouseX.set(0);
     heroMouseY.set(0);
+  }
+
+  function handleSuggestionClick(label: string) {
+    setQuery(label);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 180);
+  }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && (query.trim() || specialtyId || hospitalId)) {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function openAuth(audience?: AuthAudience) {
@@ -982,65 +1005,118 @@ export default function VitaeonPlatform() {
           <IntelligentGuide specialties={specialties} onSpecialtySelect={(id) => chooseSpecialty(id, true)} />
         </section>
 
-        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 rounded-[2rem] p-5 shadow-premium">
-          <div className="mb-4 flex flex-col gap-2 px-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-medical">Buscador asistido</p>
-              <h2 className="mt-1 text-xl font-bold text-deep">Encuentra atención por síntoma, médico o lugar</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Escribe como lo dirías normalmente: dolor, servicio, subespecialidad, hospital o nombre del médico.
-              </p>
+        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 overflow-hidden rounded-[2rem] shadow-premium">
+
+          {/* ── Header band ─────────────────────────────────────────── */}
+          <div className="border-b border-silver/40 bg-gradient-to-br from-[#fafcff] to-[#eef5fb] px-6 py-7 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-medical" />
+                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.36em] text-medical">Buscador asistido</p>
+                </div>
+                <h2 className="mt-2 text-xl font-bold text-deep sm:text-2xl">¿Qué síntoma o especialista buscas?</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                  Escríbelo como lo dirías: &quot;me duele la rodilla&quot;, &quot;diabetes&quot;, &quot;Dr. González&quot;
+                </p>
+              </div>
+              {hasActiveSearch && (
+                <button
+                  onClick={clearSearchFilters}
+                  className="flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-silver/70 bg-white px-4 py-2 text-xs font-bold text-slate-500 shadow-soft transition hover:-translate-y-0.5 hover:text-deep"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Limpiar
+                </button>
+              )}
             </div>
-            {hasActiveSearch && (
-              <button
-                onClick={clearSearchFilters}
-                className="w-fit rounded-full border border-silver/70 bg-white px-4 py-2 text-xs font-bold text-slate-500 shadow-soft transition hover:-translate-y-0.5 hover:text-deep"
-              >
-                Limpiar búsqueda
-              </button>
+          </div>
+
+          {/* ── Inputs ──────────────────────────────────────────────── */}
+          <div className="p-5 sm:p-6">
+            <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr_1fr]">
+              <FieldIcon icon={<Search className="h-4 w-4" />}>
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Ej. dolor de cadera, diabetes, Susana, nutrición"
+                  className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:shadow-none focus:ring-0"
+                />
+              </FieldIcon>
+              <FieldIcon icon={<Stethoscope className="h-4 w-4" />}>
+                <select value={specialtyId} onChange={(event) => chooseSpecialty(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
+                  <option value="">Todas las especialidades</option>
+                  {specialties.map((specialty) => (
+                    <option key={specialty.id} value={specialty.id}>{specialty.name}</option>
+                  ))}
+                </select>
+              </FieldIcon>
+              <FieldIcon icon={<Hospital className="h-4 w-4" />}>
+                <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
+                  <option value="">Todos los hospitales</option>
+                  {hospitals.map((hospital) => (
+                    <option key={hospital.id} value={hospital.id}>{hospital.name}</option>
+                  ))}
+                </select>
+              </FieldIcon>
+            </div>
+
+            {/* ── Filtros activos ──────────────────────────────────── */}
+            {hasActiveSearch ? (
+              <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[1.4rem] border border-medical/20 bg-medical/5 p-3.5 text-xs">
+                <span className="font-bold text-medical">Resultados para:</span>
+                {query.trim() && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-medical/10 px-3 py-1 font-semibold text-medical">
+                    <Search className="h-3 w-3" />
+                    {query.trim()}
+                  </span>
+                )}
+                {activeSpecialtyName && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 font-semibold text-sky-700">
+                    <Stethoscope className="h-3 w-3" />
+                    {activeSpecialtyName}
+                  </span>
+                )}
+                {activeHospitalName && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                    <Hospital className="h-3 w-3" />
+                    {activeHospitalName}
+                  </span>
+                )}
+                <button
+                  onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#071726] px-4 py-1.5 text-xs font-bold text-white transition hover:bg-[#0d2638] active:scale-[0.97]"
+                >
+                  Ver médicos
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : searchSuggestions.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-3 px-1 text-[0.63rem] font-bold uppercase tracking-[0.32em] text-slate-400">
+                  Búsquedas frecuentes — toca para ir directo
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {searchSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.label}
+                      onClick={() => handleSuggestionClick(suggestion.label)}
+                      className="group flex items-center gap-3 rounded-2xl border border-silver/60 bg-white p-3.5 text-left shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-medical/30 hover:shadow-[0_8px_24px_rgba(17,109,157,0.09)]"
+                    >
+                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-sky-50 to-blue-100/70 text-medical shadow-sm ring-1 ring-medical/10 transition-transform duration-200 group-hover:scale-110">
+                        {SUGGESTION_ICONS[suggestion.label] ?? <Search className="h-4 w-4" />}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="block truncate text-xs font-bold text-deep">{suggestion.label}</span>
+                        <span className="block truncate text-[0.63rem] text-slate-400">{suggestion.helper}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-          <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr_1fr]">
-            <FieldIcon icon={<Search className="h-4 w-4" />}>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. dolor de cadera, diabetes, Susana, nutrición" className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:shadow-none focus:ring-0" />
-            </FieldIcon>
-            <FieldIcon icon={<Stethoscope className="h-4 w-4" />}>
-              <select value={specialtyId} onChange={(event) => chooseSpecialty(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
-                <option value="">Todas las especialidades</option>
-                {specialties.map((specialty) => (
-                  <option key={specialty.id} value={specialty.id}>{specialty.name}</option>
-                ))}
-              </select>
-            </FieldIcon>
-            <FieldIcon icon={<Hospital className="h-4 w-4" />}>
-              <select value={hospitalId} onChange={(event) => setHospitalId(event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm text-deep shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:ring-0">
-                <option value="">Todos los hospitales</option>
-                {hospitals.map((hospital) => (
-                  <option key={hospital.id} value={hospital.id}>{hospital.name}</option>
-                ))}
-              </select>
-            </FieldIcon>
-          </div>
-          {hasActiveSearch ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[1.4rem] border border-silver/60 bg-white/70 p-3 text-xs text-slate-500">
-              <span className="font-bold text-deep">Filtro activo:</span>
-              {query.trim() && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{query.trim()}</span>}
-              {activeSpecialtyName && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{activeSpecialtyName}</span>}
-              {activeHospitalName && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{activeHospitalName}</span>}
-            </div>
-          ) : searchSuggestions.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-2 px-1 text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Prueba con búsquedas comunes</p>
-              <div className="flex flex-wrap gap-2">
-              {searchSuggestions.map((suggestion) => (
-                <button key={suggestion.label} onClick={() => setQuery(suggestion.label)} className="group rounded-full border border-silver/60 bg-white px-4 py-2 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-silver hover:text-deep">
-                  <span className="block text-xs font-bold text-deep">{suggestion.label}</span>
-                  <span className="block text-[0.68rem] font-semibold text-slate-400 transition group-hover:text-slate-500">{suggestion.helper}</span>
-                </button>
-              ))}
-              </div>
-            </div>
-          )}
         </section>
 
         <SpecialtiesSection specialties={specialties} selectedId={specialtyId} onSelect={(id) => chooseSpecialty(id, true)} />
@@ -1048,7 +1124,7 @@ export default function VitaeonPlatform() {
 
         <StateBlock loading={loading || doctorsLoading} error={error} empty={!doctorsLoading && doctors.length === 0} />
 
-        <section className="mx-auto mt-16 grid max-w-7xl gap-6 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_460px]">
+        <section ref={resultsRef as React.Ref<HTMLElement>} className="mx-auto mt-16 scroll-mt-28 grid max-w-7xl gap-6 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_460px]">
           <div>
             {/* Doctor count header */}
             {doctors.length > 0 && !doctorsLoading && (
