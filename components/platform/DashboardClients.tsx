@@ -675,7 +675,7 @@ function Shell({ eyebrow, title, children, headerExtra }: { eyebrow: string; tit
       <section className="mx-auto max-w-7xl">
         <header className="mb-8 border-b border-silver/40 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>
-          <h1 className="mt-3 text-4xl font-bold text-deep sm:text-5xl">{title}</h1>
+          <h1 className="mt-3 text-3xl font-bold text-deep sm:text-4xl">{title}</h1>
           {headerExtra}
         </header>
         {children}
@@ -796,28 +796,28 @@ export function PatientDashboardClient() {
                   <div className="divide-y divide-silver/40 px-5">
                     <div className="flex items-center gap-3 py-3">
                       <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 text-xs text-slate-400">Folio</span>
+                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Folio</span>
                       <span className="truncate font-mono text-xs text-slate-600">{appointment.id}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 text-xs text-slate-400">Estado de cita</span>
+                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Estado de cita</span>
                       <span className={`text-xs font-semibold ${statusTextColor(appointment.status)}`}>{appointmentReadableStatus(appointment.status)}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
                       <CreditCard className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 text-xs text-slate-400">Pago</span>
+                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Pago</span>
                       <span className="text-xs text-slate-600">{paymentProviderLabel(appointment.payments[0]?.provider)} · {money(appointment.payments[0]?.amountCents ?? 0)}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
                       <Wallet className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 text-xs text-slate-400">Estado de pago</span>
+                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Estado de pago</span>
                       <span className="text-xs text-slate-600">{paymentReadableStatus(appointment.payments[0]?.status ?? "PENDING", appointment.payments[0]?.provider ?? "PENDING")}</span>
                     </div>
                     {appointment.discountCents ? (
                       <div className="flex items-center gap-3 py-3">
                         <Tag className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                        <span className="w-28 shrink-0 text-xs text-slate-400">{appointment.discountLabel}</span>
+                        <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">{appointment.discountLabel}</span>
                         <span className="text-xs font-semibold text-emerald-700">-{money(appointment.discountCents)}</span>
                       </div>
                     ) : null}
@@ -840,13 +840,13 @@ export function PatientDashboardClient() {
                 </div>
 
                 {appointment.status === "NO_SHOW" && (
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Solicitar reagendar</button>
-                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700">Solicitar devolución/cancelación</button>
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">Solicitar reagendar</button>
+                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="w-full rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700 sm:w-auto">Solicitar devolución/cancelación</button>
                   </div>
                 )}
                 {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700">Solicitar cancelación</button>
+                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700 sm:w-auto">Solicitar cancelación</button>
                 )}
               </div>
             </article>
@@ -2116,10 +2116,10 @@ export function DoctorDashboardClient() {
                   </span>
                 </label>
               </div>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button onClick={updateProfile} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">Guardar perfil</button>
-                <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="Referencia privada para verificación" className="min-w-64 rounded-full bg-slate-50 px-4 py-3 outline-none" />
-                <button onClick={submitVerification} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Enviar verificación</button>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <button onClick={updateProfile} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">Guardar perfil</button>
+                <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="Referencia privada para verificación" className="w-full rounded-full bg-slate-50 px-4 py-3 outline-none sm:max-w-xs" />
+                <button onClick={submitVerification} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">Enviar verificación</button>
               </div>
             </section>
           )}
@@ -2237,11 +2237,11 @@ export function DoctorDashboardClient() {
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   Esta acción crea una solicitud pendiente. Primero se intentará reagendar; una devolución queda como segunda opción de revisión, sin mezclar pagos de suscripciones.
                 </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]">
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">
                     Enviar solicitud
                   </button>
-                  <button onClick={() => setCancellationModal(null)} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">
+                  <button onClick={() => setCancellationModal(null)} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">
                     Cancelar
                   </button>
                 </div>

@@ -1343,17 +1343,17 @@ export default function VitaeonPlatform() {
             )}
             {authMode === "register" && (
               <>
-                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
-                <select value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })} className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" disabled={Boolean(authAudience)}>
+                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <select value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" disabled={Boolean(authAudience)}>
                   <option value="PATIENT">Paciente</option>
                   <option value="DOCTOR">Médico</option>
                 </select>
               </>
             )}
-            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
-            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
-            <button type="button" onClick={submitAuth} className="rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
+            <button type="button" onClick={submitAuth} className="w-full rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
             <button type="button" onClick={toggleAuthMode} className="text-sm font-semibold text-medical">
               {authMode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
             </button>
@@ -1778,7 +1778,7 @@ function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Spe
             </div>
           )}
           {matchedSpecialty && (
-            <button onClick={() => onSpecialtySelect(matchedSpecialty.id)} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white">
+            <button onClick={() => onSpecialtySelect(matchedSpecialty.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white sm:inline-flex sm:w-auto sm:justify-start">
               Ver especialistas recomendados <ChevronRight className="h-4 w-4" />
             </button>
           )}
@@ -1833,7 +1833,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Especialidades</p>
-          <h2 className="mt-3 text-4xl font-bold leading-tight text-deep sm:text-5xl">
+          <h2 className="mt-3 text-3xl font-bold leading-tight text-deep sm:text-4xl">
             Encuentra tu especialista
           </h2>
           <p className="mt-3 max-w-xl text-lg text-slate-500">
@@ -2721,7 +2721,7 @@ function HowItWorks() {
     <section className="mx-auto mt-20 max-w-7xl">
       <div className="mb-10">
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Cómo funciona</p>
-        <h2 className="mt-3 text-4xl font-semibold leading-tight text-deep sm:text-5xl">
+        <h2 className="mt-3 text-3xl font-semibold leading-tight text-deep sm:text-4xl">
           Una ruta médica simple,<br className="hidden sm:block" /> segura y premium.
         </h2>
       </div>
@@ -2752,7 +2752,7 @@ function Testimonials() {
       <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Confianza paciente</p>
-          <h2 className="mt-3 text-4xl font-semibold leading-tight text-deep sm:text-5xl">
+          <h2 className="mt-3 text-3xl font-semibold leading-tight text-deep sm:text-4xl">
             Acompañamiento privado desde la primera búsqueda.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-slate-500">
@@ -2812,7 +2812,7 @@ function FAQ() {
 
   return (
     <section className="mx-auto mt-20 max-w-7xl">
-      <div className="rounded-[2.5rem] border border-silver/70 bg-white px-8 py-10 shadow-soft sm:px-12 sm:py-14">
+      <div className="rounded-[2.5rem] border border-silver/70 bg-white px-5 py-8 shadow-soft sm:px-8 sm:py-10 lg:px-12 lg:py-14">
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Preguntas frecuentes</p>
         <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">Respuestas rápidas</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-3">

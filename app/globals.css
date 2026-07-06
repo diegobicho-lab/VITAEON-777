@@ -725,7 +725,7 @@ select {
 }
 
 /* ─── Modal ───────────────────────────────────────────────────── */
-.modal-shell { align-items: center; }
+.modal-shell { align-items: center; overscroll-behavior: contain; }
 
 .modal-panel {
   max-height: calc(100vh - 3rem);
@@ -824,6 +824,9 @@ select {
   background: rgba(17, 109, 157, 0.1);
   color: #116D9D;
 }
+
+/* ─── Touch targets ───────────────────────────────────────────── */
+button, [role="button"] { touch-action: manipulation; }
 
 /* ─── Utility ─────────────────────────────────────────────────── */
 .text-balance { text-wrap: balance; }
