@@ -53,7 +53,9 @@ const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
   ssr: false,
   loading: () => null,
 });
-import { track } from "@vercel/analytics";
+// import { track } from "@vercel/analytics"; // deshabilitado temporalmente para diagnóstico
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const track = (..._args: any[]) => {}; // noop — se reactiva cuando se confirme que no es el problema
 import { clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
 
