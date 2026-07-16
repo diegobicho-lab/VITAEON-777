@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="es">
       <body>
         {children}
-        {/* Analytics: deshabilitado temporalmente para diagnóstico */}
+        <Suspense fallback={null}><Analytics /></Suspense>
       </body>
     </html>
   );
