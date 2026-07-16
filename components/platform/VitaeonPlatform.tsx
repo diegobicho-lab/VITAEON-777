@@ -29,6 +29,7 @@ import {
   Microscope,
   Scissors,
   Search,
+  Share2,
   ShieldCheck,
   Siren,
   Sparkles,
@@ -948,7 +949,7 @@ export default function VitaeonPlatform() {
                 transition={{ duration: 0.75, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 style={{ display: "inline-block" }}
               >
-                Encuentra el{" "}
+                Médicos privados{" "}
               </motion.span>
               <motion.span
                 initial={{ opacity: 0, y: 20 }}
@@ -957,7 +958,7 @@ export default function VitaeonPlatform() {
                 style={{ display: "inline-block" }}
                 className="hero-gradient-text"
               >
-                especialista
+                verificados
               </motion.span>
               <motion.span
                 initial={{ opacity: 0, y: 20 }}
@@ -965,13 +966,13 @@ export default function VitaeonPlatform() {
                 transition={{ duration: 0.75, delay: 0.48, ease: [0.22, 1, 0.36, 1] }}
                 style={{ display: "inline-block" }}
               >
-                {" "}que necesitas
+                {" "}en León, Gto.
               </motion.span>
             </h1>
 
             {/* Subtítulo */}
             <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-500">
-              Médicos con cédula profesional verificada, agenda digital y atención privada. Solo en León.
+              Cédula verificada, agenda online y pago digital directo al médico. El directorio médico premium de León, Guanajuato.
             </p>
 
             {/* CTAs con bloom */}
@@ -1122,7 +1123,7 @@ export default function VitaeonPlatform() {
         <SpecialtiesSection specialties={specialties} selectedId={specialtyId} onSelect={(id) => chooseSpecialty(id, true)} />
         {user?.role === "DOCTOR" && <SubscriptionShowcase />}
 
-        <StateBlock loading={loading || doctorsLoading} error={error} empty={!doctorsLoading && doctors.length === 0} />
+        <StateBlock loading={loading || doctorsLoading} error={error} empty={!doctorsLoading && doctors.length === 0} onJoinAsDoctor={() => openAuth("DOCTOR")} />
 
         <section ref={resultsRef as React.Ref<HTMLElement>} className="mx-auto mt-16 scroll-mt-28 grid max-w-7xl gap-6 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_460px]">
           <div>
@@ -1254,6 +1255,15 @@ export default function VitaeonPlatform() {
               )}
               <a href="/dashboard/patient" className="inline-flex rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700">
                 Ver mi panel
+              </a>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Agendé mi consulta con ${ticket.doctor} (${ticket.specialty}) el ${dateTime(ticket.startsAt)} a través de VITAEON.mx — El directorio médico premium de León, Gto. 🩺`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-6 py-3 font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
+              >
+                <Share2 className="h-4 w-4" />
+                Compartir
               </a>
             </div>
             {clientSecret && stripePromise && (
@@ -1595,9 +1605,9 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
 function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => void }) {
   return (
     <div className="mt-10">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Presentes en</p>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Médicos en hospitales de León</p>
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {["Hospital Ángeles", "Lomas Medical", "HMAS León", "Hospital OHL"].map((name) => (
+        {["Hospital Ángeles", "Aranda de la Parra", "Médica Campestre", "Christus Muguerza"].map((name) => (
           <span key={name} className="text-sm font-semibold text-slate-400 transition-colors hover:text-slate-600">{name}</span>
         ))}
       </div>
@@ -1607,8 +1617,12 @@ function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => v
           Cédula verificada
         </span>
         <span className="flex items-center gap-1.5 text-sm text-slate-500">
+          <CreditCard className="h-3.5 w-3.5 text-medical" />
+          Pago digital al médico
+        </span>
+        <span className="flex items-center gap-1.5 text-sm text-slate-500">
           <Calendar className="h-3.5 w-3.5 text-slate-400" />
-          Agenda digital
+          Agenda online
         </span>
         <span className="flex items-center gap-1.5 text-sm text-slate-500">
           <MapPin className="h-3.5 w-3.5 text-slate-400" />
@@ -2033,7 +2047,7 @@ function FieldIcon({ icon, children }: { icon: ReactNode; children: ReactNode })
   );
 }
 
-function StateBlock({ loading, error, empty }: { loading: boolean; error: string; empty: boolean }) {
+function StateBlock({ loading, error, empty, onJoinAsDoctor }: { loading: boolean; error: string; empty: boolean; onJoinAsDoctor?: () => void }) {
   if (loading) {
     return (
       <div className="mx-auto mt-10 max-w-7xl">
@@ -2065,8 +2079,24 @@ function StateBlock({ loading, error, empty }: { loading: boolean; error: string
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-50">
           <Stethoscope className="h-7 w-7 text-slate-400" />
         </div>
-        <h3 className="text-lg font-semibold text-deep">Sin especialistas en esta categoría</h3>
-        <p className="mt-2 text-slate-500">Estamos incorporando médicos verificados para la beta privada de VITAEON.</p>
+        <h3 className="text-lg font-semibold text-deep">Incorporando especialistas a la beta privada</h3>
+        <p className="mt-2 max-w-md mx-auto text-slate-500">
+          Estamos sumando médicos verificados en León, Gto. en tiempo real. Si eres especialista y quieres estar entre los primeros, únete ahora.
+        </p>
+        {onJoinAsDoctor && (
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <button
+              onClick={onJoinAsDoctor}
+              className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
+            >
+              <Stethoscope className="h-4 w-4" />
+              Soy médico en León — Unirme
+            </button>
+            <a href="#busqueda" className="text-sm font-semibold text-medical hover:underline underline-offset-2">
+              Ver especialidades disponibles
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -2267,6 +2297,15 @@ function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; se
           </span>
         </div>
 
+        {/* Precio de consulta */}
+        {doctor.priceCents > 0 && (
+          <div className="mt-3.5 inline-flex items-center gap-2 rounded-2xl bg-slate-50/80 px-3.5 py-2 text-sm font-semibold text-deep ring-1 ring-silver/60">
+            <CreditCard className="h-3.5 w-3.5 text-medical" />
+            {money(doctor.priceCents)}
+            <span className="font-normal text-slate-400 text-xs">/ consulta</span>
+          </div>
+        )}
+
         {/* Achievements */}
         {topAchievements.length > 0 && (
           <div className="mt-4 space-y-1.5">
@@ -2290,7 +2329,9 @@ function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; se
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-silver/40 pt-4">
           <span className={`flex items-center gap-1.5 text-xs font-semibold ${doctor.availability.length > 0 ? "text-emerald-600" : "text-slate-400"}`}>
             <Calendar className="h-3.5 w-3.5" />
-            {doctor.availability.length > 0 ? `${doctor.availability.length} horarios libres` : "Sin horarios visibles"}
+            {doctor.availability.length > 0
+              ? `Próximo: ${dateTime(doctor.availability[0].startsAt)}`
+              : "Sin horarios visibles"}
           </span>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 ${selected ? "bg-medical text-white" : "bg-[#071726] text-white group-hover:bg-[#0d2638]"}`}>
             {selected ? "Seleccionado" : "Ver perfil"}
