@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { auditLog } from "@/lib/audit/audit";
 import { getWelcomeDiscountQuote } from "@/lib/discounts/welcome-discount";
-import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
+import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createManyNotifications } from "@/lib/notifications/notifications";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
@@ -138,24 +138,39 @@ export async function POST(request: Request) {
       timeZone: "America/Mexico_City"
     }).format(new Date(appointment.availabilitySlot.startsAt));
 
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
     await Promise.all([
       sendTransactionalEmail({
         to: user.email,
-        subject: "Tu cita quedó registrada en VITAEON",
-        text: `Tu ticket de cita con ${appointment.doctor.fullName} fue creado correctamente para ${startsAt}. Puedes consultarlo en tu panel de paciente en la sección Mis citas.`,
+        subject: `Tu cita con ${appointment.doctor.fullName} quedó registrada`,
+        text: `Tu ticket de cita con ${appointment.doctor.fullName} (${appointment.doctor.specialty.name}) fue creado correctamente para el ${startsAt}. Revisa tu ticket y continúa con el pago desde tu panel de paciente.`,
         html: emailShell(
-          "Ticket de cita creado",
-          `<p>Tu ticket de cita con <strong>${appointment.doctor.fullName}</strong> fue creado correctamente.</p><p><strong>Fecha:</strong> ${startsAt}</p><p>Puedes consultarlo en tu panel de paciente en la sección Mis citas.</p>`
+          `Cita con ${appointment.doctor.fullName}`,
+          [
+            `<p>Tu ticket de cita fue creado correctamente en <strong>VITAEON</strong>.</p>`,
+            `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;width:100%;">`,
+            `<tr><td style="padding:8px 0;border-bottom:1px solid #e5edf2;font-size:13px;color:#7f9aaa;width:130px;">Médico</td><td style="padding:8px 0;border-bottom:1px solid #e5edf2;font-size:14px;font-weight:600;color:#071726;">${appointment.doctor.fullName}</td></tr>`,
+            `<tr><td style="padding:8px 0;border-bottom:1px solid #e5edf2;font-size:13px;color:#7f9aaa;">Especialidad</td><td style="padding:8px 0;border-bottom:1px solid #e5edf2;font-size:14px;color:#374151;">${appointment.doctor.specialty.name}</td></tr>`,
+            `<tr><td style="padding:8px 0;font-size:13px;color:#7f9aaa;">Fecha y hora</td><td style="padding:8px 0;font-size:14px;font-weight:600;color:#071726;">${startsAt}</td></tr>`,
+            `</table>`,
+            `<p style="margin-top:16px;font-size:14px;color:#374151;">Tu cita está <strong>pendiente de aceptación médica</strong>. Revisa el ticket y completa el pago desde tu panel para confirmar.</p>`,
+            emailButton("Ver mi ticket y pagar", `${appUrl}/dashboard/patient`)
+          ].join("")
         )
       }),
       appointment.doctor.user?.email
         ? sendTransactionalEmail({
             to: appointment.doctor.user.email,
-            subject: "Nueva cita en tu agenda VITAEON",
-            text: `${user.name} solicitó una cita de ${appointment.doctor.specialty.name} para ${startsAt}.`,
+            subject: `Nueva solicitud de cita — ${user.name}`,
+            text: `${user.name} solicitó una cita de ${appointment.doctor.specialty.name} para el ${startsAt}. Entra a tu panel médico para aceptarla.`,
             html: emailShell(
-              "Nueva cita en agenda",
-              `<p>${user.name} solicitó una cita de <strong>${appointment.doctor.specialty.name}</strong>.</p><p><strong>Fecha:</strong> ${startsAt}</p>`
+              "Nueva solicitud de cita",
+              [
+                `<p><strong>${user.name}</strong> solicitó una cita de <strong>${appointment.doctor.specialty.name}</strong>.</p>`,
+                `<p style="margin-top:8px;"><strong>Fecha solicitada:</strong> ${startsAt}</p>`,
+                `<p style="margin-top:12px;font-size:14px;color:#374151;">La cita está pendiente de tu aceptación. Entra a tu agenda clínica para aceptarla, completarla o marcar ausencia.</p>`,
+                emailButton("Ver mi agenda clínica", `${appUrl}/dashboard/doctor`)
+              ].join("")
             )
           })
         : Promise.resolve({ sent: false, skipped: true })

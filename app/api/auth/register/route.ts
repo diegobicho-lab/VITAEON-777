@@ -4,7 +4,7 @@ import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
+import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { registerSchema } from "@/lib/validation/schemas";
 import type { CurrentUser } from "@/types/domain";
@@ -45,9 +45,9 @@ export async function POST(request: Request) {
         data: {
           userId: created.id,
           type: "welcome_discount",
-          title: "35% de descuento en tu primera valoración",
+          title: "Descuento de bienvenida en tu primera consulta",
           message:
-            "Beneficio exclusivo: si agendas tu primera consulta con la Dra. Susana Pérez Guadarrama y la campaña está activa, obtienes 35% de descuento."
+            "Como nuevo paciente puedes tener un descuento exclusivo en tu primera consulta. El beneficio se aplica automáticamente al reservar si la campaña está activa para el médico seleccionado."
         }
       });
     }
@@ -108,30 +108,54 @@ export async function POST(request: Request) {
     metadata: { role: user.role }
   });
 
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
   await sendTransactionalEmail({
     to: user.email,
-    subject: "Bienvenido a VITAEON",
+    subject: `Bienvenido a VITAEON, ${user.name.split(" ")[0]}`,
     text:
       user.role === Role.DOCTOR
-        ? "Tu cuenta médica fue creada. Completa tu perfil profesional, disponibilidad y verificación desde tu panel."
-        : "Tu cuenta de paciente fue creada. Ya puedes buscar especialistas, reservar citas y consultar tus tickets.",
+        ? "Tu cuenta médica fue creada. Completa tu perfil profesional, disponibilidad y verificación desde tu panel para aparecer en el directorio."
+        : "Tu cuenta de paciente fue creada. Ya puedes buscar especialistas verificados, reservar citas y pagar en línea.",
     html: emailShell(
-      "Bienvenido a VITAEON",
+      user.role === Role.DOCTOR ? `Bienvenido, ${user.name.split(" ")[0]}` : `Bienvenido a VITAEON, ${user.name.split(" ")[0]}`,
       user.role === Role.DOCTOR
-        ? "<p>Tu cuenta médica fue creada correctamente.</p><p>Completa tu perfil profesional, disponibilidad y verificación desde tu panel médico.</p>"
-        : "<p>Tu cuenta de paciente fue creada correctamente.</p><p>Ya puedes buscar especialistas, reservar citas y consultar tus tickets desde tu panel.</p>"
+        ? [
+            `<p>Tu cuenta médica fue creada correctamente en <strong>VITAEON</strong>.</p>`,
+            `<p>Para aparecer en el directorio de pacientes necesitas:</p>`,
+            `<ul style="margin:12px 0;padding-left:20px;color:#374151;">`,
+            `<li style="margin-bottom:6px;">Completar tu perfil profesional y subir foto</li>`,
+            `<li style="margin-bottom:6px;">Registrar tu cédula profesional</li>`,
+            `<li style="margin-bottom:6px;">Configurar tu disponibilidad mensual</li>`,
+            `<li style="margin-bottom:6px;">Conectar tu cuenta de cobro con Stripe</li>`,
+            `<li style="margin-bottom:6px;">Enviar documentos para verificación</li>`,
+            `</ul>`,
+            emailButton("Ir a mi panel médico", `${appUrl}/dashboard/doctor`)
+          ].join("")
+        : [
+            `<p>Tu cuenta de paciente fue creada correctamente en <strong>VITAEON</strong>.</p>`,
+            `<p>Ahora puedes buscar especialistas médicos verificados en León, Guanajuato, reservar citas y pagar en línea de forma segura.</p>`,
+            emailButton("Buscar especialistas", appUrl)
+          ].join("")
     )
   });
 
   if (user.role === Role.DOCTOR) {
     const admins = await prisma.user.findMany({ where: { role: Role.ADMIN, isActive: true }, select: { email: true } });
+    const adminAppUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
     await Promise.all(
       admins.map((admin) =>
         sendTransactionalEmail({
           to: admin.email,
-          subject: "Nuevo médico registrado en VITAEON",
-          text: `${user.name} creó una cuenta médica y debe completar verificación.`,
-          html: emailShell("Nuevo médico registrado", `<p>${user.name} creó una cuenta médica en VITAEON.</p><p>Revisa su perfil y verificación cuando sea enviada.</p>`)
+          subject: `Nuevo médico registrado: ${user.name}`,
+          text: `${user.name} (${user.email}) creó una cuenta médica en VITAEON y debe completar verificación.`,
+          html: emailShell(
+            "Nuevo médico registrado",
+            [
+              `<p><strong>${user.name}</strong> (<a href="mailto:${user.email}" style="color:#1a80b8;">${user.email}</a>) creó una cuenta médica en VITAEON.</p>`,
+              `<p>Cuando el médico envíe sus documentos de verificación recibirás otra notificación para aprobar o rechazar su perfil.</p>`,
+              emailButton("Ver panel de administración", `${adminAppUrl}/dashboard/admin`)
+            ].join("")
+          )
         })
       )
     );

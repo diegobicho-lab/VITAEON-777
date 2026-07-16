@@ -182,6 +182,13 @@ export async function POST(request: Request) {
     ? Math.max(0, Math.round(payment.amountCents * (platformFeePercentage / 100)))
     : 0;
 
+  if (applicationFeeAmount === 0 && payment.amountCents > 0) {
+    console.warn(
+      "[VITAEON revenue] STRIPE_PLATFORM_FEE_PERCENTAGE is 0 or unset — platform is processing appointment payments without collecting a commission.",
+      { appointmentId: appointment.id, amountCents: payment.amountCents }
+    );
+  }
+
   const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: payment.amountCents,
     currency: payment.currency,
@@ -237,7 +244,10 @@ export async function POST(request: Request) {
     metadata: {
       appointmentId: appointment.id,
       stripePaymentIntentId: intent.id,
-      payoutMode: "stripe_connect_destination"
+      payoutMode: "stripe_connect_destination",
+      amountCents: payment.amountCents,
+      platformFeePercentage,
+      applicationFeeAmountCents: applicationFeeAmount
     }
   });
 

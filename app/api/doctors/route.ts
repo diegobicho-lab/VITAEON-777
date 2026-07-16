@@ -89,14 +89,34 @@ export async function GET(request: Request) {
     orderBy: [{ fullName: "asc" }, { createdAt: "asc" }]
   });
 
+  // Weighted review score: average × log₂(count + 1)
+  // A doctor with 5★ × 1 review scores lower than one with 4.8★ × 20 reviews.
+  function reviewScore(reviews: Array<{ rating: number }>) {
+    if (reviews.length === 0) return 0;
+    const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    return avg * Math.log2(reviews.length + 1);
+  }
+
   const sortedDoctors = doctors.sort((a, b) => {
+    // 1. Plan tier (amatista > diamante > oro > obsidiana)
     const planDifference = medalPriority[b.medal] - medalPriority[a.medal];
     if (planDifference !== 0) return planDifference;
-    const availabilityDifference = b.availabilitySlots.length - a.availabilitySlots.length;
-    if (availabilityDifference !== 0) return availabilityDifference;
-    const nameDifference = a.fullName.localeCompare(b.fullName, "es");
-    if (nameDifference !== 0) return nameDifference;
-    return a.createdAt.getTime() - b.createdAt.getTime();
+
+    // 2. Has at least one future slot (binary: yes beats no)
+    const aHasSlots = a.availabilitySlots.length > 0 ? 1 : 0;
+    const bHasSlots = b.availabilitySlots.length > 0 ? 1 : 0;
+    if (bHasSlots !== aHasSlots) return bHasSlots - aHasSlots;
+
+    // 3. Weighted review score (higher is better)
+    const scoreDiff = reviewScore(b.reviews) - reviewScore(a.reviews);
+    if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
+
+    // 4. More available slots
+    const slotDiff = b.availabilitySlots.length - a.availabilitySlots.length;
+    if (slotDiff !== 0) return slotDiff;
+
+    // 5. Alphabetical as final tiebreaker
+    return a.fullName.localeCompare(b.fullName, "es");
   });
 
   return ok(

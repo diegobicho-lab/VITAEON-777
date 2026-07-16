@@ -183,13 +183,72 @@ export async function sendTransactionalEmail(payload: EmailPayload): Promise<Sen
 }
 
 export function emailShell(title: string, body: string) {
-  return `
-    <div style="font-family:Inter,Arial,sans-serif;background:#f7fbfd;padding:32px;color:#071726">
-      <div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d9e5ec;border-radius:28px;padding:32px">
-        <p style="letter-spacing:0.28em;font-weight:700;color:#315f7c;font-size:12px">VITAEON</p>
-        <h1 style="font-size:28px;line-height:1.2;margin:16px 0">${title}</h1>
-        <div style="font-size:16px;line-height:1.7;color:#4b5b70">${body}</div>
-      </div>
-    </div>
-  `;
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
+  const domain = appUrl.replace(/^https?:\/\//, "");
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef5f8;font-family:Inter,system-ui,-apple-system,Arial,sans-serif;-webkit-text-size-adjust:100%;">
+  <span style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${title} — VITAEON · Red médica privada en León, Gto.</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef5f8;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" style="max-width:580px;" cellpadding="0" cellspacing="0" border="0">
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding-bottom:24px;">
+              <a href="${appUrl}" style="text-decoration:none;display:inline-block;">
+                <span style="display:inline-block;background:#071726;border-radius:10px;padding:9px 20px;">
+                  <span style="color:#ffffff;font-size:13px;font-weight:800;letter-spacing:0.3em;text-transform:uppercase;">VITAEON</span>
+                </span>
+              </a>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border:1px solid #cce0ea;border-radius:22px;padding:36px 40px;mso-padding-alt:28px 24px;">
+              <!-- Title -->
+              <h1 style="margin:0 0 18px 0;font-size:22px;font-weight:700;line-height:1.3;color:#071726;">${title}</h1>
+              <!-- Divider -->
+              <div style="height:2px;background:linear-gradient(90deg,#1a80b8,#0ea5e9);border-radius:2px;margin-bottom:22px;"></div>
+              <!-- Body -->
+              <div style="font-size:15px;line-height:1.8;color:#374151;">
+                ${body}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 4px 0 4px;text-align:center;">
+              <p style="margin:0 0 6px 0;font-size:11px;color:#7f9aaa;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Red médica privada · León, Guanajuato</p>
+              <p style="margin:0;font-size:12px;color:#7f9aaa;line-height:1.8;">
+                <a href="${appUrl}" style="color:#1a80b8;text-decoration:none;font-weight:600;">${domain}</a>
+                &nbsp;·&nbsp;
+                <a href="${appUrl}/aviso-de-privacidad" style="color:#7f9aaa;text-decoration:none;">Privacidad</a>
+                &nbsp;·&nbsp;
+                <a href="${appUrl}/terminos" style="color:#7f9aaa;text-decoration:none;">Términos</a>
+                &nbsp;·&nbsp;
+                <a href="${appUrl}/soporte" style="color:#7f9aaa;text-decoration:none;">Soporte</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/** Renders a full-width CTA button for use inside emailShell body strings. */
+export function emailButton(label: string, url: string) {
+  return `<p style="margin:24px 0 4px 0;"><a href="${url}" style="display:inline-block;background:#071726;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;letter-spacing:0.02em;">${label} →</a></p>`;
 }
