@@ -2277,7 +2277,7 @@ export function AdminDashboardClient() {
       const [verificationData, appointmentData, doctorData, paymentData, subscriptionPaymentData, patientData, logData, reviewData] = await Promise.all([
         clientApi<Verification[]>("/api/medical-verifications"),
         clientApi<Appointment[]>("/api/appointments"),
-        clientApi<AdminDoctorSummary[]>("/api/admin/doctors"),
+        clientApi<{ doctors: AdminDoctorSummary[]; pagination: { page: number; pageSize: number; total: number; totalPages: number; hasNextPage: boolean } }>("/api/admin/doctors"),
         clientApi<PaymentSummary[]>("/api/payments"),
         clientApi<SubscriptionPaymentSummary[]>("/api/subscription-payments"),
         clientApi<PatientSummary[]>("/api/patients"),
@@ -2286,7 +2286,7 @@ export function AdminDashboardClient() {
       ]);
       setVerifications(verificationData);
       setAppointments(appointmentData);
-      setDoctors(doctorData);
+      setDoctors(doctorData.doctors);
       setPayments(paymentData);
       setSubscriptionPayments(subscriptionPaymentData);
       setPatients(patientData);
