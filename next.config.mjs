@@ -6,11 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+  // Stripe JS + Vercel Analytics (script CDN como fallback)
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // Imágenes propias + Supabase storage para fotos de médicos
+  "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self'",
-  "connect-src 'self' https://api.stripe.com",
+  // Stripe API + Vercel Analytics beacon + Supabase API
+  "connect-src 'self' https://api.stripe.com https://vitals.vercel-insights.com https://*.supabase.co",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",
