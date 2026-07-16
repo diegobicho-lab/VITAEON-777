@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Hash, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Upload, Users, Wallet, XCircle } from "lucide-react";
+import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Hash, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -278,6 +278,20 @@ type ReviewSummary = {
     doctorName?: string;
     createdAt: string;
   }>;
+};
+
+type MarketplaceListingSummary = {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  cityOrZone: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+  subscriptionStatus: string;
+  createdAt: string;
 };
 
 type ObsidianProfile = {
@@ -2263,6 +2277,7 @@ export function AdminDashboardClient() {
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [reviews, setReviews] = useState<ReviewSummary | null>(null);
+  const [listings, setListings] = useState<MarketplaceListingSummary[]>([]);
   const [specialtyName, setSpecialtyName] = useState("");
   const [hospitalName, setHospitalName] = useState("");
   const [hospitalCity, setHospitalCity] = useState("León, Guanajuato");
@@ -2274,7 +2289,7 @@ export function AdminDashboardClient() {
     setLoading(true);
     setError("");
     try {
-      const [verificationData, appointmentData, doctorData, paymentData, subscriptionPaymentData, patientData, logData, reviewData] = await Promise.all([
+      const [verificationData, appointmentData, doctorData, paymentData, subscriptionPaymentData, patientData, logData, reviewData, listingData] = await Promise.all([
         clientApi<Verification[]>("/api/medical-verifications"),
         clientApi<Appointment[]>("/api/appointments"),
         clientApi<{ doctors: AdminDoctorSummary[]; pagination: { page: number; pageSize: number; total: number; totalPages: number; hasNextPage: boolean } }>("/api/admin/doctors"),
@@ -2282,7 +2297,8 @@ export function AdminDashboardClient() {
         clientApi<SubscriptionPaymentSummary[]>("/api/subscription-payments"),
         clientApi<PatientSummary[]>("/api/patients"),
         clientApi<AuditLog[]>("/api/audit-logs"),
-        clientApi<ReviewSummary>("/api/reviews")
+        clientApi<ReviewSummary>("/api/reviews"),
+        clientApi<MarketplaceListingSummary[]>("/api/admin/marketplace-listings")
       ]);
       setVerifications(verificationData);
       setAppointments(appointmentData);
@@ -2292,6 +2308,7 @@ export function AdminDashboardClient() {
       setPatients(patientData);
       setLogs(logData);
       setReviews(reviewData);
+      setListings(listingData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible cargar administración.");
     } finally {
@@ -2339,6 +2356,13 @@ export function AdminDashboardClient() {
   async function togglePatientActive(patientId: string, isActive: boolean) {
     await clientApi("/api/patients", { method: "PATCH", body: JSON.stringify({ patientId, isActive }) });
     setMessage(isActive ? "Paciente beta activado." : "Paciente beta pausado.");
+    await load();
+  }
+
+  async function deleteListing(id: string, name: string) {
+    if (!window.confirm(`¿Eliminar permanentemente "${name}"? Esta acción no se puede deshacer.`)) return;
+    await clientApi(`/api/admin/marketplace-listings?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setMessage(`Registro "${name}" eliminado.`);
     await load();
   }
 
@@ -2545,6 +2569,36 @@ export function AdminDashboardClient() {
                     <button onClick={() => moderateReview(review.id, "REJECTED")} className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white">Rechazar</button>
                   </div>
                 </article>
+              ))}
+            </div>
+          </section>
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+            <h2 className="text-2xl font-semibold text-deep">Directorio comercial</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Representantes médicos y catering registrados en VITAEON. Puedes eliminar entradas de prueba o inactivas.
+            </p>
+            <div className="mt-5 grid gap-3">
+              {listings.length === 0 && <EmptyState text="No hay entradas en el directorio comercial." />}
+              {listings.map((listing) => (
+                <div key={listing.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-deep">{listing.name}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {listing.type === "MEDICAL_REPRESENTATIVE" ? "Representante médico" : "Catering"} · {listing.cityOrZone}
+                      {listing.phone ? ` · ${listing.phone}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge value={listing.status} />
+                    <button
+                      onClick={() => deleteListing(listing.id, listing.name)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </section>

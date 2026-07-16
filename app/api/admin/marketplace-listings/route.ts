@@ -110,3 +110,27 @@ export async function PATCH(request: Request) {
 
   return ok(listing);
 }
+
+export async function DELETE(request: Request) {
+  const user = await requireAdmin();
+  if (!user) return fail("FORBIDDEN", "Solo administración puede eliminar entradas del directorio.", 403);
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) return fail("VALIDATION_ERROR", "Se requiere el id del registro a eliminar.", 422);
+
+  const existing = await prisma.marketplaceListing.findUnique({ where: { id } });
+  if (!existing) return fail("NOT_FOUND", "Registro no encontrado.", 404);
+
+  await prisma.marketplaceListing.delete({ where: { id } });
+
+  await auditLog({
+    actorUserId: user.id,
+    action: "DELETE_MARKETPLACE_LISTING",
+    entityType: "MarketplaceListing",
+    entityId: id,
+    metadata: { name: existing.name, type: existing.type }
+  });
+
+  return ok({ deleted: true });
+}
