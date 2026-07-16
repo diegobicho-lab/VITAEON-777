@@ -53,6 +53,7 @@ const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
   ssr: false,
   loading: () => null,
 });
+import { track } from "@vercel/analytics";
 import { clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
 
@@ -632,6 +633,7 @@ export default function VitaeonPlatform() {
     setSelectedSlotId(doctor.availability[0]?.id ?? "");
     setSpecialtyId(doctor.specialtyId);
     setHospitalId(doctor.hospitalId);
+    track("doctor_viewed", { specialty: doctor.specialty, medal: doctor.medal, hasSlots: doctor.availability.length > 0 });
     if (window.innerWidth < 1024) {
       requestAnimationFrame(() => {
         doctorDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -651,6 +653,7 @@ export default function VitaeonPlatform() {
 
   function handleSuggestionClick(label: string) {
     setQuery(label);
+    track("suggestion_clicked", { label });
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 180);
@@ -658,6 +661,7 @@ export default function VitaeonPlatform() {
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && (query.trim() || specialtyId || hospitalId)) {
+      track("search_executed", { query: query.trim(), hasSpecialty: Boolean(specialtyId), hasHospital: Boolean(hospitalId) });
       resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
@@ -754,6 +758,7 @@ export default function VitaeonPlatform() {
       const signedUser = await clientApi<CurrentUser>(path, { method: "POST", body: JSON.stringify(body) });
       setUser(signedUser);
       setAuthOpen(false);
+      track("auth_completed", { role: signedUser.role, mode: authMode });
       if (signedUser.role === "DOCTOR") {
         window.setTimeout(() => {
           window.location.href = "/dashboard/doctor";
@@ -782,6 +787,7 @@ export default function VitaeonPlatform() {
         throw new Error("Stripe no devolvió el formulario de pago para esta cita.");
       }
       setClientSecret(paymentIntent.clientSecret);
+      track("payment_started");
       window.setTimeout(() => {
         document.getElementById("stripe-payment")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 180);
@@ -808,6 +814,7 @@ export default function VitaeonPlatform() {
       return;
     }
     const selectedPaymentMethod = paymentMethod;
+    track("booking_started", { specialty: selectedDoctor.specialty, paymentMethod: selectedPaymentMethod });
     setBookingStatus("creating");
     setError("");
     setClientSecret("");
@@ -851,6 +858,7 @@ export default function VitaeonPlatform() {
       };
       setTicket(nextTicket);
       setBookingStatus("success");
+      track("booking_completed", { specialty: selectedDoctor.specialty, amountCents: payment?.amountCents ?? selectedDoctor.priceCents, paymentMethod: selectedPaymentMethod });
       window.setTimeout(() => {
         document.getElementById("appointment-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 120);
@@ -893,6 +901,7 @@ export default function VitaeonPlatform() {
           appointmentStatus: result.appointment.status
         }
       : current);
+    track("payment_confirmed", { status: result.appointment.paymentStatus });
   }
 
   async function submitReview() {
@@ -1260,6 +1269,7 @@ export default function VitaeonPlatform() {
                 href={`https://wa.me/?text=${encodeURIComponent(`Agendé mi consulta con ${ticket.doctor} (${ticket.specialty}) el ${dateTime(ticket.startsAt)} a través de VITAEON.mx — El directorio médico premium de León, Gto. 🩺`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track("share_whatsapp", { specialty: ticket.specialty })}
                 className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-6 py-3 font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100"
               >
                 <Share2 className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import "server-only";
 import net from "node:net";
 import tls from "node:tls";
+import { Resend } from "resend";
 
 type EmailPayload = {
   to: string;
@@ -164,7 +165,35 @@ async function sendViaSmtp(payload: EmailPayload) {
   socket.end();
 }
 
+async function sendViaResend(payload: EmailPayload): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const from = process.env.EMAIL_FROM ?? "VITAEON <no-reply@vitaeon.mx>";
+  const { error } = await resend.emails.send({
+    from,
+    to: [payload.to],
+    subject: payload.subject,
+    html: payload.html,
+    text: payload.text
+  });
+  if (error) throw new Error(`Resend: ${(error as { message?: string }).message ?? "RESEND_ERROR"}`);
+}
+
 export async function sendTransactionalEmail(payload: EmailPayload): Promise<SendEmailResult> {
+  // Primary: Resend HTTP API (reliable, free tier 3k emails/mo, no SMTP config needed)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await Promise.race([
+        sendViaResend(payload),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("RESEND_TIMEOUT")), 15_000))
+      ]);
+      return { sent: true };
+    } catch (error) {
+      console.error("[email:resend:failed]", error);
+      return { sent: false, reason: error instanceof Error ? error.message : "RESEND_FAILED" };
+    }
+  }
+
+  // Fallback: custom SMTP (when RESEND_API_KEY is not set)
   if (!configured()) {
     console.info(`[email:skipped] ${payload.subject} -> ${payload.to}`);
     return { sent: false, skipped: true, reason: "SMTP_NOT_CONFIGURED" };
@@ -173,11 +202,11 @@ export async function sendTransactionalEmail(payload: EmailPayload): Promise<Sen
   try {
     await Promise.race([
       sendViaSmtp(payload),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("SMTP_TIMEOUT")), 15_000))
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("SMTP_TIMEOUT")), 15_000))
     ]);
     return { sent: true };
   } catch (error) {
-    console.error("[email:failed]", error);
+    console.error("[email:smtp:failed]", error);
     return { sent: false, reason: error instanceof Error ? error.message : "SMTP_FAILED" };
   }
 }
