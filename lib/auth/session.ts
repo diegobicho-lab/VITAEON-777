@@ -16,7 +16,7 @@ export async function createSessionToken(user: CurrentUser) {
   return new SignJWT(user as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("8h")
+    .setExpirationTime("24h")
     .sign(getSecret());
 }
 
@@ -50,7 +50,7 @@ export async function setSessionCookie(token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 8
+    maxAge: 60 * 60 * 24
   });
 }
 

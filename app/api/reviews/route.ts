@@ -6,7 +6,19 @@ import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { reviewCreateSchema, reviewModerationSchema } from "@/lib/validation/schemas";
 
-const blockedWords = ["spam", "fraude", "idiota", "estafa"];
+const blockedWords = [
+  // insultos directos
+  "idiota", "imbécil", "imbecil", "estúpido", "estupido", "maldito", "maldita",
+  "asco", "asqueroso", "asquerosa", "basura", "mierda", "puto", "puta", "pendejo",
+  "pendeja", "culero", "culera", "mamón", "mamon", "ojete", "cabrón", "cabron",
+  // fraude / spam
+  "fraude", "spam", "estafa", "fake", "falso", "falsa", "mentira", "mentiroso",
+  "mentirosa", "tramposo", "tramposa", "ladrón", "ladron", "robo", "engaño", "engano",
+  // amenazas
+  "matar", "muerte", "amenaza", "golpe", "golpear",
+  // contenido inapropiado
+  "porno", "pornografía", "pornografia", "desnudo", "desnuda", "sexo"
+];
 
 function requiresModeration(comment: string) {
   const normalized = comment.toLowerCase();

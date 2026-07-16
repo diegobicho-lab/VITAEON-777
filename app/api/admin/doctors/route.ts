@@ -4,22 +4,30 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { adminDoctorStatusSchema } from "@/lib/validation/schemas";
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user || (user.role !== "ADMIN" && user.role !== "STAFF")) {
     return fail("FORBIDDEN", "Solo administración o staff pueden ver médicos.", 403);
   }
 
-  const doctors = await prisma.doctor.findMany({
-    include: {
-      user: { select: { email: true, name: true, isActive: true } },
-      specialty: true,
-      hospital: true,
-      _count: { select: { appointments: true, availabilitySlots: true } }
-    },
-    orderBy: [{ verificationStatus: "asc" }, { fullName: "asc" }],
-    take: 100
-  });
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
+  const pageSize = 100;
+
+  const [doctors, total] = await Promise.all([
+    prisma.doctor.findMany({
+      include: {
+        user: { select: { email: true, name: true, isActive: true } },
+        specialty: true,
+        hospital: true,
+        _count: { select: { appointments: true, availabilitySlots: true } }
+      },
+      orderBy: [{ verificationStatus: "asc" }, { fullName: "asc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.doctor.count()
+  ]);
 
   await auditLog({
     actorUserId: user.id,
@@ -28,8 +36,8 @@ export async function GET() {
     metadata: { count: doctors.length }
   });
 
-  return ok(
-    doctors.map((doctor) => ({
+  return ok({
+    doctors: doctors.map((doctor) => ({
       id: doctor.id,
       fullName: doctor.fullName,
       email: doctor.user?.email ?? null,
@@ -40,8 +48,15 @@ export async function GET() {
       professionalLicense: doctor.professionalLicense,
       appointmentsCount: doctor._count.appointments,
       availabilityCount: doctor._count.availabilitySlots
-    }))
-  );
+    })),
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+      hasNextPage: page * pageSize < total
+    }
+  });
 }
 
 export async function PATCH(request: Request) {

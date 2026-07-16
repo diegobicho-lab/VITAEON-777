@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       }
     });
 
-    const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
     const resetUrl = `${appUrl}/restablecer-contrasena?token=${encodeURIComponent(token)}`;
     await sendTransactionalEmail({
       to: user.email,

@@ -403,7 +403,7 @@ const doctorPlans = [
     id: "amatista",
     name: "Amatista",
     price: "$399 MXN / quincena",
-    description: "Prioridad máxima, agenda personalizada, calendario asistido por IA y renovación cada 14 días."
+    description: "Prioridad máxima, agenda personalizada, calendario inteligente y renovación cada 14 días."
   }
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 
@@ -1261,7 +1261,7 @@ export function DoctorDashboardClient() {
   async function askAssistant() {
     setMessage("");
     if (!assistantEnabled) {
-      setMessage("El asistente de IA de agenda está disponible al actualizar al plan Amatista.");
+      setMessage("El asistente de agenda está disponible al actualizar al plan Amatista.");
       return;
     }
     const response = await clientApi<AssistantResponse>("/api/doctor-assistant", {
@@ -3278,8 +3278,8 @@ function DoctorAssistantPanel({
     <section className="dashboard-card rounded-[1.75rem] border-silver/70">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Asistente virtual médico</p>
-          <h2 className="mt-2 text-2xl font-semibold text-deep">Secretaria médica virtual</h2>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Panel de agenda</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Agenda clínica inteligente</h2>
         </div>
         <Brain className="h-8 w-8 text-medical" />
       </div>

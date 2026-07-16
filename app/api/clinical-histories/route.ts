@@ -109,6 +109,7 @@ export async function POST(request: Request) {
     additionalMedicalNotes: parsed.data.additionalMedicalNotes
   };
 
+  // Siempre buscar por cita exacta — nunca sobrescribir el historial de otra consulta
   const exactHistory = await prisma.clinicalHistory.findFirst({
     where: {
       doctorId: session.doctor.id,
@@ -117,17 +118,9 @@ export async function POST(request: Request) {
     }
   });
 
-  const patientHistory = exactHistory ?? await prisma.clinicalHistory.findFirst({
-    where: {
-      doctorId: session.doctor.id,
-      patientId: parsed.data.patientId
-    },
-    orderBy: { updatedAt: "desc" }
-  });
-
-  const history = patientHistory
+  const history = exactHistory
     ? await prisma.clinicalHistory.update({
-        where: { id: patientHistory.id },
+        where: { id: exactHistory.id },
         data: historyData,
         include: includeClinicalHistory
       })
