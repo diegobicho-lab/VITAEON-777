@@ -54,9 +54,9 @@ const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
   loading: () => null,
 });
 
-// Estetoscopio — reemplaza al ADN en el hero (Canvas 2D, mismo patrón)
-const StethoscopeHero = dynamic(
-  () => import("@/components/platform/StethoscopeHero"),
+// Dashboard mockup — reemplaza al ADN en el hero
+const DashboardMockup = dynamic(
+  () => import("@/components/platform/DashboardMockup"),
   { ssr: false, loading: () => null },
 );
 import { track } from "@vercel/analytics";
@@ -1693,9 +1693,9 @@ function HeroMockup() {
         <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
       </div>
 
-      {/* ── Estetoscopio animado ── */}
+      {/* ── Dashboard mockup ── */}
       <div className="relative z-10" style={{ height: "92%", aspectRatio: "2 / 3" }}>
-        <StethoscopeHero />
+        <DashboardMockup />
       </div>
     </div>
   );
