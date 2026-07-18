@@ -3,43 +3,43 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const specialtyNames = [
-  "Medicina Interna",
-  "Cardiología",
-  "Neurología",
-  "Dermatología",
-  "Pediatría",
-  "Ginecología",
-  "Ortopedia",
-  "Traumatología",
-  "Oncología",
-  "Endocrinología",
-  "Gastroenterología",
-  "Oftalmología",
-  "Urología",
-  "Neumología",
-  "Psiquiatría",
-  "Psicología",
-  "Cirugía General",
-  "Cirugía Plástica",
-  "Medicina Estética",
-  "Otorrinolaringología",
-  "Reumatología",
-  "Infectología",
-  "Hematología",
-  "Nefrología",
-  "Medicina Familiar",
-  "Medicina General",
-  "Medicina del Deporte",
-  "Nutrición",
-  "Anestesiología",
-  "Radiología",
-  "Medicina de Rehabilitación",
-  "Geriatría",
-  "Angiología",
-  "Alergología",
-  "Coloproctología",
-  "Odontología"
+const specialties: Array<{ name: string; description: string }> = [
+  { name: "Alergología",              description: "Alergias, asma y enfermedades del sistema inmunológico. Diagnóstico de intolerancia y tratamiento desensibilizador." },
+  { name: "Anestesiología",           description: "Manejo del dolor y sedación segura en procedimientos quirúrgicos y diagnósticos." },
+  { name: "Angiología",               description: "Venas, arterias y sistema linfático. Várices, trombosis e insuficiencia vascular periférica." },
+  { name: "Cardiología",              description: "Corazón, presión arterial, arritmias y enfermedades del sistema circulatorio." },
+  { name: "Cirugía General",          description: "Procedimientos quirúrgicos del abdomen, vesícula, hernia y tejidos blandos." },
+  { name: "Cirugía Plástica",         description: "Reconstrucción, corrección estética y cirugías de mejora funcional o apariencia." },
+  { name: "Coloproctología",          description: "Colon, recto y ano. Hemorroides, fístulas, cáncer colorrectal y enfermedad inflamatoria intestinal." },
+  { name: "Dermatología",             description: "Piel, cabello y uñas. Acné, psoriasis, alergias cutáneas y dermatitis." },
+  { name: "Endocrinología",           description: "Diabetes, tiroides, metabolismo y trastornos hormonales." },
+  { name: "Gastroenterología",        description: "Estómago, intestino, hígado y páncreas. Colitis, reflujo y enfermedades digestivas." },
+  { name: "Geriatría",                description: "Salud integral del adulto mayor con enfoque en calidad de vida y autonomía funcional." },
+  { name: "Ginecología",              description: "Salud femenina, ciclo menstrual, embarazo y seguimiento reproductivo." },
+  { name: "Hematología",              description: "Sangre y médula ósea. Anemia, leucemia y trastornos de coagulación." },
+  { name: "Infectología",             description: "Infecciones bacterianas, virales y parasitarias. Tratamiento especializado de enfermedades infecciosas." },
+  { name: "Medicina de Rehabilitación", description: "Recuperación funcional tras lesiones, cirugías o enfermedades neurológicas." },
+  { name: "Medicina del Deporte",     description: "Lesiones deportivas, rendimiento atlético y rehabilitación de la actividad física." },
+  { name: "Medicina Estética",        description: "Tratamientos no quirúrgicos para rejuvenecimiento facial y mejora de la apariencia corporal." },
+  { name: "Medicina Familiar",        description: "Atención preventiva y continua para toda la familia en todas las etapas de vida." },
+  { name: "Medicina General",         description: "Primera consulta, orientación diagnóstica y atención de padecimientos frecuentes." },
+  { name: "Medicina Interna",         description: "Diagnóstico y tratamiento integral en adultos con enfermedades crónicas o complejas." },
+  { name: "Nefrología",               description: "Riñones y función renal. Insuficiencia renal crónica, hipertensión renal y diálisis." },
+  { name: "Neumología",               description: "Pulmones y vías respiratorias. Asma, EPOC, neumonía e infecciones respiratorias." },
+  { name: "Neurología",               description: "Cerebro, nervios y médula espinal. Migrañas, epilepsia y enfermedades neurodegenerativas." },
+  { name: "Nutrición",                description: "Alimentación terapéutica, control de peso y manejo nutricional de enfermedades crónicas." },
+  { name: "Odontología",              description: "Salud dental, encías y oclusión. Tratamientos preventivos, restauradores y estéticos." },
+  { name: "Oftalmología",             description: "Ojos y visión. Cataratas, glaucoma, retinopatía y corrección visual." },
+  { name: "Oncología",                description: "Diagnóstico y tratamiento del cáncer con enfoque integral y multidisciplinario." },
+  { name: "Ortopedia",                description: "Huesos, articulaciones y columna vertebral. Lesiones, fracturas y degeneración articular." },
+  { name: "Otorrinolaringología",     description: "Oído, nariz y garganta. Sinusitis, ronquidos, vértigo y pérdida auditiva." },
+  { name: "Pediatría",                description: "Salud y desarrollo de niños y adolescentes desde el nacimiento hasta los 18 años." },
+  { name: "Psicología",               description: "Bienestar emocional, terapia cognitivo-conductual y acompañamiento en procesos psicológicos." },
+  { name: "Psiquiatría",              description: "Salud mental, ansiedad, depresión y trastornos del estado de ánimo con tratamiento médico." },
+  { name: "Radiología",               description: "Diagnóstico por imagen: rayos X, ultrasonido, tomografía y resonancia magnética." },
+  { name: "Reumatología",             description: "Artritis, lupus y enfermedades autoinmunes que afectan articulaciones y tejidos conectivos." },
+  { name: "Traumatología",            description: "Lesiones musculoesqueléticas por accidentes, caídas o impacto físico." },
+  { name: "Urología",                 description: "Sistema urinario en hombres y mujeres. Próstata, vejiga, cálculos renales y función renal." }
 ];
 
 const leonHospitals = [
@@ -87,16 +87,11 @@ async function main() {
   }
 
   const createdSpecialties = [];
-  for (const name of specialtyNames) {
+  for (const { name, description } of specialties) {
     const specialty = await prisma.specialty.upsert({
       where: { name },
-      update: {
-        description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
-      },
-      create: {
-        name,
-        description: `Especialidad disponible para onboarding de médicos verificados en la beta privada.`
-      }
+      update: { description },
+      create: { name, description }
     });
     createdSpecialties.push(specialty);
   }
