@@ -1294,12 +1294,12 @@ export default function VitaeonPlatform() {
 
       <button
         onClick={() => setUrgentOpen(true)}
-        className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2.5 rounded-full bg-red-600 px-5 py-3.5 text-sm font-semibold text-white shadow-[0_8px_32px_rgba(220,38,38,0.35)] transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[0_12px_40px_rgba(220,38,38,0.42)] active:scale-[0.97]"
+        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30 inline-flex items-center gap-2.5 rounded-full bg-[#071726] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_8px_32px_rgba(7,23,38,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0d2638] hover:shadow-[0_12px_40px_rgba(7,23,38,0.42)] active:scale-[0.97]"
         aria-label="Buscar cita pronta"
       >
         <Siren className="h-4 w-4" />
         <span className="hidden sm:inline">Cita pronta</span>
-        <span className="sm:hidden">Urgente</span>
+        <span className="sm:hidden">Cita</span>
       </button>
 
       {authOpen && (
@@ -1363,15 +1363,15 @@ export default function VitaeonPlatform() {
             )}
             {authMode === "register" && (
               <>
-                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <input value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} placeholder="Nombre completo" autoComplete="name" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <select value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" disabled={Boolean(authAudience)}>
                   <option value="PATIENT">Paciente</option>
                   <option value="DOCTOR">Médico</option>
                 </select>
               </>
             )}
-            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
-            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" autoComplete={authMode === "login" ? "current-password" : "new-password"} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
             <button type="button" onClick={submitAuth} className="w-full rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
             <button type="button" onClick={toggleAuthMode} className="text-sm font-semibold text-medical">
@@ -1554,7 +1554,7 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-silver bg-white shadow-soft transition hover:bg-slate-50 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-silver bg-white shadow-soft transition hover:bg-slate-50 md:hidden"
             aria-label="Menú"
           >
             {mobileMenuOpen ? <X className="h-4 w-4 text-deep" /> : <Menu className="h-4 w-4 text-deep" />}
@@ -1867,7 +1867,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
       </div>
 
       {/* Category tabs — horizontal scroll */}
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+      <div className="scroll-fade-x no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {visibleCategories.map((cat) => (
           <button
             key={cat.id}

@@ -834,6 +834,32 @@ button, [role="button"] { touch-action: manipulation; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ─── Prevent horizontal overflow globally ────────────────────── */
+body { overflow-x: hidden; }
+
+/* ─── Safe area utility ───────────────────────────────────────── */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.mb-safe { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ─── Scroll fade — horizontal scroll indicators ─────────────── */
+.scroll-fade-x {
+  mask-image: linear-gradient(90deg, transparent 0%, black 3%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 3%, black 92%, transparent 100%);
+}
+
+/* ─── Touch devices — disable hover lifts that get "stuck" ───── */
+@media (hover: none) {
+  .premium-card:hover { transform: none !important; }
+  .doctor-card-game:hover { transform: none !important; }
+  .dashboard-card:hover { transform: none !important; box-shadow: 0 4px 24px rgba(8, 32, 51, 0.05) !important; }
+  .specialty-filter-bar:hover { transform: none !important; }
+  .hero-stats > div:hover,
+  .hero-stats > button:hover,
+  .hero-stats > a:hover { transform: none !important; }
+  .booking-doctor-option:hover { transform: none !important; }
+  .medal:hover { transform: none !important; }
+}
+
 /* ─── Mobile ──────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .hero-stats {
@@ -850,9 +876,10 @@ button, [role="button"] { touch-action: manipulation; }
   }
 
   .modal-panel {
-    max-height: 92vh;
+    max-height: calc(92vh - env(safe-area-inset-bottom, 0px));
     border-radius: 1.75rem 1.75rem 0 0;
     padding: 1.25rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .modal-header h2 { font-size: 1.5rem; }
@@ -891,26 +918,33 @@ button, [role="button"] { touch-action: manipulation; }
 
   .specialty-route-strip { min-height: 12rem; }
 
-  input, select, textarea {
-    font-size: 16px; /* prevents iOS zoom */
-  }
-
-  /* ─── Prevent horizontal overflow on mobile ─── */
-  body { overflow-x: hidden; }
+  /* Previene zoom en iOS al enfocar inputs */
+  input, select, textarea { font-size: 16px; }
 
   /* ─── Dashboard stat — compact on mobile ─── */
-  .dashboard-stat {
-    padding: 1rem;
-  }
+  .dashboard-stat { padding: 1rem; }
 
   /* ─── Dashboard card — reduce padding on mobile ─── */
-  .dashboard-card {
-    padding: 1.125rem;
-  }
+  .dashboard-card { padding: 1.125rem; }
 
-  /* ─── Premium card hover — disable lift on touch ─── */
-  .premium-card:hover { transform: none; }
-  .doctor-card-game:hover { transform: none; }
+  /* ─── Tablet y arriba: doctor-results-grid stagger ─── */
+  .doctor-results-grid > article:nth-child(2n),
+  .doctor-results-grid > button:nth-child(2n) { margin-top: 0; }
+
+  .doctor-results-grid > article:nth-child(3n),
+  .doctor-results-grid > button:nth-child(3n) { margin-top: 0; }
+}
+
+/* ─── Reduced motion — disable all decorative animations ─────── */
+@media (prefers-reduced-motion: reduce) {
+  .dna-halo-ring,
+  .dna-halo-ring::after { animation: none; }
+
+  .hero-gradient-text { animation: none; }
+
+  .specialty-preview img { animation: none; }
+
+  .editorial-image { animation: none; }
 }
 
 /* ─── Print ───────────────────────────────────────────────────── */

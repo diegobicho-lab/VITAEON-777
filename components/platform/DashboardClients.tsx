@@ -1758,7 +1758,7 @@ export function DoctorDashboardClient() {
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
               </div>
             </div>
-            <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Secciones del panel">
+            <nav className="scroll-fade-x mt-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Secciones del panel">
               {sections.map(([id, label]) => (
                 <button
                   key={id}
@@ -2792,7 +2792,7 @@ function DoctorAgendaPanel({
       <div className="mt-6 rounded-[1.5rem] border border-silver/40 bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button onClick={() => shiftMonth(-1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronLeft className="h-4 w-4" /></button>
-          <p className="text-lg font-semibold capitalize text-deep">{monthLabel}</p>
+          <p className="text-lg font-semibold text-deep">{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</p>
           <button onClick={() => shiftMonth(1)} className="rounded-full border border-silver bg-white p-3 text-deep"><ChevronRight className="h-4 w-4" /></button>
         </div>
         <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.14em]">
@@ -2838,7 +2838,13 @@ function DoctorAgendaPanel({
           </p>
           <div className="mt-4 rounded-3xl bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-deep">{selectedDates.length} día(s) seleccionado(s)</p>
+              <p className="text-sm font-semibold text-deep">
+                {selectedDates.length === 0
+                  ? "Ningún día seleccionado"
+                  : selectedDates.length === 1
+                    ? "1 día seleccionado"
+                    : `${selectedDates.length} días seleccionados`}
+              </p>
               <button onClick={onClearSelectedDates} className="rounded-full border border-silver px-3 py-2 text-xs font-semibold text-deep">Limpiar</button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -3182,7 +3188,7 @@ function AmatistaPrescriptionPanel({
             Configura tu encabezado profesional y genera recetas imprimibles para pacientes con cita activa.
           </p>
         </div>
-        <Printer className="h-8 w-8 text-medical" />
+        <Printer className="hidden h-8 w-8 text-medical sm:block" />
       </div>
 
       {status && <p className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm font-semibold text-medical">{status}</p>}
