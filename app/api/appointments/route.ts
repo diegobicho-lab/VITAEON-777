@@ -11,7 +11,7 @@ import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 import { appointmentCreateSchema } from "@/lib/validation/schemas";
 
-export async function GET(request: Request) {
+export async function GET() {
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver citas.", 401);
 
@@ -21,13 +21,10 @@ export async function GET(request: Request) {
     console.error("[appointments GET] background auto-cancel error:", err)
   );
 
-  // Pagination via cursor — pass ?cursor=<appointmentId> to fetch the next page.
-  // Default page size is 50; admins/staff may request up to 200.
-  const { searchParams } = new URL(request.url);
-  const cursor = searchParams.get("cursor") ?? undefined;
-  const rawLimit = Number(searchParams.get("limit") ?? "50");
-  const maxLimit = user.role === "ADMIN" || user.role === "STAFF" ? 200 : 50;
-  const take = Math.min(Math.max(1, rawLimit), maxLimit);
+  // Hard cap: prevents loading thousands of rows for users with long history.
+  // The dashboard only displays the most recent N appointments.
+  // Full cursor pagination is a planned future enhancement.
+  const APPOINTMENTS_HARD_LIMIT = user.role === "ADMIN" || user.role === "STAFF" ? 200 : 100;
 
   const appointments = await prisma.appointment.findMany({
     where:
@@ -43,19 +40,10 @@ export async function GET(request: Request) {
       payments: true
     },
     orderBy: { createdAt: "desc" },
-    take: take + 1, // fetch one extra to know if there is a next page
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})
+    take: APPOINTMENTS_HARD_LIMIT
   });
 
-  const hasNextPage = appointments.length > take;
-  const items = hasNextPage ? appointments.slice(0, take) : appointments;
-  const nextCursor = hasNextPage ? items[items.length - 1]?.id : undefined;
-
-  return ok({
-    items: items.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })),
-    nextCursor: nextCursor ?? null,
-    hasNextPage
-  });
+  return ok(appointments.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })));
 }
 
 export async function POST(request: Request) {

@@ -93,11 +93,13 @@ export async function GET(request: Request) {
         select: { rating: true }
       }
     },
-    // Pre-sort by medal DESC (amatista first) so that when we hit the cap the
-    // highest-tier doctors are always included.  In-process re-sort below adds
-    // the secondary criteria (slots, reviews, alphabetical).
+    // Pre-sort by medal ASC — PostgreSQL sorts enums alphabetically, so
+    // "amatista" (a) < "diamante" (d) < "obsidiana" (o) < "oro" (o).
+    // ASC puts amatista first, diamante second — the two premium tiers always
+    // survive the DOCTOR_SEARCH_LIMIT cap.  The in-process sort below refines
+    // secondary criteria (slots, reviews, alphabetical).
     orderBy: [
-      { medal: "desc" },
+      { medal: "asc" },
       { fullName: "asc" }
     ],
     take: DOCTOR_SEARCH_LIMIT
