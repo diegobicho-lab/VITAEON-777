@@ -39,10 +39,13 @@ export async function GET() {
   if (!user || user.role !== "DOCTOR")
     return fail("FORBIDDEN", "Solo médicos pueden ver su asistente de agenda.", 403);
 
-  const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, select: { id: true, medal: true } });
+  const doctor = await prisma.doctor.findUnique({
+    where: { userId: user.id },
+    select: { id: true, medal: true, subscriptionStatus: true }
+  });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
-  if (doctor.medal !== "amatista")
-    return fail("PLAN_UPGRADE_REQUIRED", "La secretaria médica virtual está disponible en el plan Amatista.", 402);
+  if (doctor.medal !== "amatista" || doctor.subscriptionStatus !== "ACTIVE")
+    return fail("PLAN_UPGRADE_REQUIRED", "La secretaria médica virtual está disponible en el plan Amatista activo.", 402);
 
   const now = new Date();
   const tomorrow = new Date(now.getTime() + 86_400_000);
@@ -118,9 +121,12 @@ export async function POST(request: Request) {
     return fail("FORBIDDEN", "No tienes acceso al asistente médico.", 403);
 
   if (user.role === "DOCTOR") {
-    const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, select: { medal: true } });
-    if (!doctor || doctor.medal !== "amatista")
-      return fail("PLAN_UPGRADE_REQUIRED", "El asistente con IA está disponible para médicos con plan Amatista.", 402);
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: user.id },
+      select: { medal: true, subscriptionStatus: true }
+    });
+    if (!doctor || doctor.medal !== "amatista" || doctor.subscriptionStatus !== "ACTIVE")
+      return fail("PLAN_UPGRADE_REQUIRED", "El asistente con IA está disponible para médicos con plan Amatista activo.", 402);
   }
 
   const body = await request.json().catch(() => null);

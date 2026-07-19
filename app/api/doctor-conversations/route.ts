@@ -10,8 +10,8 @@ function canAccessDoctorTools(role: string) {
   return role === "DOCTOR" || role === "ADMIN" || role === "STAFF";
 }
 
-function hasAmatistaAccess(doctor: { medal: string }) {
-  return doctor.medal === "amatista";
+function hasAmatistaAccess(doctor: { medal: string; subscriptionStatus: string }) {
+  return doctor.medal === "amatista" && doctor.subscriptionStatus === "ACTIVE";
 }
 
 async function getDoctorForUser(userId: string) {

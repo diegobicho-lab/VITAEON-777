@@ -13,3 +13,7 @@ playwright-report
 tsconfig.tsbuildinfo
 .vercel
 .env*
+
+# Doctor uploads — never commit PHI (license photos, office photos, profile photos).
+# These are served from Supabase Storage in production; local dev files stay on disk only.
+public/uploads/

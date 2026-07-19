@@ -59,9 +59,12 @@ export default async function DoctorSeoPage({ params }: PageProps) {
   const doctor = await getDoctor(slug);
   if (!doctor) notFound();
 
+  // Only show a real aggregate rating computed from verified published reviews.
+  // The `doctor.rating` field defaults to 4.9 in the schema, which is misleading
+  // for new doctors with zero reviews — we show nothing instead.
   const average = doctor.reviews.length
     ? doctor.reviews.reduce((sum, review) => sum + review.rating, 0) / doctor.reviews.length
-    : doctor.rating;
+    : null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://vitaeon.mx";
 
@@ -93,7 +96,7 @@ export default async function DoctorSeoPage({ params }: PageProps) {
       }
     }),
     ...(doctor.professionalPhone && { "telephone": doctor.professionalPhone }),
-    ...(doctor.reviews.length > 0 && {
+    ...(doctor.reviews.length > 0 && average !== null && {
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": average.toFixed(1),
@@ -139,14 +142,18 @@ export default async function DoctorSeoPage({ params }: PageProps) {
                 alt={doctor.fullName}
                 width={900}
                 height={900}
-                unoptimized
+                // Skip Next.js optimization only for images NOT hosted on Supabase
+                // (e.g. local /public files in dev). Supabase URLs are covered by
+                // remotePatterns in next.config.mjs and can be served as AVIF/WebP.
+                unoptimized={!doctor.imageUrl?.includes("supabase.co")}
                 className="h-[32rem] w-full rounded-[1.5rem] object-cover"
+                priority
               />
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
                   ✓ Médico verificado
                 </span>
-                {doctor.reviews.length > 0 && (
+                {doctor.reviews.length > 0 && average !== null && (
                   <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
                     ★ {average.toFixed(1)} · {doctor.reviews.length} opinión{doctor.reviews.length !== 1 ? "es" : ""}
                   </span>
@@ -189,7 +196,7 @@ export default async function DoctorSeoPage({ params }: PageProps) {
                   alt={`Consultorio de ${doctor.fullName}`}
                   width={900}
                   height={520}
-                  unoptimized
+                  unoptimized={!doctor.practicePhotoUrl.includes("supabase.co")}
                   className="mt-3 h-56 w-full rounded-[1.35rem] object-cover"
                 />
                 <p className="mt-3 text-sm leading-6 text-slate-500">
@@ -306,7 +313,7 @@ export default async function DoctorSeoPage({ params }: PageProps) {
             {doctor.reviews.length > 0 && (
               <div className="rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
                 <p className="font-semibold text-[#071726]">
-                  Opiniones de pacientes · ★ {average.toFixed(1)} de 5
+                  Opiniones de pacientes{average !== null ? ` · ★ ${average.toFixed(1)} de 5` : ""}
                 </p>
                 <div className="mt-4 grid gap-3">
                   {doctor.reviews.map((review) => (

@@ -1,13 +1,17 @@
 import type { Prisma } from "@prisma/client";
 
+/** Percentage applied to the first appointment for eligible patients. */
 export const WELCOME_DISCOUNT_RATE = 0.35;
-export const WELCOME_DISCOUNT_DOCTOR_NAME = "Dra. Susana Pérez Guadarrama";
 
-export function isWelcomeDiscountDoctor(doctor: { fullName: string; specialty?: { name: string } | null }) {
-  return (
-    doctor.fullName.trim().toLowerCase() === WELCOME_DISCOUNT_DOCTOR_NAME.toLowerCase() &&
-    doctor.specialty?.name === "Medicina Interna"
-  );
+/**
+ * Returns true when a doctor is configured to offer the welcome discount.
+ *
+ * The gate is the `affiliateDiscountEnabled` flag on the Doctor record —
+ * an admin sets it per-doctor from the backoffice.  There is no hardcoded
+ * name check; any doctor with the flag enabled participates in the campaign.
+ */
+export function isWelcomeDiscountDoctor(doctor: { affiliateDiscountEnabled: boolean }) {
+  return Boolean(doctor.affiliateDiscountEnabled);
 }
 
 export async function getWelcomeDiscountQuote(
@@ -21,7 +25,7 @@ export async function getWelcomeDiscountQuote(
     }),
     tx.doctor.findUnique({
       where: { id: input.doctorId },
-      select: { fullName: true, affiliateDiscountEnabled: true, specialty: { select: { name: true } } }
+      select: { fullName: true, affiliateDiscountEnabled: true }
     }),
     tx.appointment.count({ where: { patientId: input.patientId } })
   ]);
@@ -30,7 +34,7 @@ export async function getWelcomeDiscountQuote(
     Boolean(patient?.welcomeDiscountAvailable) &&
     !patient?.welcomeDiscountUsedAt &&
     priorAppointments === 0 &&
-    Boolean(doctor?.affiliateDiscountEnabled && isWelcomeDiscountDoctor(doctor));
+    Boolean(doctor && isWelcomeDiscountDoctor(doctor));
 
   const discountCents = eligible ? Math.round(input.amountCents * WELCOME_DISCOUNT_RATE) : 0;
 
@@ -38,6 +42,8 @@ export async function getWelcomeDiscountQuote(
     eligible,
     discountCents,
     finalAmountCents: Math.max(input.amountCents - discountCents, 0),
-    label: eligible ? "Beneficio exclusivo: 35% de descuento en tu primera consulta con la Dra. Susana Pérez Guadarrama" : null
+    label: eligible
+      ? `Beneficio exclusivo: ${Math.round(WELCOME_DISCOUNT_RATE * 100)}% de descuento en tu primera consulta con ${doctor?.fullName ?? "este médico"}`
+      : null
   };
 }

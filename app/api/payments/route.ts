@@ -4,7 +4,7 @@ import { ok, fail } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { getStripe } from "@/lib/payments/stripe";
+import { getStripe, getPlatformFeePercentage } from "@/lib/payments/stripe";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { paymentIntentSchema } from "@/lib/validation/schemas";
 
@@ -177,17 +177,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const platformFeePercentage = Number(process.env.STRIPE_PLATFORM_FEE_PERCENTAGE ?? "0");
-  const applicationFeeAmount = Number.isFinite(platformFeePercentage)
-    ? Math.max(0, Math.round(payment.amountCents * (platformFeePercentage / 100)))
-    : 0;
-
-  if (applicationFeeAmount === 0 && payment.amountCents > 0) {
-    console.warn(
-      "[VITAEON revenue] STRIPE_PLATFORM_FEE_PERCENTAGE is 0 or unset — platform is processing appointment payments without collecting a commission.",
-      { appointmentId: appointment.id, amountCents: payment.amountCents }
+  let platformFeePercentage: number;
+  try {
+    platformFeePercentage = getPlatformFeePercentage();
+  } catch (feeError) {
+    console.error("[Stripe payment blocked — fee misconfiguration]", feeError);
+    return fail(
+      "PLATFORM_FEE_NOT_CONFIGURED",
+      "El sistema de pagos no está configurado correctamente. Contacta a soporte.",
+      500
     );
   }
+  const applicationFeeAmount = Math.max(0, Math.round(payment.amountCents * (platformFeePercentage / 100)));
 
   const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: payment.amountCents,

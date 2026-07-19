@@ -41,6 +41,13 @@ function expandSearchTerms(query?: string) {
   return Array.from(terms).slice(0, 8);
 }
 
+/** Hard cap on the number of doctors returned per search request.
+ *  Keeps memory usage and response times predictable while the number of
+ *  verified doctors is small.  Replace with full cursor pagination once the
+ *  platform reaches ~500 doctors.
+ */
+const DOCTOR_SEARCH_LIMIT = 120;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsed = doctorSearchSchema.safeParse(Object.fromEntries(searchParams.entries()));
@@ -86,7 +93,14 @@ export async function GET(request: Request) {
         select: { rating: true }
       }
     },
-    orderBy: [{ fullName: "asc" }, { createdAt: "asc" }]
+    // Pre-sort by medal DESC (amatista first) so that when we hit the cap the
+    // highest-tier doctors are always included.  In-process re-sort below adds
+    // the secondary criteria (slots, reviews, alphabetical).
+    orderBy: [
+      { medal: "desc" },
+      { fullName: "asc" }
+    ],
+    take: DOCTOR_SEARCH_LIMIT
   });
 
   // Weighted review score: average × log₂(count + 1)
@@ -121,52 +135,60 @@ export async function GET(request: Request) {
 
   return ok(
     sortedDoctors.map((doctor) => {
+      // Do not fall back to doctor.rating (default 4.9) — return null when
+      // there are no published reviews so the UI can show an empty state instead
+      // of misleading social proof.
       const reviewAverage = doctor.reviews.length
         ? doctor.reviews.reduce((sum, review) => sum + review.rating, 0) / doctor.reviews.length
-        : doctor.rating;
+        : null;
 
       return {
-      id: doctor.id,
-      name: doctor.fullName,
-      slug: doctor.slug,
-      specialty: doctor.specialty.name,
-      specialtyId: doctor.specialtyId,
-      subSpecialty: doctor.subSpecialty,
-      bio: doctor.bio,
-      yearsExperience: doctor.yearsExperience,
-      city: doctor.hospital.city,
-      hospital: doctor.hospital.name,
-      hospitalId: doctor.hospitalId,
-      priceCents: doctor.consultationPriceCents,
-      consultationDurationMinutes: doctor.consultationDurationMinutes,
-      rating: reviewAverage,
-      reviewAverage,
-      reviewCount: doctor.reviews.length,
-      medal: doctor.medal,
-      planPriorityLabel: doctor.medal === "amatista" ? "Perfil destacado" : doctor.medal === "diamante" ? "Mayor visibilidad por plan" : "Visibilidad normal",
-      verificationStatus: doctor.verificationStatus,
-      professionalLicense: doctor.professionalLicense,
-      university: doctor.university,
-      imageUrl: doctor.imageUrl,
-      practicePhotoUrl: doctor.practicePhotoUrl,
-      verifiedAt: doctor.verifiedAt,
-      officeAddress: doctor.officeAddress,
-      officeReference: doctor.officeReference,
-      cityState: doctor.cityState,
-      mapsUrl: doctor.mapsUrl,
-      professionalPhone: doctor.professionalPhone,
-      instagramUrl: doctor.instagramUrl,
-      facebookUrl: doctor.facebookUrl,
-      linkedinUrl: doctor.linkedinUrl,
-      websiteUrl: doctor.websiteUrl,
-      whatsappUrl: doctor.whatsappUrl,
-      achievements: doctor.achievements,
-      certifications: doctor.certifications,
-      availability: doctor.availabilitySlots.map((slot) => ({
-        id: slot.id,
-        startsAt: slot.startsAt,
-        endsAt: slot.endsAt
-      }))
+        id: doctor.id,
+        name: doctor.fullName,
+        slug: doctor.slug,
+        specialty: doctor.specialty.name,
+        specialtyId: doctor.specialtyId,
+        subSpecialty: doctor.subSpecialty,
+        bio: doctor.bio,
+        yearsExperience: doctor.yearsExperience,
+        city: doctor.hospital.city,
+        hospital: doctor.hospital.name,
+        hospitalId: doctor.hospitalId,
+        priceCents: doctor.consultationPriceCents,
+        consultationDurationMinutes: doctor.consultationDurationMinutes,
+        rating: reviewAverage,
+        reviewAverage,
+        reviewCount: doctor.reviews.length,
+        medal: doctor.medal,
+        planPriorityLabel:
+          doctor.medal === "amatista"
+            ? "Perfil destacado"
+            : doctor.medal === "diamante"
+              ? "Mayor visibilidad por plan"
+              : "Visibilidad normal",
+        verificationStatus: doctor.verificationStatus,
+        professionalLicense: doctor.professionalLicense,
+        university: doctor.university,
+        imageUrl: doctor.imageUrl,
+        practicePhotoUrl: doctor.practicePhotoUrl,
+        verifiedAt: doctor.verifiedAt,
+        officeAddress: doctor.officeAddress,
+        officeReference: doctor.officeReference,
+        cityState: doctor.cityState,
+        mapsUrl: doctor.mapsUrl,
+        professionalPhone: doctor.professionalPhone,
+        instagramUrl: doctor.instagramUrl,
+        facebookUrl: doctor.facebookUrl,
+        linkedinUrl: doctor.linkedinUrl,
+        websiteUrl: doctor.websiteUrl,
+        whatsappUrl: doctor.whatsappUrl,
+        achievements: doctor.achievements,
+        certifications: doctor.certifications,
+        availability: doctor.availabilitySlots.map((slot) => ({
+          id: slot.id,
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt
+        }))
       };
     })
   );

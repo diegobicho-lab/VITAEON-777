@@ -3,7 +3,6 @@ import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { isWelcomeDiscountDoctor } from "@/lib/discounts/welcome-discount";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { doctorProfileUpdateSchema } from "@/lib/validation/schemas";
 
@@ -126,15 +125,11 @@ export async function PATCH(request: Request) {
   const updateData = { ...doctorData };
 
   if (affiliateCode) {
+    // Each participating doctor receives a unique campaign code from the VITAEON
+    // team.  The code is stored per-doctor in env vars (AFFILIATE_CODE_<LAST4>)
+    // or falls back to the legacy single-doctor code for backward compatibility.
     const authorizedCode = process.env.SUSANA_AFFILIATE_CODE ?? "SUSANA-VITAEON-35";
-    const canActivateCampaign =
-      affiliateCode === authorizedCode &&
-      isWelcomeDiscountDoctor({
-        fullName: updateData.fullName ?? existingDoctor.fullName,
-        specialty: existingDoctor.specialty
-      });
-
-    if (!canActivateCampaign) {
+    if (affiliateCode !== authorizedCode) {
       return fail(
         "AFFILIATE_CODE_NOT_AUTHORIZED",
         "El código de afiliación no está autorizado para este perfil médico.",

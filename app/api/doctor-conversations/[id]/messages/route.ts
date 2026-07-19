@@ -23,8 +23,11 @@ async function canAccessConversation(userId: string, role: string, conversationI
 async function hasAmatistaAccess(userId: string, role: string) {
   if (role === "ADMIN" || role === "STAFF") return true;
   if (role !== "DOCTOR") return false;
-  const doctor = await prisma.doctor.findUnique({ where: { userId }, select: { medal: true } });
-  return doctor?.medal === "amatista";
+  const doctor = await prisma.doctor.findUnique({
+    where: { userId },
+    select: { medal: true, subscriptionStatus: true }
+  });
+  return doctor?.medal === "amatista" && doctor?.subscriptionStatus === "ACTIVE";
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

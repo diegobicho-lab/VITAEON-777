@@ -15,8 +15,8 @@ export async function POST(request: Request) {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
-  if (doctor.medal !== "amatista") {
-    return fail("PLAN_UPGRADE_REQUIRED", "La búsqueda de medicamentos está disponible en el plan Amatista.", 402);
+  if (doctor.medal !== "amatista" || doctor.subscriptionStatus !== "ACTIVE") {
+    return fail("PLAN_UPGRADE_REQUIRED", "La búsqueda de medicamentos está disponible en el plan Amatista activo.", 402);
   }
 
   const body = await request.json().catch(() => null);

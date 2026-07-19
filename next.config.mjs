@@ -27,7 +27,21 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: []
+    // Allow next/image to optimize images served from Supabase Storage.
+    // The *.supabase.co pattern covers both the project-specific URL
+    // (e.g. abcxyz.supabase.co) and the custom-domain variant.
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**"
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.in",
+        pathname: "/storage/v1/object/public/**"
+      }
+    ]
   },
   async headers() {
     if (process.env.NODE_ENV !== "production") {

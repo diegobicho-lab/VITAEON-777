@@ -2,14 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
-
-// Redis persistente — funciona en producción serverless (Vercel).
-// Los buckets sobreviven cold starts y múltiples workers.
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!
-});
+import { redis } from "@/lib/db/redis";
 
 // Cache de instancias de Ratelimit para no recrear en cada request
 const limiters = new Map<string, Ratelimit>();

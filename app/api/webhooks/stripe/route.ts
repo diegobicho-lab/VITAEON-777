@@ -9,10 +9,14 @@ import {
 import { headers } from "next/headers";
 import type Stripe from "stripe";
 import { fail, ok } from "@/lib/api-response";
+import { redis } from "@/lib/db/redis";
 import { prisma } from "@/lib/db/prisma";
 import { getStripe } from "@/lib/payments/stripe";
 import { auditLog } from "@/lib/audit/audit";
 import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
+
+/** TTL in seconds for idempotency keys (7 days — Stripe retries for up to 3 days). */
+const STRIPE_EVENT_IDEMPOTENCY_TTL = 604_800;
 
 function stripeObjectId(value: unknown) {
   if (typeof value === "string") return value;
@@ -54,6 +58,24 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch {
     return fail("INVALID_SIGNATURE", "Firma de webhook inválida.", 400);
+  }
+
+  // ── Idempotency guard ─────────────────────────────────────────────────────
+  // Stripe retries failed webhooks for up to 72 h with the same event.id.
+  // We use Redis as a distributed lock so duplicate deliveries are no-ops.
+  const idempotencyKey = `vitaeon:stripe:event:${event.id}`;
+  try {
+    // SET NX returns "OK" only when the key didn't exist before — meaning this
+    // is the first time we see this event.  EX sets the TTL automatically.
+    const isNew = await redis.set(idempotencyKey, "1", { nx: true, ex: STRIPE_EVENT_IDEMPOTENCY_TTL });
+    if (!isNew) {
+      // Already processed — return 200 to stop Stripe from retrying.
+      return ok({ received: true, duplicate: true });
+    }
+  } catch (redisError) {
+    // If Redis is unavailable, log and continue processing rather than
+    // blocking payments.  A duplicate event is safer than a stuck payment.
+    console.error("[Stripe webhook] Redis idempotency check failed — processing anyway:", redisError);
   }
 
   if (event.type === "payment_intent.succeeded" || event.type === "payment_intent.payment_failed") {

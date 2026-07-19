@@ -11,11 +11,23 @@ import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 import { appointmentCreateSchema } from "@/lib/validation/schemas";
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver citas.", 401);
 
-  await autoCancelExpiredAppointments();
+  // Fire-and-forget: do not await so we don't add latency to the user's request.
+  // A Vercel Cron (vercel.json) now runs this every hour as the primary mechanism.
+  void autoCancelExpiredAppointments().catch((err) =>
+    console.error("[appointments GET] background auto-cancel error:", err)
+  );
+
+  // Pagination via cursor — pass ?cursor=<appointmentId> to fetch the next page.
+  // Default page size is 50; admins/staff may request up to 200.
+  const { searchParams } = new URL(request.url);
+  const cursor = searchParams.get("cursor") ?? undefined;
+  const rawLimit = Number(searchParams.get("limit") ?? "50");
+  const maxLimit = user.role === "ADMIN" || user.role === "STAFF" ? 200 : 50;
+  const take = Math.min(Math.max(1, rawLimit), maxLimit);
 
   const appointments = await prisma.appointment.findMany({
     where:
@@ -30,10 +42,20 @@ export async function GET() {
       availabilitySlot: true,
       payments: true
     },
-    orderBy: { createdAt: "desc" }
+    orderBy: { createdAt: "desc" },
+    take: take + 1, // fetch one extra to know if there is a next page
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})
   });
 
-  return ok(appointments.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })));
+  const hasNextPage = appointments.length > take;
+  const items = hasNextPage ? appointments.slice(0, take) : appointments;
+  const nextCursor = hasNextPage ? items[items.length - 1]?.id : undefined;
+
+  return ok({
+    items: items.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })),
+    nextCursor: nextCursor ?? null,
+    hasNextPage
+  });
 }
 
 export async function POST(request: Request) {

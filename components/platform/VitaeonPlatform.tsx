@@ -48,13 +48,7 @@ import type { ElementType, ReactNode } from "react";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
-// ADN 3D — cargado solo en browser (Canvas 2D, sin dependencias extra)
-const DnaHero = dynamic(() => import("@/components/platform/DnaHero"), {
-  ssr: false,
-  loading: () => null,
-});
-
-// Dashboard mockup — reemplaza al ADN en el hero
+// Dashboard mockup — hero visual principal
 const DashboardMockup = dynamic(
   () => import("@/components/platform/DashboardMockup"),
   { ssr: false, loading: () => null },
