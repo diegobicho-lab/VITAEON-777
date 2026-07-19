@@ -948,6 +948,9 @@ export function DoctorDashboardClient() {
   const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [additionalLocations, setAdditionalLocations] = useState<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>([]);
+  const [newLocHospitalId, setNewLocHospitalId] = useState("");
+  const [newLocNotes, setNewLocNotes] = useState("");
   const [message, setMessage] = useState("");
   const [subscriptionAction, setSubscriptionAction] = useState("");
   const assistantEnabled = medal === "amatista";
@@ -1014,6 +1017,10 @@ export function DoctorDashboardClient() {
       setConversations([]);
       setSecretarySummary(null);
     }
+    /* Consultorios adicionales */
+    const locationData = await clientApi<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>("/api/doctor-locations").catch(() => []);
+    setAdditionalLocations(locationData);
+
     /* Mostrar wizard si el perfil está incompleto (médico recién registrado) */
     const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
     setShowWizard(profileIncomplete);
@@ -1065,6 +1072,28 @@ export function DoctorDashboardClient() {
     } else {
       setMessage("¡Perfil completado con éxito! Publica tu disponibilidad para recibir pacientes.");
     }
+  }
+
+  async function addLocation() {
+    setMessage("");
+    if (!newLocHospitalId) { setMessage("Selecciona un hospital para agregar."); return; }
+    await clientApi("/api/doctor-locations", {
+      method: "POST",
+      body: JSON.stringify({ hospitalId: newLocHospitalId, notes: newLocNotes || undefined })
+    });
+    setNewLocHospitalId("");
+    setNewLocNotes("");
+    setMessage("Consultorio adicional agregado.");
+    const locationData = await clientApi<typeof additionalLocations>("/api/doctor-locations").catch(() => []);
+    setAdditionalLocations(locationData);
+  }
+
+  async function removeLocation(locationId: string) {
+    setMessage("");
+    await clientApi(`/api/doctor-locations?id=${encodeURIComponent(locationId)}`, { method: "DELETE" });
+    setMessage("Consultorio eliminado.");
+    const locationData = await clientApi<typeof additionalLocations>("/api/doctor-locations").catch(() => []);
+    setAdditionalLocations(locationData);
   }
 
   async function toggleAvailability(slotId: string, isActive: boolean) {
@@ -2113,6 +2142,7 @@ export function DoctorDashboardClient() {
           )}
 
           {activeSection === "perfil" && (
+            <>
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -2206,6 +2236,73 @@ export function DoctorDashboardClient() {
                 <button onClick={submitVerification} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">Enviar verificación</button>
               </div>
             </section>
+
+            {/* Consultorios adicionales */}
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Consultorios adicionales</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Otros hospitales donde practicas</h2>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                    Registra los hospitales o clínicas adicionales donde atiendes pacientes. Aparecerán en tu perfil público. Máximo 5.
+                  </p>
+                </div>
+              </div>
+
+              {/* Lista de consultorios actuales */}
+              <div className="mt-5 grid gap-3">
+                {additionalLocations.length === 0 && (
+                  <p className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                    Sin consultorios adicionales registrados. Tu consultorio principal es {profile?.hospital.name}.
+                  </p>
+                )}
+                {additionalLocations.map((loc) => (
+                  <div key={loc.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                    <div>
+                      <p className="font-semibold text-deep">{loc.hospital.name}</p>
+                      <p className="text-sm text-slate-500">{loc.hospital.city}{loc.notes ? ` · ${loc.notes}` : ""}</p>
+                    </div>
+                    <button
+                      onClick={() => removeLocation(loc.id).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible eliminar el consultorio."))}
+                      className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Formulario para agregar */}
+              {additionalLocations.length < 5 && (
+                <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <select
+                    value={newLocHospitalId}
+                    onChange={(event) => setNewLocHospitalId(event.target.value)}
+                    className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-sm text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                  >
+                    <option value="">Selecciona hospital…</option>
+                    {hospitals
+                      .filter((h) => h.id !== hospitalId && !additionalLocations.some((l) => l.hospital.id === h.id))
+                      .map((h) => (
+                        <option key={h.id} value={h.id}>{h.name} · {h.city}</option>
+                      ))}
+                  </select>
+                  <input
+                    value={newLocNotes}
+                    onChange={(event) => setNewLocNotes(event.target.value)}
+                    placeholder="Notas: consultorio, piso, torre… (opcional)"
+                    className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-sm text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                  />
+                  <button
+                    onClick={() => addLocation().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible agregar el consultorio."))}
+                    className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              )}
+            </section>
+            </>
           )}
 
           {activeSection === "opiniones" && (
