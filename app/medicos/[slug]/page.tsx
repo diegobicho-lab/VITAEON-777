@@ -54,7 +54,53 @@ export default async function DoctorSeoPage({ params }: PageProps) {
     ? doctor.reviews.reduce((sum, review) => sum + review.rating, 0) / doctor.reviews.length
     : doctor.rating;
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://vitaeon.mx";
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Physician",
+    "name": doctor.fullName,
+    "description": doctor.bio,
+    "medicalSpecialty": doctor.specialty.name,
+    "url": `${appUrl}/medicos/${doctor.slug}`,
+    "image": doctor.imageUrl ?? undefined,
+    "worksFor": {
+      "@type": "MedicalOrganization",
+      "name": doctor.hospital.name,
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": doctor.cityState ?? "León",
+        "addressRegion": "Guanajuato",
+        "addressCountry": "MX"
+      }
+    },
+    ...(doctor.officeAddress && {
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": doctor.officeAddress,
+        "addressLocality": doctor.cityState ?? "León",
+        "addressRegion": "Guanajuato",
+        "addressCountry": "MX"
+      }
+    }),
+    ...(doctor.professionalPhone && { "telephone": doctor.professionalPhone }),
+    ...(doctor.reviews.length > 0 && {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": average.toFixed(1),
+        "reviewCount": String(doctor.reviews.length),
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    })
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_52%,#eef5f8_100%)] px-5 pb-24 pt-8 text-ink">
       <nav className="glass mx-auto flex max-w-7xl items-center justify-between rounded-full px-7 py-4 shadow-glass">
         <Link href="/" className="font-semibold tracking-[0.45em] text-deep">VITAEON</Link>
@@ -118,5 +164,6 @@ export default async function DoctorSeoPage({ params }: PageProps) {
         </div>
       </section>
     </main>
+    </>
   );
 }

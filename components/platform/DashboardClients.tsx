@@ -3442,9 +3442,22 @@ function MedicationSearchPanel({
           La búsqueda avanzada de medicamentos está incluida en el plan Amatista.
         </p>
       )}
-      {result && (
+      {result && result.status === "integration_pending" && (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Próximamente disponible</p>
+          <p className="mt-2 text-sm leading-6 text-amber-800">
+            La integración con una fuente farmacológica autorizada (COFEPRIS / PLM) está en configuración.
+            Mientras tanto, consulta el Vademécum PLM, Micromedex o la ficha técnica oficial del fabricante.
+          </p>
+          <p className="mt-3 text-xs text-amber-600">
+            Esta función se activará automáticamente cuando el administrador configure{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 font-mono">MEDICATION_API_URL</code>.
+          </p>
+        </div>
+      )}
+      {result && result.status === "ready" && (
         <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">{result.status === "ready" ? "Fuente conectada" : "Integración pendiente"}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">Fuente conectada</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">{result.disclaimer}</p>
           <div className="mt-4 grid gap-3">
             {result.results.map((item) => (

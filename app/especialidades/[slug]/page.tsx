@@ -50,6 +50,28 @@ export default async function SpecialtyPage({ params }: PageProps) {
   const specialty = await getSpecialty(slug);
   if (!specialty) notFound();
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://vitaeon.mx";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "MedicalWebPage",
+    "name": `${specialty.name} en León, Guanajuato`,
+    "description": specialty.description ?? `Especialistas verificados en ${specialty.name} dentro de la red médica VITAEON en León, Guanajuato.`,
+    "url": `${appUrl}/especialidades/${slug}`,
+    "about": {
+      "@type": "MedicalSpecialty",
+      "name": specialty.name,
+      "relevantSpecialty": specialty.name
+    },
+    "audience": {
+      "@type": "Patient",
+      "audienceType": "Paciente",
+      "geographicArea": {
+        "@type": "AdministrativeArea",
+        "name": "León, Guanajuato, México"
+      }
+    }
+  };
+
   const medalPriority = { amatista: 4, diamante: 3, obsidiana: 2, oro: 1 };
   const doctors = specialty.doctors.sort((a, b) => {
     const plan = medalPriority[b.medal] - medalPriority[a.medal];
@@ -60,6 +82,11 @@ export default async function SpecialtyPage({ params }: PageProps) {
   });
 
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_52%,#eef5f8_100%)] px-5 pb-24 pt-8 text-ink">
       <nav className="glass mx-auto flex max-w-7xl items-center justify-between rounded-full px-7 py-4 shadow-glass">
         <Link href="/" className="font-semibold tracking-[0.45em] text-deep">VITAEON</Link>
@@ -101,5 +128,6 @@ export default async function SpecialtyPage({ params }: PageProps) {
         </div>
       </section>
     </main>
+    </>
   );
 }

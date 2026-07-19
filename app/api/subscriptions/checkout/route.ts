@@ -11,9 +11,9 @@ import { subscriptionCheckoutSchema } from "@/lib/validation/schemas";
 
 const planPrices = {
   oro: 0,
-  obsidiana: 25000,
-  diamante: 25000,
-  amatista: 39900
+  obsidiana: 49900,   // $499 MXN/mes — directorio comercial
+  diamante: 49900,    // $499 MXN/quincena (~$998 MXN equivalente mensual)
+  amatista: 99900    // $999 MXN/quincena (~$1,998 MXN equivalente mensual)
 };
 
 const planLabels = {
