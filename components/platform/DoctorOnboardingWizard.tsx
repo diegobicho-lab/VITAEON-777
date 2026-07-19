@@ -37,7 +37,7 @@ import { useState } from "react";
 /* ── Tipos ──────────────────────────────────────────────────── */
 type Plan = "oro" | "diamante" | "amatista";
 
-interface WizardData {
+export interface WizardData {
   /* Paso 1 */
   fullName: string;
   specialtyId: string;

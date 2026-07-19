@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
+import DoctorOnboardingWizard, { type WizardData } from "@/components/platform/DoctorOnboardingWizard";
 import { clientApi } from "@/services/client/api";
 
 type Appointment = {
@@ -946,6 +947,7 @@ export function DoctorDashboardClient() {
   const [prescriptionLoading, setPrescriptionLoading] = useState(false);
   const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
   const [message, setMessage] = useState("");
   const [subscriptionAction, setSubscriptionAction] = useState("");
   const assistantEnabled = medal === "amatista";
@@ -1012,6 +1014,9 @@ export function DoctorDashboardClient() {
       setConversations([]);
       setSecretarySummary(null);
     }
+    /* Mostrar wizard si el perfil está incompleto (médico recién registrado) */
+    const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
+    setShowWizard(profileIncomplete);
     setLoading(false);
   }
 
@@ -1023,6 +1028,44 @@ export function DoctorDashboardClient() {
     // La carga inicial debe correr una sola vez; los cambios de mes refrescan la agenda desde el calendario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleWizardComplete(data: WizardData) {
+    const priceCents = data.consultationPriceCents ? parseInt(data.consultationPriceCents, 10) : undefined;
+    const durationMins = data.consultationDurationMinutes ? parseInt(data.consultationDurationMinutes, 10) : undefined;
+    const certificationsList = data.certifications?.trim() ? [data.certifications.trim()] : undefined;
+
+    await clientApi("/api/doctors/me", {
+      method: "PATCH",
+      body: JSON.stringify({
+        fullName: data.fullName || undefined,
+        specialtyId: data.specialtyId || undefined,
+        hospitalId: data.hospitalId || undefined,
+        subSpecialty: data.subSpecialty || undefined,
+        professionalLicense: data.professionalLicense || undefined,
+        university: data.university || undefined,
+        consultationPriceCents: priceCents,
+        consultationDurationMinutes: durationMins,
+        bio: data.bio || undefined,
+        officeAddress: data.officeAddress || undefined,
+        professionalPhone: data.professionalPhone || undefined,
+        instagramUrl: data.instagramUrl || undefined,
+        linkedinUrl: data.linkedinUrl || undefined,
+        whatsappUrl: data.whatsappUrl || undefined,
+        certifications: certificationsList,
+        legalDeclarationAccepted: true
+      })
+    });
+
+    setShowWizard(false);
+    await load();
+
+    if (data.plan !== "oro") {
+      setActiveSection("suscripcion");
+      setMessage(`¡Perfil completado! Ahora activa el plan ${data.plan === "amatista" ? "Amatista" : "Diamante"} para publicar tu perfil con prioridad.`);
+    } else {
+      setMessage("¡Perfil completado con éxito! Publica tu disponibilidad para recibir pacientes.");
+    }
+  }
 
   async function toggleAvailability(slotId: string, isActive: boolean) {
     setMessage("");
@@ -1743,6 +1786,33 @@ export function DoctorDashboardClient() {
 
   return (
     <Shell eyebrow="Médicos" title="Panel médico">
+      {/* Wizard de onboarding — aparece automáticamente cuando el perfil está incompleto */}
+      {showWizard && !loading && (
+        <DoctorOnboardingWizard
+          specialties={specialties}
+          hospitals={hospitals}
+          initialData={{
+            fullName,
+            specialtyId,
+            hospitalId,
+            subSpecialty,
+            professionalLicense,
+            university,
+            consultationPriceCents: String(profile?.consultationPriceCents ?? 100000),
+            consultationDurationMinutes: String(profile?.consultationDurationMinutes ?? 45),
+            bio,
+            officeAddress,
+            professionalPhone,
+            instagramUrl,
+            linkedinUrl,
+            whatsappUrl,
+            certifications: profile?.certifications[0] ?? "",
+            plan: (medal === "diamante" || medal === "amatista") ? medal : "oro"
+          }}
+          onComplete={handleWizardComplete}
+          onSkip={() => setShowWizard(false)}
+        />
+      )}
       {loading ? <LoadingState /> : (
         <div className="mt-8 grid gap-6">
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
