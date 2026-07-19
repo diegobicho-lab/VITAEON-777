@@ -1018,7 +1018,7 @@ export default function VitaeonPlatform() {
         </section>
 
         <section className="mx-auto mt-10 max-w-7xl">
-          <IntelligentGuide specialties={specialties} onSpecialtySelect={(id) => chooseSpecialty(id, true)} />
+          <IntelligentGuide specialties={specialties} onSpecialtySelect={(id) => chooseSpecialty(id, true)} user={user} onLogin={() => openAuth()} />
         </section>
 
         <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 overflow-hidden rounded-[2rem] shadow-premium">
@@ -1762,14 +1762,74 @@ function PlanCard({ plan }: { plan: (typeof doctorSubscriptionPlans)[number] }) 
   );
 }
 
-function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Specialty[]; onSpecialtySelect: (id: string) => void }) {
+type GuideResult = {
+  specialty: string;
+  reason: string;
+  alternatives: string[];
+  redFlag: string | null;
+  aiGenerated: boolean;
+};
+
+function IntelligentGuide({
+  specialties,
+  onSpecialtySelect,
+  user,
+  onLogin
+}: {
+  specialties: Specialty[];
+  onSpecialtySelect: (id: string) => void;
+  user: CurrentUser | null;
+  onLogin: () => void;
+}) {
   const [symptom, setSymptom] = useState("");
-  const orientation = suggestSpecialty(symptom);
-  const matchedSpecialty = specialties.find((specialty) => specialty.name === orientation.primary.specialty);
-  const alternativeMatches = orientation.alternatives.map((route) => ({
-    route,
-    specialty: specialties.find((specialty) => specialty.name === route.specialty)
-  }));
+  const [aiResult, setAiResult] = useState<GuideResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  /* Resultado de keywords (instantáneo mientras escribe) */
+  const keywords = suggestSpecialty(symptom);
+  const keywordResult: GuideResult = {
+    specialty: keywords.primary.specialty,
+    reason: keywords.primary.reason,
+    alternatives: keywords.alternatives.map((a) => a.specialty),
+    redFlag: keywords.redFlag ?? null,
+    aiGenerated: false
+  };
+
+  /* Usar resultado IA si existe, si no el de keywords */
+  const result = aiResult ?? keywordResult;
+  const matchedSpecialty = specialties.find((s) => s.name === result.specialty);
+  const alternativeSpecialties = result.alternatives
+    .map((name) => ({ name, specialty: specialties.find((s) => s.name === name) }))
+    .filter((a) => a.specialty);
+
+  async function askAI() {
+    if (!symptom.trim() || symptom.length < 3) return;
+    setLoading(true);
+    setError("");
+    setAiResult(null);
+    try {
+      const res = await fetch("/api/patient-guide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symptom })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message ?? "Error al consultar la IA");
+      setAiResult(data.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No fue posible consultar la IA. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* Limpiar resultado IA si cambia el síntoma */
+  function handleSymptomChange(value: string) {
+    setSymptom(value);
+    setAiResult(null);
+    setError("");
+  }
 
   return (
     <div className="ai-orientation-card premium-card grid gap-8 rounded-[2rem] p-7 lg:grid-cols-[0.72fr_1fr] lg:items-center">
@@ -1779,54 +1839,118 @@ function IntelligentGuide({ specialties, onSpecialtySelect }: { specialties: Spe
         </p>
         <h2 className="mt-3 text-3xl font-semibold text-deep">Dinos qué te duele</h2>
         <p className="mt-3 leading-7 text-slate-600">
-          Esta orientación no sustituye una valoración médica. Te ayudamos a encontrar el especialista más adecuado según tu búsqueda.
+          Esta orientación no sustituye una valoración médica. Te ayudamos a encontrar el especialista más adecuado según tus síntomas.
         </p>
+        {/* Badge IA */}
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+          <span className="text-xs font-semibold text-violet-700">Potenciado por Claude IA · Anthropic</span>
+        </div>
       </div>
+
       <div className="rounded-[1.6rem] bg-slate-50 p-4">
+        {/* Input */}
         <label className="flex items-center gap-3 rounded-3xl bg-white px-5 py-4 shadow-sm">
           <Search className="h-5 w-5 text-deep" />
           <input
             value={symptom}
-            onChange={(event) => setSymptom(event.target.value)}
+            onChange={(e) => handleSymptomChange(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && user && askAI()}
             placeholder="Ej. dolor de pecho, migraña, piel, ansiedad"
             className="w-full bg-transparent outline-none"
           />
         </label>
+
+        {/* Botón IA o CTA login */}
+        <div className="mt-3">
+          {user ? (
+            <button
+              onClick={askAI}
+              disabled={loading || symptom.length < 3}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
+            >
+              {loading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Consultando con IA…</>
+              ) : (
+                <><Sparkles className="h-4 w-4" /> Consultar con IA</>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={onLogin}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-5 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
+            >
+              <LogIn className="h-4 w-4" />
+              Inicia sesión para consultar con IA
+            </button>
+          )}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">{error}</p>
+        )}
+
+        {/* Resultado */}
         <div className="mt-4 rounded-3xl bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-deep">Especialidad sugerida: {orientation.primary.specialty}</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{orientation.primary.reason}</p>
-          {orientation.redFlag && (
+          {/* Badge de fuente */}
+          <div className="mb-3 flex items-center gap-2">
+            {result.aiGenerated ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-[0.68rem] font-semibold text-violet-700">
+                <Sparkles className="h-3 w-3" /> Generado por IA
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-500">
+                <Zap className="h-3 w-3" /> Orientación rápida
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm font-semibold text-deep">Especialidad sugerida: {result.specialty}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{result.reason}</p>
+
+          {result.redFlag && (
             <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">
-              {orientation.redFlag}
+              ⚠️ {result.redFlag}
             </p>
           )}
-          {alternativeMatches.length > 0 && (
+
+          {alternativeSpecialties.length > 0 && (
             <div className="mt-4">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-slate-400">También podrías considerar</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {alternativeMatches.map(({ route, specialty }) =>
+                {alternativeSpecialties.map(({ name, specialty }) =>
                   specialty ? (
                     <button
-                      key={route.specialty}
+                      key={name}
                       onClick={() => onSpecialtySelect(specialty.id)}
                       className="rounded-full border border-silver bg-slate-50 px-4 py-2 text-xs font-semibold text-deep transition hover:-translate-y-0.5 hover:bg-white"
                     >
-                      {route.specialty}
+                      {name}
                     </button>
                   ) : (
-                    <span key={route.specialty} className="rounded-full border border-silver bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500">
-                      {route.specialty}
+                    <span key={name} className="rounded-full border border-silver bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500">
+                      {name}
                     </span>
                   )
                 )}
               </div>
             </div>
           )}
+
           {matchedSpecialty && (
-            <button onClick={() => onSpecialtySelect(matchedSpecialty.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white sm:inline-flex sm:w-auto sm:justify-start">
+            <button
+              onClick={() => onSpecialtySelect(matchedSpecialty.id)}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white sm:inline-flex sm:w-auto sm:justify-start"
+            >
               Ver especialistas recomendados <ChevronRight className="h-4 w-4" />
             </button>
           )}
+
+          {/* Disclaimer */}
+          <p className="mt-4 text-[0.68rem] leading-5 text-slate-400">
+            Esta orientación {result.aiGenerated ? "generada por IA " : ""}no constituye un diagnóstico médico. Consulta siempre con un profesional de la salud.
+          </p>
         </div>
       </div>
     </div>
