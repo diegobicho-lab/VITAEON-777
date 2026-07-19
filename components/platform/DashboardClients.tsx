@@ -404,20 +404,20 @@ const doctorPlans = [
   {
     id: "obsidiana",
     name: "Obsidiana",
-    price: "$250 MXN / mes",
+    price: "$499 MXN / mes",
     description: "Suscripción comercial para representantes médicos y servicios de catering. Permite aparecer en el directorio comercial de VITAEON sin acceso al panel médico."
   },
   {
     id: "diamante",
     name: "Diamante",
-    price: "$250 MXN / quincena",
+    price: "$499 MXN / quincena",
     description: "Todo Oro, con prioridad sobre perfiles Oro, mayor presencia en resultados y renovación cada 14 días."
   },
   {
     id: "amatista",
     name: "Amatista",
-    price: "$399 MXN / quincena",
-    description: "Prioridad máxima, agenda personalizada, calendario inteligente y renovación cada 14 días."
+    price: "$999 MXN / quincena",
+    description: "Prioridad máxima, asistente IA real (Claude), agenda personalizada, calendario inteligente y renovación cada 14 días."
   }
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 
