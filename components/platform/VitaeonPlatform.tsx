@@ -1910,9 +1910,16 @@ function IntelligentGuide({
           <p className="mt-2 text-sm leading-6 text-slate-600">{result.reason}</p>
 
           {result.redFlag && (
-            <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-xs leading-5 text-rose-700">
-              ⚠️ {result.redFlag}
-            </p>
+            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4">
+              <p className="text-sm font-bold text-red-700">⚠️ Posible emergencia médica</p>
+              <p className="mt-1 text-sm leading-5 text-red-600">{result.redFlag}</p>
+              <a
+                href="/urgencias"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-700"
+              >
+                Ver guía de urgencias →
+              </a>
+            </div>
           )}
 
           {alternativeSpecialties.length > 0 && (
