@@ -13,27 +13,16 @@ export function getStripe() {
 /**
  * Returns the platform fee percentage from env as a number (e.g. 10 → 10%).
  *
- * In production, throws a loud error if the variable is unset or zero so we
- * never silently process payments without collecting revenue.
+ * VITAEON's revenue model is subscription-based: doctors pay a monthly plan
+ * and keep 100% of their appointment payments.  A value of 0 (or unset) is
+ * therefore intentional — doctors receive the full amount via Stripe Connect.
  *
- * In development / test the fee defaults to 0 so local testing works without
- * configuration.
+ * If the model ever changes to include a transaction commission, set
+ * STRIPE_PLATFORM_FEE_PERCENTAGE in Vercel (e.g. "10" for 10%) and the
+ * payment flow will apply it automatically via application_fee_amount.
  */
 export function getPlatformFeePercentage(): number {
   const raw = process.env.STRIPE_PLATFORM_FEE_PERCENTAGE;
   const parsed = Number(raw ?? "0");
-  const fee = Number.isFinite(parsed) ? parsed : 0;
-
-  if (fee === 0 && process.env.NODE_ENV === "production") {
-    // Throw rather than silently swallow: a 0% fee in production is almost
-    // always a misconfiguration.  This surfaces immediately in Vercel logs /
-    // Sentry and blocks the payment rather than letting revenue walk out the
-    // door.
-    throw new Error(
-      "[VITAEON revenue] STRIPE_PLATFORM_FEE_PERCENTAGE is 0 or unset in production. " +
-        "Set this env var in Vercel to a value like 10 (= 10%) before processing live payments."
-    );
-  }
-
-  return fee;
+  return Number.isFinite(parsed) ? parsed : 0;
 }

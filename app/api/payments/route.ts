@@ -177,17 +177,10 @@ export async function POST(request: Request) {
     );
   }
 
-  let platformFeePercentage: number;
-  try {
-    platformFeePercentage = getPlatformFeePercentage();
-  } catch (feeError) {
-    console.error("[Stripe payment blocked — fee misconfiguration]", feeError);
-    return fail(
-      "PLATFORM_FEE_NOT_CONFIGURED",
-      "El sistema de pagos no está configurado correctamente. Contacta a soporte.",
-      500
-    );
-  }
+  // VITAEON cobra por suscripción mensual — los médicos reciben el 100% de
+  // sus cobros de citas. Si en el futuro se agrega comisión por transacción,
+  // configura STRIPE_PLATFORM_FEE_PERCENTAGE en Vercel (ej. "10" = 10%).
+  const platformFeePercentage = getPlatformFeePercentage();
   const applicationFeeAmount = Math.max(0, Math.round(payment.amountCents * (platformFeePercentage / 100)));
 
   const intentParams: Stripe.PaymentIntentCreateParams = {
