@@ -411,14 +411,14 @@ const doctorPlans = [
   {
     id: "diamante",
     name: "Diamante",
-    price: "$499 MXN / quincena",
-    description: "Todo Oro, con prioridad sobre perfiles Oro, mayor presencia en resultados y renovación cada 14 días."
+    price: "$499 MXN / mes",
+    description: "Todo Oro, con prioridad sobre perfiles Oro, mayor presencia en resultados y renovación mensual automática."
   },
   {
     id: "amatista",
     name: "Amatista",
-    price: "$999 MXN / quincena",
-    description: "Prioridad máxima, asistente IA real (Claude), agenda personalizada, calendario inteligente y renovación cada 14 días."
+    price: "$999 MXN / mes",
+    description: "Prioridad máxima, asistente IA real (Claude), agenda personalizada, calendario inteligente y renovación mensual automática."
   }
 ] satisfies Array<{ id: DoctorProfile["medal"]; name: string; price: string; description: string }>;
 

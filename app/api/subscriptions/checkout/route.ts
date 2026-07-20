@@ -11,9 +11,9 @@ import { subscriptionCheckoutSchema } from "@/lib/validation/schemas";
 
 const planPrices = {
   oro: 0,
-  obsidiana: 49900,   // $499 MXN/mes — directorio comercial
-  diamante: 49900,    // $499 MXN/quincena (~$998 MXN equivalente mensual)
-  amatista: 99900    // $999 MXN/quincena (~$1,998 MXN equivalente mensual)
+  obsidiana: 49900,  // $499 MXN/mes — directorio comercial
+  diamante: 49900,   // $499 MXN/mes
+  amatista: 99900    // $999 MXN/mes
 };
 
 const planLabels = {
@@ -23,16 +23,16 @@ const planLabels = {
   amatista: "Amatista"
 };
 
-function recurringForPlan(plan: keyof typeof planPrices) {
-  if (plan === "obsidiana") return { interval: "month" as const, interval_count: 1 };
-  return { interval: "week" as const, interval_count: 2 };
+function recurringForPlan(_plan: keyof typeof planPrices) {
+  // Todos los planes tienen ciclo mensual.
+  return { interval: "month" as const, interval_count: 1 };
 }
 
 function descriptionForPlan(plan: keyof typeof planPrices) {
   if (plan === "obsidiana") {
     return "Suscripción comercial mensual para representantes médicos y servicios de catering.";
   }
-  return "Suscripción médica VITAEON con renovación automática cada 14 días.";
+  return "Suscripción médica VITAEON con renovación automática cada mes.";
 }
 
 export async function POST(request: Request) {

@@ -98,7 +98,7 @@ const PLANS: Array<{
     id: "diamante",
     name: "Diamante",
     price: "$499 MXN",
-    period: "por quincena",
+    period: "por mes",
     badge: "bg-sky-100 text-sky-700",
     features: ["Todo el plan Oro", "Prioridad en búsquedas", "Agenda online", "Aparece sobre perfiles Oro"]
   },
@@ -106,7 +106,7 @@ const PLANS: Array<{
     id: "amatista",
     name: "Amatista",
     price: "$999 MXN",
-    period: "por quincena",
+    period: "por mes",
     badge: "bg-violet-600 text-white",
     recommended: true,
     features: [

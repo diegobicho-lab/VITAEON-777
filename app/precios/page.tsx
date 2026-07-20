@@ -32,8 +32,7 @@ const doctorPlans = [
   {
     name: "Diamante",
     price: "$499",
-    period: "MXN / quincena",
-    monthly: "≈ $998 MXN al mes",
+    period: "MXN / mes",
     color: "border-sky-200 bg-sky-50/40",
     badge: "bg-sky-100 text-sky-700",
     cta: "Activar plan Diamante",
@@ -53,8 +52,7 @@ const doctorPlans = [
   {
     name: "Amatista",
     price: "$999",
-    period: "MXN / quincena",
-    monthly: "≈ $1,998 MXN al mes",
+    period: "MXN / mes",
     color: "border-violet-200 bg-violet-50/40 ring-2 ring-violet-300",
     badge: "bg-violet-600 text-white",
     cta: "Activar plan Amatista",
@@ -91,7 +89,7 @@ const commercialPlan = {
 
 const faqs = [
   {
-    q: "¿Cuándo se cobra la primera quincena?",
+    q: "¿Cuándo se cobra el primer mes?",
     a: "Al activar tu plan Diamante o Amatista desde tu panel médico. Stripe procesa el pago de forma segura y VITAEON no almacena datos de tarjeta."
   },
   {
@@ -157,9 +155,7 @@ export default function PreciosPage() {
                 <span className="text-3xl font-bold text-[#071726]">{plan.price}</span>
                 <span className="ml-2 text-sm text-slate-500">{plan.period}</span>
               </div>
-              {plan.monthly && (
-                <p className="mt-1 text-xs text-slate-400">{plan.monthly}</p>
-              )}
+
               <ul className="mt-6 space-y-3">
                 {plan.features.map((f) => (
                   <li key={f.label} className="flex items-start gap-2.5 text-sm">

@@ -181,21 +181,21 @@ const doctorSubscriptionPlans: Array<{
   {
     medal: "diamante",
     title: "Diamante",
-    price: "$499 MXN / quincena",
+    price: "$499 MXN / mes",
     tone: "Plan profesional",
-    description: "Presencia profesional con prioridad sobre perfiles Oro y renovación automática cada 14 días.",
+    description: "Presencia profesional con prioridad sobre perfiles Oro y renovación automática cada mes.",
     benefits: [
       "Todo lo del plan Oro",
       "Prioridad en resultados dentro de su especialidad",
       "Aparece por encima de médicos con plan Oro",
       "Mayor visibilidad en búsquedas",
-      "Renovación quincenal con Stripe"
+      "Renovación mensual con Stripe"
     ]
   },
   {
     medal: "amatista",
     title: "Amatista",
-    price: "$999 MXN / quincena",
+    price: "$999 MXN / mes",
     tone: "Más exclusivo",
     recommended: true,
     description: "El plan premium con máxima presencia, agenda inteligente asistida por IA real y prioridad superior.",
@@ -206,7 +206,7 @@ const doctorSubscriptionPlans: Array<{
       "Secretaria virtual con resumen diario inteligente",
       "Búsqueda de medicamentos de referencia",
       "Chat cifrado para derivación de pacientes",
-      "Renovación quincenal con Stripe"
+      "Renovación mensual con Stripe"
     ]
   }
 ];
@@ -3057,7 +3057,7 @@ function ForDoctors({ onRegister }: { onRegister: () => void }) {
     {
       name: "Diamante",
       price: "$499",
-      sub: "MXN / quincena",
+      sub: "MXN / mes",
       color: "border-sky-200/70 bg-sky-50/40",
       badge: "bg-sky-100 text-sky-700",
       items: ["Todo lo del plan Oro", "Prioridad en resultados", "Aparece sobre médicos Oro", "Mayor visibilidad en búsquedas"]
@@ -3065,7 +3065,7 @@ function ForDoctors({ onRegister }: { onRegister: () => void }) {
     {
       name: "Amatista",
       price: "$999",
-      sub: "MXN / quincena",
+      sub: "MXN / mes",
       color: "border-violet-200/70 bg-violet-50/40 ring-2 ring-violet-200",
       badge: "bg-violet-100 text-violet-700",
       recommended: true,
