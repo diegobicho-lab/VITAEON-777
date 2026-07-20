@@ -11,8 +11,9 @@ async function getAmatistaDoctor() {
 
   const doctor = await prisma.doctor.findUnique({ where: { userId: user.id }, include: { specialty: true, hospital: true } });
   if (!doctor) return { error: fail("DOCTOR_PROFILE_REQUIRED", "Completa tu perfil médico antes de usar recetario.", 409) };
-  if (doctor.medal !== "amatista" || doctor.subscriptionStatus !== "ACTIVE") {
-    return { error: fail("AMATISTA_PLAN_REQUIRED", "Disponible exclusivamente para médicos con plan Amatista activo.", 403) };
+  // Obsidiana usa un panel comercial independiente; todos los demás planes tienen acceso.
+  if (doctor.medal === "obsidiana") {
+    return { error: fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403) };
   }
 
   return { user, doctor };

@@ -52,7 +52,7 @@ export interface DoctorListItem {
   hospitalId: string;
   priceCents: number;
   consultationDurationMinutes: number;
-  rating: number;
+  rating: number | null;
   medal: MedicalMedal;
   planPriorityLabel?: string;
   verificationStatus: VerificationStatus;
@@ -61,7 +61,7 @@ export interface DoctorListItem {
   practicePhotoUrl?: string | null;
   university?: string | null;
   verifiedAt?: string | null;
-  reviewAverage?: number;
+  reviewAverage?: number | null;
   reviewCount?: number;
   officeAddress?: string | null;
   officeReference?: string | null;

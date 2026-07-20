@@ -957,6 +957,8 @@ export function DoctorDashboardClient() {
   const assistantEnabled = medal === "amatista";
   const collaborationEnabled = medal === "amatista";
   const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
+  // Historias clínicas y recetario disponibles para todos los planes salvo Obsidiana
+  const clinicalToolsEnabled = medal !== "obsidiana";
   const activeDoctorAppointments = appointments.filter((appointment) => !["CANCELLED", "COMPLETED", "NO_SHOW", "REFUNDED", "AUTO_CANCELLED"].includes(appointment.status));
 
   function monthKey(date: Date) {
@@ -1412,8 +1414,8 @@ export function DoctorDashboardClient() {
 
   async function openAmatistaTool(tool: "historias" | "recetario") {
     setMessage("");
-    if (!amatistaToolsEnabled) {
-      setMessage("Disponible exclusivamente para médicos con plan Amatista activo.");
+    if (!clinicalToolsEnabled) {
+      setMessage("Herramientas clínicas no disponibles en el perfil Obsidiana.");
       return;
     }
     setActiveAmatistaTool(tool);
@@ -2325,13 +2327,12 @@ export function DoctorDashboardClient() {
               <section className="dashboard-card rounded-[1.75rem] border-silver/70">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Herramientas clínicas Amatista</p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Herramientas clínicas</p>
                     <h2 className="mt-2 text-2xl font-semibold text-deep">Documentación médica privada</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                      Crea historias clínicas orientadas y recetas imprimibles para pacientes con cita activa, con acceso protegido por médico.
+                      Crea historias clínicas orientadas y recetas imprimibles para pacientes con cita activa, con acceso protegido por médico. Incluido en todos los planes.
                     </p>
                   </div>
-                  {!amatistaToolsEnabled && <Badge value="Disponible exclusivamente en Plan Amatista" />}
                 </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   <button
@@ -2353,9 +2354,9 @@ export function DoctorDashboardClient() {
                     <span className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">Abrir recetario</span>
                   </button>
                 </div>
-                {!amatistaToolsEnabled && (
-                  <p className="mt-5 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
-                    Estas herramientas quedan visibles como referencia, pero solo pueden usarse con suscripción Amatista activa.
+                {amatistaToolsEnabled && (
+                  <p className="mt-5 rounded-3xl bg-sky-50 p-4 text-sm leading-6 text-sky-700">
+                    Plan Amatista: próximamente tendrás exportación PDF de historias y resúmenes clínicos con IA.
                   </p>
                 )}
               </section>

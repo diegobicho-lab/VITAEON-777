@@ -2428,9 +2428,13 @@ function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; se
             </div>
             <div className="flex flex-none flex-col items-end gap-1.5">
               <MedalShield medal={doctor.medal} compact />
-              {doctor.rating > 0 && (
+              {doctor.rating != null ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
                   <Star className="h-3 w-3 fill-current" /> {doctor.rating.toFixed(1)}
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-xs text-white/70 backdrop-blur-sm">
+                  Sin reseñas
                 </span>
               )}
             </div>
