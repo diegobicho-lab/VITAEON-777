@@ -26,13 +26,27 @@ export async function GET() {
   // Full cursor pagination is a planned future enhancement.
   const APPOINTMENTS_HARD_LIMIT = user.role === "ADMIN" || user.role === "STAFF" ? 200 : 100;
 
+  // Para ASSISTANT: cargar las citas del médico al que está vinculado
+  let assistantDoctorId: string | null = null;
+  if (user.role === "ASSISTANT") {
+    const link = await prisma.doctorAssistant.findUnique({
+      where: { userId: user.id },
+      select: { doctorId: true }
+    });
+    assistantDoctorId = link?.doctorId ?? null;
+  }
+
   const appointments = await prisma.appointment.findMany({
     where:
       user.role === "PATIENT"
         ? { patient: { userId: user.id } }
         : user.role === "DOCTOR"
           ? { doctor: { userId: user.id } }
-          : {},
+          : user.role === "ASSISTANT"
+            ? assistantDoctorId
+              ? { doctorId: assistantDoctorId }
+              : { id: "no-results" } // asistente sin médico vinculado → vacío seguro
+            : {},
     include: {
       doctor: { include: { specialty: true, hospital: true } },
       patient: { include: { user: true } },

@@ -1,4 +1,4 @@
-export type Role = "PATIENT" | "DOCTOR" | "ADMIN" | "STAFF";
+export type Role = "PATIENT" | "DOCTOR" | "ADMIN" | "STAFF" | "ASSISTANT";
 
 export type AppointmentStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REFUNDED";
 

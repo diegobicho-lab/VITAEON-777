@@ -1,0 +1,578 @@
+"use client";
+
+import { Calendar, CheckCircle2, Clock, Loader2, Search, UserPlus, X, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { clientApi } from "@/services/client/api";
+
+/* ── Tipos ──────────────────────────────────────────────────── */
+
+type DoctorInfo = {
+  id: string;
+  fullName: string;
+  specialty: string;
+  hospital: string;
+  medal: string;
+  consultationPriceCents: number;
+  consultationDurationMinutes: number;
+  imageUrl?: string | null;
+};
+
+type AssistantMe = {
+  assistantId: string;
+  doctor: DoctorInfo;
+};
+
+type Slot = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  appointment: { id: string; status: string } | null;
+};
+
+type Appointment = {
+  id: string;
+  status: string;
+  availabilitySlot: { startsAt: string; endsAt: string };
+  doctor: { fullName: string; specialty: { name: string } };
+  patient: { user: { name: string; email: string } };
+  payments: Array<{ status: string; provider: string; amountCents: number }>;
+};
+
+type PatientResult = {
+  userId: string;
+  patientId: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+};
+
+/* ── Helpers ────────────────────────────────────────────────── */
+
+function dateTime(value: string) {
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(value)
+  );
+}
+
+function money(cents: number) {
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
+}
+
+function isToday(value: string) {
+  const d = new Date(value);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+function readableStatus(status: string) {
+  const map: Record<string, string> = {
+    ACCEPTED: "Aceptada",
+    CONFIRMED: "Confirmada",
+    COMPLETED: "Completada",
+    PENDING: "Pendiente",
+    PENDING_DOCTOR_ACCEPTANCE: "Pendiente de aceptación",
+    CANCELLED: "Cancelada",
+    AUTO_CANCELLED: "Cancelada automáticamente",
+    NO_SHOW: "No se presentó",
+    RESCHEDULE_REQUESTED: "Reagendamiento solicitado",
+    RESCHEDULED: "Reagendada",
+    CANCELLATION_REQUESTED: "Cancelación solicitada",
+    REFUND_PENDING: "Reembolso pendiente",
+    REFUNDED: "Reembolsada"
+  };
+  return map[status] ?? status;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const success = ["ACCEPTED", "CONFIRMED", "COMPLETED"].includes(status);
+  const danger = ["CANCELLED", "AUTO_CANCELLED", "NO_SHOW"].includes(status);
+  const tone = success
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : danger
+      ? "bg-red-50 text-red-700 border-red-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
+  const dot = success ? "bg-emerald-500" : danger ? "bg-red-500" : "bg-amber-500";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      {readableStatus(status)}
+    </span>
+  );
+}
+
+/* ── Modal de nueva cita ────────────────────────────────────── */
+
+function NewAppointmentModal({
+  slots,
+  doctorName,
+  priceCents,
+  onClose,
+  onCreated
+}: {
+  slots: Slot[];
+  doctorName: string;
+  priceCents: number;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [patients, setPatients] = useState<PatientResult[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TRANSFER">("CASH");
+  const [reason, setReason] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const freeSlots = slots
+    .filter((s) => s.isActive && !s.appointment && new Date(s.startsAt) > new Date())
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    .slice(0, 40);
+
+  async function searchPatient() {
+    if (query.trim().length < 3) return;
+    setSearching(true);
+    setError("");
+    try {
+      const results = await clientApi<PatientResult[]>(`/api/assistants/patients?q=${encodeURIComponent(query)}`);
+      setPatients(results);
+      if (results.length === 0) setError("No se encontró ningún paciente con ese dato.");
+    } catch {
+      setError("Error al buscar paciente. Intenta de nuevo.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function createAppointment() {
+    if (!selectedPatient?.patientId) {
+      setError("El paciente no tiene perfil activo en VITAEON.");
+      return;
+    }
+    if (!selectedSlotId) {
+      setError("Selecciona un horario disponible.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await clientApi("/api/assistants/appointments", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: selectedPatient.patientId,
+          availabilitySlotId: selectedSlotId,
+          paymentMethod,
+          reason: reason.trim() || undefined
+        })
+      });
+      onCreated();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible crear la cita.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#1e9bd4]">Recepción</p>
+            <h2 className="mt-1 text-2xl font-bold text-[#071726]">Nueva cita</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Con {doctorName} · {money(priceCents)}</p>
+          </div>
+          <button onClick={onClose} className="rounded-full bg-slate-100 p-2 transition hover:bg-slate-200">
+            <X className="h-5 w-5 text-slate-600" />
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-5">
+          {/* Búsqueda de paciente */}
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#071726]">
+              Buscar paciente por nombre o correo
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchPatient()}
+                placeholder="Nombre o correo electrónico..."
+                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+              />
+              <button
+                onClick={searchPatient}
+                disabled={searching || query.trim().length < 3}
+                className="flex shrink-0 items-center gap-2 rounded-full bg-[#071726] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d2638] disabled:opacity-50"
+              >
+                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {patients.length > 0 && !selectedPatient && (
+              <div className="mt-2 grid gap-1.5 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                {patients.map((p) => (
+                  <button
+                    key={p.userId}
+                    onClick={() => { setSelectedPatient(p); setPatients([]); }}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
+                  >
+                    <div>
+                      <p className="font-semibold text-[#071726]">{p.name}</p>
+                      <p className="text-xs text-slate-500">{p.email}{p.phone ? ` · ${p.phone}` : ""}</p>
+                    </div>
+                    {p.patientId
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      : <XCircle className="h-4 w-4 text-amber-500" />}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedPatient && (
+              <div className="mt-2 flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
+                <div>
+                  <p className="font-semibold text-[#071726]">{selectedPatient.name}</p>
+                  <p className="text-xs text-slate-500">{selectedPatient.email}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedPatient(null)}
+                  className="rounded-full p-1 text-slate-400 transition hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selección de horario */}
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#071726]">
+              Horario disponible
+            </label>
+            {freeSlots.length === 0 ? (
+              <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                No hay horarios libres próximos. El médico debe publicar disponibilidad desde su panel.
+              </p>
+            ) : (
+              <select
+                value={selectedSlotId}
+                onChange={(e) => setSelectedSlotId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+              >
+                <option value="">-- Selecciona un horario --</option>
+                {freeSlots.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {dateTime(s.startsAt)}{isToday(s.startsAt) ? " · HOY" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Forma de pago */}
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#071726]">Forma de pago</label>
+            <div className="flex gap-3">
+              {(["CASH", "TRANSFER"] as const).map((method) => (
+                <button
+                  key={method}
+                  onClick={() => setPaymentMethod(method)}
+                  className={`flex-1 rounded-2xl border py-2.5 text-sm font-semibold transition ${
+                    paymentMethod === method
+                      ? "border-[#071726] bg-[#071726] text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  {method === "CASH" ? "Efectivo" : "Transferencia"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Motivo (opcional) */}
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#071726]">
+              Motivo de consulta <span className="font-normal text-slate-400">(opcional)</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ej. Seguimiento, dolor de cabeza, revisión..."
+              rows={2}
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={createAppointment}
+              disabled={saving || !selectedPatient || !selectedSlotId}
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#071726] py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:opacity-50"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Confirmar cita
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-full border border-slate-200 px-6 py-3.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dashboard principal ────────────────────────────────────── */
+
+export function AssistantDashboardClient() {
+  const [me, setMe] = useState<AssistantMe | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setMessage("");
+    try {
+      const [meData, apptData, slotData] = await Promise.all([
+        clientApi<AssistantMe>("/api/assistants/me"),
+        clientApi<Appointment[]>("/api/appointments"),
+        clientApi<Slot[]>("/api/availability")
+      ]);
+      setMe(meData);
+      setAppointments(apptData);
+      setSlots(slotData);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Error al cargar datos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
+  }
+
+  const todayAppointments = appointments.filter(
+    (a) => isToday(a.availabilitySlot.startsAt) &&
+      !["CANCELLED", "AUTO_CANCELLED", "REFUNDED"].includes(a.status)
+  ).sort(
+    (a, b) => new Date(a.availabilitySlot.startsAt).getTime() - new Date(b.availabilitySlot.startsAt).getTime()
+  );
+
+  const upcomingAppointments = appointments.filter(
+    (a) => new Date(a.availabilitySlot.startsAt) > new Date() &&
+      !isToday(a.availabilitySlot.startsAt) &&
+      !["CANCELLED", "AUTO_CANCELLED", "REFUNDED"].includes(a.status)
+  ).sort(
+    (a, b) => new Date(a.availabilitySlot.startsAt).getTime() - new Date(b.availabilitySlot.startsAt).getTime()
+  ).slice(0, 20);
+
+  const freeToday = slots.filter(
+    (s) => s.isActive && !s.appointment && isToday(s.startsAt) && new Date(s.startsAt) > new Date()
+  ).length;
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f8fbfd]">
+        <div className="flex items-center gap-3 text-slate-500">
+          <Loader2 className="h-6 w-6 animate-spin text-[#1e9bd4]" />
+          <span className="text-sm font-medium">Cargando panel de asistente…</span>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#faf9f7_0%,#ffffff_50%,#eef5f8_100%)] px-4 pb-24 pt-10 sm:px-6 sm:pt-12">
+      <div className="mx-auto max-w-4xl">
+
+        {/* Header */}
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200/70 pb-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#1e9bd4]">Panel de asistente</p>
+            {me ? (
+              <>
+                <h1 className="mt-2 text-3xl font-bold text-[#071726]">{me.doctor.fullName}</h1>
+                <p className="mt-1 text-sm text-slate-500">{me.doctor.specialty} · {me.doctor.hospital}</p>
+              </>
+            ) : (
+              <h1 className="mt-2 text-3xl font-bold text-[#071726]">Recepción médica</h1>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowModal(true)}
+              disabled={!me}
+              className="flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:opacity-40"
+            >
+              <UserPlus className="h-4 w-4" />
+              Nueva cita
+            </button>
+            <button
+              onClick={logout}
+              className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </header>
+
+        {message && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
+            {message}
+          </div>
+        )}
+
+        {/* Tarjetas de resumen */}
+        {me && (
+          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#071726]/5">
+                  <Calendar className="h-5 w-5 text-[#071726]" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#071726]">{todayAppointments.length}</p>
+                  <p className="text-xs text-slate-500">Citas hoy</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
+                  <Clock className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#071726]">{freeToday}</p>
+                  <p className="text-xs text-slate-500">Huecos libres hoy</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50">
+                  <CheckCircle2 className="h-5 w-5 text-sky-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#071726]">{upcomingAppointments.length}</p>
+                  <p className="text-xs text-slate-500">Próximas citas</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Citas de hoy */}
+        <section className="mb-8 rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold text-[#071726]">Agenda de hoy</h2>
+            <button
+              onClick={load}
+              className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Actualizar
+            </button>
+          </div>
+
+          {todayAppointments.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
+              <p className="text-sm text-slate-400">Sin citas programadas para hoy.</p>
+              <button
+                onClick={() => setShowModal(true)}
+                disabled={!me}
+                className="mt-4 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-40"
+              >
+                Agendar primera cita del día
+              </button>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3">
+              {todayAppointments.map((appt) => {
+                const payment = appt.payments[0];
+                return (
+                  <div
+                    key={appt.id}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
+                  >
+                    <div>
+                      <p className="font-semibold text-[#071726]">{appt.patient.user.name}</p>
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        {new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(
+                          new Date(appt.availabilitySlot.startsAt)
+                        )}
+                        {payment ? ` · ${payment.provider === "CASH" ? "Efectivo" : payment.provider === "TRANSFER" ? "Transferencia" : "En línea"}` : ""}
+                      </p>
+                    </div>
+                    <StatusBadge status={appt.status} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Próximas citas */}
+        {upcomingAppointments.length > 0 && (
+          <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-[#071726]">Próximas citas</h2>
+            <div className="mt-5 grid gap-3">
+              {upcomingAppointments.map((appt) => (
+                <div
+                  key={appt.id}
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
+                >
+                  <div>
+                    <p className="font-semibold text-[#071726]">{appt.patient.user.name}</p>
+                    <p className="mt-0.5 text-sm text-slate-500">{dateTime(appt.availabilitySlot.startsAt)}</p>
+                  </div>
+                  <StatusBadge status={appt.status} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Branding */}
+        <p className="mt-12 text-center text-xs text-slate-400">
+          VITAEON · Panel de asistente médico · Acceso restringido
+        </p>
+      </div>
+
+      {/* Modal nueva cita */}
+      {showModal && me && (
+        <NewAppointmentModal
+          slots={slots}
+          doctorName={me.doctor.fullName}
+          priceCents={me.doctor.consultationPriceCents}
+          onClose={() => setShowModal(false)}
+          onCreated={() => {
+            setShowModal(false);
+            setMessage("✓ Cita creada correctamente. El paciente recibió una notificación por correo.");
+            void load();
+          }}
+        />
+      )}
+    </main>
+  );
+}

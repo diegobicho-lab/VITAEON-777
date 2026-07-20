@@ -8,9 +8,23 @@ import { availabilityRepeatRevertSchema, availabilitySlotSchema, availabilitySlo
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "DOCTOR") return fail("FORBIDDEN", "Solo médicos pueden ver su agenda.", 403);
+  if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver la agenda.", 401);
 
-  const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
+  let doctor = null;
+
+  if (user.role === "DOCTOR") {
+    doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
+  } else if (user.role === "ASSISTANT") {
+    // Asistente: cargar el médico vinculado
+    const link = await prisma.doctorAssistant.findUnique({
+      where: { userId: user.id },
+      include: { doctor: true }
+    });
+    doctor = link?.doctor ?? null;
+  } else {
+    return fail("FORBIDDEN", "Solo médicos o asistentes pueden ver la agenda.", 403);
+  }
+
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
   if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 

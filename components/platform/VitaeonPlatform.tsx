@@ -763,6 +763,10 @@ export default function VitaeonPlatform() {
         window.setTimeout(() => {
           window.location.href = "/dashboard/doctor";
         }, 120);
+      } else if (signedUser.role === "ASSISTANT") {
+        window.setTimeout(() => {
+          window.location.href = "/dashboard/assistant";
+        }, 120);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible iniciar sesión.");
@@ -1540,7 +1544,7 @@ export default function VitaeonPlatform() {
 
 function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin: () => void; onLogout: () => void }) {
   const dashboardPath = user
-    ? `/dashboard/${user.role === "DOCTOR" ? "doctor" : user.role === "ADMIN" || user.role === "STAFF" ? "admin" : "patient"}`
+    ? `/dashboard/${user.role === "DOCTOR" ? "doctor" : user.role === "ADMIN" || user.role === "STAFF" ? "admin" : user.role === "ASSISTANT" ? "assistant" : "patient"}`
     : null;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

@@ -4,7 +4,8 @@ const permissions = {
   PATIENT: ["appointments:read:own", "appointments:create", "profile:update:own"],
   DOCTOR: ["appointments:read:assigned", "availability:update:own", "doctor-profile:update:own"],
   STAFF: ["appointments:read", "appointments:update", "patients:read:limited"],
-  ADMIN: ["*"]
+  ADMIN: ["*"],
+  ASSISTANT: ["appointments:read:assigned", "appointments:create:behalf", "availability:read:assigned"]
 } satisfies Record<Role, string[]>;
 
 export function can(role: Role, permission: string) {

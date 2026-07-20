@@ -12,6 +12,7 @@ enum Role {
   DOCTOR
   ADMIN
   STAFF
+  ASSISTANT
 }
 
 enum AppointmentStatus {
@@ -109,6 +110,7 @@ model User {
   isActive             Boolean               @default(true)
   patient              Patient?
   doctor               Doctor?
+  assistant            DoctorAssistant?
   marketplaceListing   MarketplaceListing?
   auditLogs            AuditLog[]            @relation("AuditActor")
   sentMessages         MedicalChatMessage[]
@@ -206,6 +208,7 @@ model Doctor {
   prescriptionTemplate        PrescriptionTemplate?
   prescriptions               Prescription[]
   additionalLocations         DoctorLocation[]
+  assistants                  DoctorAssistant[]
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -613,4 +616,17 @@ model AuditLog {
 
   @@index([actorUserId, createdAt])
   @@index([action, createdAt])
+}
+
+/// Vincula una cuenta ASSISTANT a su médico empleador.
+/// Un doctor puede tener hasta un asistente activo; un asistente pertenece a un solo médico.
+model DoctorAssistant {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([doctorId])
 }
