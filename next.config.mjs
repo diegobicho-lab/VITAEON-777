@@ -6,7 +6,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  // Stripe JS + Vercel Analytics (script CDN como fallback)
+  // 'unsafe-inline' es requerido por Next.js 15 App Router: el runtime inyecta
+  // scripts de hidratación (__NEXT_DATA__, inline chunks) que no tienen nonce.
+  // Eliminarlo sin implementar nonce-based CSP (middleware → layout → script tag)
+  // rompe la app completa. Tarea futura: implementar nonce CSP cuando Next.js
+  // exponga una API oficial para ello, o migrar a una solución de streaming pura.
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   // Imágenes propias + Supabase storage para fotos de médicos

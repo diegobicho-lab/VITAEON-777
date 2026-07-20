@@ -45,6 +45,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies();
+  // sameSite: "lax" — NO cambiar a "strict".
+  // Stripe redirige al usuario de vuelta al sitio tras el pago (cross-site navigation).
+  // Con "strict" el navegador no envía la cookie en ese redirect, dejando al usuario
+  // sin sesión justo al completar una suscripción. "lax" es el mínimo seguro viable
+  // mientras se use Stripe Checkout con redirect. Si en el futuro se migra a
+  // Stripe Elements (pago embebido sin redirect), se puede subir a "strict".
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
