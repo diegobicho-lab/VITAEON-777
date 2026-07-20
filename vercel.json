@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/auto-cancel",
-      "schedule": "0 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/expire-subscriptions",
@@ -10,4 +10,3 @@
     }
   ]
 }
-
