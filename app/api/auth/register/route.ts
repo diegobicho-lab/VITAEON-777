@@ -83,7 +83,7 @@ export async function POST(request: Request) {
           consultationPriceCents: 0,
           consultationDurationMinutes: 45,
           verificationStatus: VerificationStatus.UNVERIFIED,
-          medal: parsed.data.medal ? MedicalMedal[parsed.data.medal] : MedicalMedal.oro
+          medal: MedicalMedal.oro // plan is assigned by Stripe webhook after payment, not at registration
         }
       });
     }

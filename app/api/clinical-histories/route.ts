@@ -4,6 +4,7 @@ import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
+import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 import { clinicalHistoryUpsertSchema } from "@/lib/validation/schemas";
 
 const activeAppointmentStatuses = [
@@ -33,6 +34,57 @@ const includeClinicalHistory = {
   appointment: { include: { availabilitySlot: true } }
 };
 
+// ── PHI encryption helpers ───────────────────────────────────────────────────
+
+/** Fields that contain protected health information and must be encrypted at rest. */
+const CLINICAL_PHI_FIELDS = [
+  "identificationCard",
+  "ethnicGroup",
+  "consultationReason",
+  "hereditaryFamilyHistory",
+  "nonPathologicalHistory",
+  "pathologicalHistory",
+  "surgicalHistory",
+  "fractureHistory",
+  "gynecoObstetricHistory",
+  "currentCondition",
+  "systemsReview",
+  "physicalExam",
+  "labsAndImaging",
+  "diagnosis",
+  "treatment",
+  "diagnosesOrClinicalProblems",
+  "therapeuticIndication",
+  "plan",
+  "prognosis",
+  "healthStatus",
+  "additionalMedicalNotes"
+] as const;
+
+type ClinicalPhiKey = (typeof CLINICAL_PHI_FIELDS)[number];
+
+/** Seals all PHI fields with AES-256-GCM before writing to the database. */
+function sealClinicalHistory(
+  data: Record<ClinicalPhiKey, string>
+): Record<ClinicalPhiKey, string | null> {
+  return Object.fromEntries(
+    CLINICAL_PHI_FIELDS.map((k) => [k, sealSensitiveText(data[k])])
+  ) as Record<ClinicalPhiKey, string | null>;
+}
+
+/** Decrypts all PHI fields on a record returned from the database.
+ *  Backwards-compatible: plaintext records (written before encryption was enabled)
+ *  are returned as-is by openSensitiveText. */
+function openClinicalHistory<T extends Record<string, unknown>>(history: T): T {
+  const decrypted: Record<string, unknown> = {};
+  for (const key of CLINICAL_PHI_FIELDS) {
+    decrypted[key] = openSensitiveText(history[key] as string | null);
+  }
+  return { ...history, ...decrypted };
+}
+
+// ── Handlers ─────────────────────────────────────────────────────────────────
+
 export async function GET(request: Request) {
   const session = await getAmatistaDoctor();
   if (session.error) return session.error;
@@ -59,7 +111,7 @@ export async function GET(request: Request) {
     take: 30
   });
 
-  return ok(histories);
+  return ok(histories.map(openClinicalHistory));
 }
 
 export async function POST(request: Request) {
@@ -84,8 +136,8 @@ export async function POST(request: Request) {
   });
   if (!appointment) return fail("APPOINTMENT_NOT_FOUND", "La cita activa no pertenece a este médico y paciente.", 404);
 
-  const historyData = {
-    appointmentId: parsed.data.appointmentId,
+  // Seal PHI fields with AES-256-GCM before persisting to the database.
+  const sealedPhi = sealClinicalHistory({
     identificationCard: parsed.data.identificationCard,
     ethnicGroup: parsed.data.ethnicGroup,
     consultationReason: parsed.data.consultationReason,
@@ -107,6 +159,11 @@ export async function POST(request: Request) {
     prognosis: parsed.data.prognosis,
     healthStatus: parsed.data.healthStatus,
     additionalMedicalNotes: parsed.data.additionalMedicalNotes
+  });
+
+  const historyData = {
+    appointmentId: parsed.data.appointmentId,
+    ...sealedPhi
   };
 
   // Siempre buscar por cita exacta — nunca sobrescribir el historial de otra consulta
@@ -141,5 +198,6 @@ export async function POST(request: Request) {
     metadata: { appointmentId: history.appointmentId, patientId: history.patientId }
   });
 
-  return ok(history, { status: 201 });
+  // Decrypt before returning so the client receives readable values.
+  return ok(openClinicalHistory(history), { status: 201 });
 }

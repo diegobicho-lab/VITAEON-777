@@ -160,6 +160,10 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  // Images are private medical assets — require an authenticated session.
+  const user = await getCurrentUser();
+  if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para acceder a imágenes.", 401);
+
   const { supabaseUrl, serviceRoleKey, bucket, basePath } = getStorageConfig();
   if (!supabaseUrl || !serviceRoleKey) return fail("STORAGE_NOT_CONFIGURED", "Storage no configurado.", 503);
 

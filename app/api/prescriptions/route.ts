@@ -4,6 +4,7 @@ import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
+import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 import { prescriptionUpsertSchema } from "@/lib/validation/schemas";
 
 const activeAppointmentStatuses = [
@@ -34,6 +35,48 @@ const includePrescription = {
   template: true
 };
 
+// ── PHI encryption helpers ───────────────────────────────────────────────────
+
+/** Fields that contain protected health information and must be encrypted at rest. */
+const PRESCRIPTION_PHI_FIELDS = [
+  "diagnosis",
+  "medicationInstructions",
+  "dosage",
+  "frequency",
+  "duration",
+  "generalRecommendations",
+  "additionalNotes"
+] as const;
+
+type PrescriptionPhiKey = (typeof PRESCRIPTION_PHI_FIELDS)[number];
+
+type PrescriptionPhiInput = Record<PrescriptionPhiKey, string> & { patientAge: string };
+
+/** Seals all PHI fields with AES-256-GCM before writing to the database. */
+function sealPrescriptionData(data: PrescriptionPhiInput): Record<PrescriptionPhiKey | "patientAge", string | null> {
+  return {
+    patientAge: sealSensitiveText(data.patientAge),
+    ...Object.fromEntries(
+      PRESCRIPTION_PHI_FIELDS.map((k) => [k, sealSensitiveText(data[k])])
+    ) as Record<PrescriptionPhiKey, string | null>
+  };
+}
+
+/** Decrypts all PHI fields on a record returned from the database.
+ *  Backwards-compatible: plaintext records written before encryption was enabled
+ *  are returned as-is by openSensitiveText. */
+function openPrescription<T extends Record<string, unknown>>(prescription: T): T {
+  const decrypted: Record<string, unknown> = {
+    patientAge: openSensitiveText(prescription.patientAge as string | null)
+  };
+  for (const key of PRESCRIPTION_PHI_FIELDS) {
+    decrypted[key] = openSensitiveText(prescription[key] as string | null);
+  }
+  return { ...prescription, ...decrypted };
+}
+
+// ── Handlers ─────────────────────────────────────────────────────────────────
+
 export async function GET(request: Request) {
   const session = await getAmatistaDoctor();
   if (session.error) return session.error;
@@ -60,7 +103,7 @@ export async function GET(request: Request) {
     take: 30
   });
 
-  return ok(prescriptions);
+  return ok(prescriptions.map(openPrescription));
 }
 
 export async function POST(request: Request) {
@@ -93,7 +136,8 @@ export async function POST(request: Request) {
     if (!template) return fail("TEMPLATE_NOT_FOUND", "El recetario seleccionado no pertenece a este médico.", 404);
   }
 
-  const prescriptionData = {
+  // Seal PHI fields with AES-256-GCM before persisting to the database.
+  const sealedData = sealPrescriptionData({
     patientAge: parsed.data.patientAge,
     diagnosis: parsed.data.diagnosis,
     medicationInstructions: parsed.data.medicationInstructions,
@@ -101,7 +145,11 @@ export async function POST(request: Request) {
     frequency: parsed.data.frequency,
     duration: parsed.data.duration,
     generalRecommendations: parsed.data.generalRecommendations,
-    additionalNotes: parsed.data.additionalNotes,
+    additionalNotes: parsed.data.additionalNotes
+  });
+
+  const prescriptionData = {
+    ...sealedData,
     templateId: parsed.data.templateId ?? null
   };
 
@@ -134,5 +182,6 @@ export async function POST(request: Request) {
     metadata: { appointmentId: prescription.appointmentId, patientId: prescription.patientId }
   });
 
-  return ok(prescription, { status: 201 });
+  // Decrypt before returning so the client receives readable values.
+  return ok(openPrescription(prescription), { status: 201 });
 }

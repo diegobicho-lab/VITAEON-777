@@ -21,8 +21,7 @@ export const registerSchema = z.object({
   password: z.string().min(10).max(128),
   name: z.string().min(3).max(120),
   role: z.enum(["PATIENT", "DOCTOR"]).default("PATIENT"),
-  phone: z.string().min(8).max(30).optional(),
-  medal: z.enum(["oro", "obsidiana", "diamante", "amatista"]).optional()
+  phone: z.string().min(8).max(30).optional()
 });
 
 export const appointmentCreateSchema = z.object({
@@ -175,7 +174,6 @@ export const doctorProfileUpdateSchema = z.object({
   consultationPriceCents: z.number().int().min(0).max(2500000).optional(),
   consultationDurationMinutes: z.number().int().min(15).max(180).optional(),
   professionalLicense: z.string().min(4).max(80).optional(),
-  medal: z.enum(["oro", "obsidiana", "diamante", "amatista"]).optional(),
   achievements: z.array(z.string().min(3).max(160)).max(8).optional(),
   certifications: z.array(z.string().min(3).max(160)).max(12).optional(),
   legalDeclarationAccepted: z.boolean().optional()

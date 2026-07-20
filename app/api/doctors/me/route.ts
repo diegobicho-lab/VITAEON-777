@@ -121,8 +121,16 @@ export async function PATCH(request: Request) {
     if (!hospital) return fail("HOSPITAL_NOT_FOUND", "El hospital o clínica seleccionado no existe.", 404);
   }
 
-  const { affiliateCode, ...doctorData } = parsed.data;
-  const updateData = { ...doctorData };
+  const { affiliateCode } = parsed.data;
+
+  // Build updateData from the explicit profileFields allowlist — never spread all
+  // parsed data.  Any admin-only field added to the schema (medal, subscriptionStatus,
+  // etc.) must NOT appear here and therefore cannot be self-served by the doctor.
+  const updateData: Record<string, unknown> = {};
+  for (const key of [...profileFields, "legalDeclarationAccepted"]) {
+    const val = (parsed.data as Record<string, unknown>)[key];
+    if (val !== undefined) updateData[key] = val;
+  }
 
   if (affiliateCode) {
     // Each participating doctor receives a unique campaign code from the VITAEON

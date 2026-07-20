@@ -30,22 +30,37 @@ export async function GET(request: NextRequest) {
   try {
     const gracePeriodEnd = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
 
-    // Find subscriptions whose period has expired (with grace period applied).
-    const expiredPayments = await prisma.subscriptionPayment.findMany({
-      where: {
-        currentPeriodEnd: { lt: gracePeriodEnd },
-        status: "PAID"
-      },
+    // Collect all currently-ACTIVE doctors so we only touch the right set.
+    const activeDoctors = await prisma.doctor.findMany({
+      where: { subscriptionStatus: SubscriptionStatus.ACTIVE },
       select: { userId: true }
     });
 
-    if (expiredPayments.length === 0) {
+    if (activeDoctors.length === 0) {
       return ok({ expiredCount: 0, ranAt: new Date().toISOString() });
     }
 
-    const expiredUserIds = [...new Set(expiredPayments.map((p) => p.userId))];
+    // For each ACTIVE doctor, look at their MOST RECENT paid payment only.
+    // Checking any old paid row (the previous bug) would falsely expire doctors
+    // who have already renewed — their latest payment's currentPeriodEnd is still valid.
+    const expiredUserIds: string[] = [];
+    for (const { userId } of activeDoctors) {
+      if (!userId) continue; // orphaned Doctor row (user deleted with SetNull) — skip
+      const latestPaid = await prisma.subscriptionPayment.findFirst({
+        where: { userId, status: "PAID" },
+        orderBy: { currentPeriodEnd: "desc" },
+        select: { currentPeriodEnd: true }
+      });
+      if (latestPaid?.currentPeriodEnd && latestPaid.currentPeriodEnd < gracePeriodEnd) {
+        expiredUserIds.push(userId);
+      }
+    }
 
-    // Only downgrade doctors who are still marked ACTIVE.
+    if (expiredUserIds.length === 0) {
+      return ok({ expiredCount: 0, ranAt: new Date().toISOString() });
+    }
+
+    // Downgrade only the doctors whose latest subscription period has truly ended.
     const result = await prisma.doctor.updateMany({
       where: {
         userId: { in: expiredUserIds },
