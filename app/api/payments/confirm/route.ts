@@ -4,8 +4,12 @@ import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getStripe } from "@/lib/payments/stripe";
+import { rateLimitByIp } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
+  const limit = await rateLimitByIp("payments:confirm", { limit: 10, windowMs: 60_000 });
+  if (!limit.allowed) return fail("RATE_LIMITED", "Demasiados intentos de confirmación. Intenta de nuevo en un momento.", 429);
+
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para confirmar el pago.", 401);
   if (user.role !== "PATIENT") return fail("FORBIDDEN", "Solo pacientes pueden confirmar pagos de sus citas.", 403);

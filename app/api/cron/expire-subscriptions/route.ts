@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error("[Cron expire-subscriptions] CRON_SECRET env var not set.");
-    return fail("CRON_NOT_CONFIGURED", "Cron endpoint not configured.", 500);
+    // Return 401 — same as a wrong secret so we don't leak that the var is missing.
+    return fail("UNAUTHORIZED", "Invalid cron secret.", 401);
   }
 
   if (authHeader !== `Bearer ${cronSecret}`) {

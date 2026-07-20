@@ -134,9 +134,17 @@ export async function PATCH(request: Request) {
 
   if (affiliateCode) {
     // Each participating doctor receives a unique campaign code from the VITAEON
-    // team.  The code is stored per-doctor in env vars (AFFILIATE_CODE_<LAST4>)
-    // or falls back to the legacy single-doctor code for backward compatibility.
-    const authorizedCode = process.env.SUSANA_AFFILIATE_CODE ?? "SUSANA-VITAEON-35";
+    // team.  The code is stored per-doctor in env vars (e.g. SUSANA_AFFILIATE_CODE).
+    // NEVER fall back to a hardcoded code — if the var is absent, reject the request
+    // so we don't silently authorize campaigns that weren't intentionally configured.
+    const authorizedCode = process.env.SUSANA_AFFILIATE_CODE;
+    if (!authorizedCode) {
+      return fail(
+        "AFFILIATE_NOT_CONFIGURED",
+        "Los códigos de afiliación no están configurados en este entorno.",
+        503
+      );
+    }
     if (affiliateCode !== authorizedCode) {
       return fail(
         "AFFILIATE_CODE_NOT_AUTHORIZED",

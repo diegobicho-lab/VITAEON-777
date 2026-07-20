@@ -93,8 +93,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Generar contraseña temporal segura
-  const tempPassword = `Vit-${randomBytes(4).toString("hex")}`;
+  // Generar contraseña temporal segura — 16 bytes = 128 bits de entropía.
+  const tempPassword = `Vit-${randomBytes(16).toString("hex")}`;
   const passwordHash = await bcrypt.hash(tempPassword, 12);
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
 

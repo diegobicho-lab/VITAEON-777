@@ -1,6 +1,19 @@
 export type Role = "PATIENT" | "DOCTOR" | "ADMIN" | "STAFF" | "ASSISTANT";
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REFUNDED";
+export type AppointmentStatus =
+  | "PENDING"
+  | "PENDING_DOCTOR_ACCEPTANCE"
+  | "ACCEPTED"
+  | "CONFIRMED"
+  | "AUTO_CANCELLED"
+  | "CANCELLED"
+  | "COMPLETED"
+  | "NO_SHOW"
+  | "RESCHEDULE_REQUESTED"
+  | "RESCHEDULED"
+  | "CANCELLATION_REQUESTED"
+  | "REFUND_PENDING"
+  | "REFUNDED";
 
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 

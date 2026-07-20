@@ -105,6 +105,14 @@ async function sendViaSmtp(payload: EmailPayload) {
   const port = Number(process.env.SMTP_PORT ?? 587);
   if (!host || !port) throw new Error("SMTP_NOT_CONFIGURED");
 
+  // EHLO hostname: configurable via EMAIL_EHLO_HOSTNAME or derived from APP_URL.
+  // Never hard-code "vitaeon.local" — some SMTP servers reject non-routable domains.
+  const appHost = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "")
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]
+    .split(":")[0];
+  const ehloHostname = process.env.EMAIL_EHLO_HOSTNAME ?? (appHost || "localhost");
+
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
   let socket: net.Socket | tls.TLSSocket = secure
     ? tls.connect({ host, port, servername: host })
@@ -114,14 +122,14 @@ async function sendViaSmtp(payload: EmailPayload) {
   let readResponse = createReader(socket);
   await readResponse();
 
-  await sendCommand(socket, readResponse, "EHLO vitaeon.local");
+  await sendCommand(socket, readResponse, `EHLO ${ehloHostname}`);
 
   if (!secure && process.env.SMTP_STARTTLS !== "false") {
     await sendCommand(socket, readResponse, "STARTTLS");
     socket = tls.connect({ socket, servername: host });
     await waitForSocket(socket, "secureConnect");
     readResponse = createReader(socket);
-    await sendCommand(socket, readResponse, "EHLO vitaeon.local");
+    await sendCommand(socket, readResponse, `EHLO ${ehloHostname}`);
   }
 
   if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {

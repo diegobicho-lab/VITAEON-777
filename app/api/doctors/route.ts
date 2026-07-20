@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { publicDoctorWhere } from "@/lib/doctors/public-doctor-filter";
 import { ok, fail } from "@/lib/api-response";
+import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { doctorSearchSchema } from "@/lib/validation/schemas";
 
 const medalPriority = {
@@ -49,6 +50,9 @@ function expandSearchTerms(query?: string) {
 const DOCTOR_SEARCH_LIMIT = 120;
 
 export async function GET(request: Request) {
+  const limit = await rateLimitByIp("doctors:search", { limit: 60, windowMs: 60_000 });
+  if (!limit.allowed) return fail("RATE_LIMITED", "Demasiadas búsquedas. Intenta de nuevo en un momento.", 429);
+
   const { searchParams } = new URL(request.url);
   const parsed = doctorSearchSchema.safeParse(Object.fromEntries(searchParams.entries()));
   if (!parsed.success) return fail("VALIDATION_ERROR", "Filtros inválidos.", 422, parsed.error.flatten());

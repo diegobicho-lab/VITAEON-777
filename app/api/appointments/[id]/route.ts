@@ -12,6 +12,18 @@ import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText } from "@/lib/security/crypto";
 import { appointmentUpdateSchema } from "@/lib/validation/schemas";
 
+/**
+ * Returns the doctorId linked to an ASSISTANT user, or null if not found.
+ * Used to scope appointment queries so an ASSISTANT can only see their doctor's appointments.
+ */
+async function resolveAssistantDoctorId(userId: string): Promise<string | null> {
+  const link = await prisma.doctorAssistant.findUnique({
+    where: { userId },
+    select: { doctorId: true }
+  });
+  return link?.doctorId ?? null;
+}
+
 type AppointmentAction =
   | "ACCEPT"
   | "COMPLETE"
@@ -139,6 +151,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver la cita.", 401);
 
+  // ASSISTANT: resolve linked doctor so we can filter to that doctor's appointments only.
+  const assistantDoctorId = user.role === "ASSISTANT" ? await resolveAssistantDoctorId(user.id) : null;
+
   const { id } = await params;
   const appointment = await prisma.appointment.findFirst({
     where: {
@@ -147,7 +162,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         ? { patient: { userId: user.id } }
         : user.role === "DOCTOR"
           ? { doctor: { userId: user.id } }
-          : {})
+          : user.role === "ASSISTANT"
+            ? assistantDoctorId
+              ? { doctorId: assistantDoctorId }
+              : { id: "no-results" } // ASSISTANT without a linked doctor sees nothing
+            : {}) // ADMIN / STAFF: no filter
     },
     include: {
       patient: { include: { user: true } },
@@ -183,6 +202,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const action = parsed.data.action ?? legacyAction(user.role, parsed.data.status, Boolean(parsed.data.availabilitySlotId));
   if (!action) return fail("ACTION_REQUIRED", "Selecciona una acción válida para la cita.", 422);
 
+  // ASSISTANT: resolve linked doctor for scoped filtering. All write actions will
+  // still fail the role-specific checks below, but defense-in-depth requires us to
+  // filter the lookup too.
+  const assistantDoctorId = user.role === "ASSISTANT" ? await resolveAssistantDoctorId(user.id) : null;
+
   const { id } = await params;
   const appointment = await prisma.appointment.findFirst({
     where: {
@@ -191,7 +215,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ? { patient: { userId: user.id } }
         : user.role === "DOCTOR"
           ? { doctor: { userId: user.id } }
-          : {})
+          : user.role === "ASSISTANT"
+            ? assistantDoctorId
+              ? { doctorId: assistantDoctorId }
+              : { id: "no-results" }
+            : {}) // ADMIN / STAFF: no filter
     },
     include: {
       payments: true,
