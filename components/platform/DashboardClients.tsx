@@ -1507,6 +1507,36 @@ export function DoctorDashboardClient() {
     }
   }
 
+  async function exportClinicalHistoryPdf() {
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    const history = appointment ? clinicalHistories.find((item) => item.patientId === appointment.patient.id) : undefined;
+    if (!appointment || !history) {
+      setClinicalStatus("Guarda la historia clínica antes de exportar el PDF.");
+      return;
+    }
+    setClinicalStatus("Generando PDF con IA... esto puede tomar unos segundos.");
+    try {
+      const response = await fetch(`/api/clinical-histories/${history.id}/export`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(err?.error?.message ?? "No fue posible generar el PDF.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = (appointment.patient.user.name ?? "paciente").replace(/\s+/g, "-");
+      a.download = `historial-${safeName}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setClinicalStatus("PDF generado y descargado correctamente.");
+    } catch (error) {
+      setClinicalStatus(error instanceof Error ? error.message : "Error al generar el PDF.");
+    }
+  }
+
   function printClinicalHistory() {
     const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
     if (!appointment) {
@@ -2377,6 +2407,8 @@ export function DoctorDashboardClient() {
                   onOpenHistory={openClinicalHistory}
                   onSave={saveClinicalHistory}
                   onPrint={printClinicalHistory}
+                  isAmatista={amatistaToolsEnabled}
+                  onExportPdf={exportClinicalHistoryPdf}
                 />
               )}
 
@@ -3180,7 +3212,9 @@ function AmatistaClinicalHistoryPanel({
   onSelectAppointment,
   onOpenHistory,
   onSave,
-  onPrint
+  onPrint,
+  isAmatista,
+  onExportPdf
 }: {
   appointments: Appointment[];
   histories: ClinicalHistoryRecord[];
@@ -3196,9 +3230,21 @@ function AmatistaClinicalHistoryPanel({
   onOpenHistory: (history: ClinicalHistoryRecord) => void;
   onSave: () => void;
   onPrint: () => void;
+  isAmatista: boolean;
+  onExportPdf: () => Promise<void>;
 }) {
+  const [exporting, setExporting] = useState(false);
   const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
   const selectedHistory = selectedAppointment ? histories.find((history) => history.patientId === selectedAppointment.patient.id) : undefined;
+
+  async function handleExportPdf() {
+    setExporting(true);
+    try {
+      await onExportPdf();
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <section className="dashboard-card rounded-[1.75rem] border-silver/70">
@@ -3296,7 +3342,19 @@ function AmatistaClinicalHistoryPanel({
             <button onClick={onSave} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">
               {selectedHistory ? "Actualizar historia clínica" : "Guardar historia clínica"}
             </button>
-            <button onClick={onPrint} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Descargar / imprimir</button>
+            <button onClick={onPrint} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">
+              Imprimir
+            </button>
+            {isAmatista && (
+              <button
+                onClick={handleExportPdf}
+                disabled={exporting || !selectedHistory}
+                className="rounded-full bg-medical px-5 py-3 font-semibold text-white disabled:opacity-50"
+                title={!selectedHistory ? "Guarda la historia clínica antes de exportar" : ""}
+              >
+                {exporting ? "Generando PDF..." : "Exportar PDF con IA"}
+              </button>
+            )}
           </div>
         </div>
       </div>
