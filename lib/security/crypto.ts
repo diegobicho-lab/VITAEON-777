@@ -63,7 +63,14 @@ export function openSensitiveText(value?: string | null) {
   if (!value) return null;
 
   if (value.startsWith("enc:v1:")) {
-    return decryptSensitiveText(value.slice("enc:v1:".length));
+    try {
+      return decryptSensitiveText(value.slice("enc:v1:".length));
+    } catch {
+      // Encrypted with a different key (e.g. dev seed data or rotated key).
+      // Return null rather than crashing — callers treat null as "not provided".
+      console.warn("[crypto] openSensitiveText: decryption failed (wrong key or corrupted data)");
+      return null;
+    }
   }
 
   if (value.startsWith("dev:v1:")) {
