@@ -107,6 +107,9 @@ export async function PATCH(request: Request) {
   const parsed = verificationReviewSchema.safeParse(body);
   if (!parsed.success) return fail("VALIDATION_ERROR", "Revisión inválida.", 422, parsed.error.flatten());
 
+  const existing = await prisma.medicalVerification.findUnique({ where: { id: parsed.data.verificationId } });
+  if (!existing) return fail("VERIFICATION_NOT_FOUND", "No se encontró la verificación.", 404);
+
   const verification = await prisma.medicalVerification.update({
     where: { id: parsed.data.verificationId },
     data: {

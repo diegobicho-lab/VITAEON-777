@@ -967,6 +967,7 @@ export function DoctorDashboardClient() {
 
   async function load(month = calendarMonth) {
     setLoading(true);
+    try {
     const [doctor, appointmentData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
       clientApi<DoctorProfile>("/api/doctors/me"),
       clientApi<Appointment[]>("/api/appointments"),
@@ -1027,14 +1028,15 @@ export function DoctorDashboardClient() {
     /* Mostrar wizard si el perfil está incompleto (médico recién registrado) */
     const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
     setShowWizard(profileIncomplete);
-    setLoading(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible cargar el panel médico.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    load().catch((error) => {
-      setMessage(error instanceof Error ? error.message : "No fue posible cargar el panel médico.");
-      setLoading(false);
-    });
+    load();
     // La carga inicial debe correr una sola vez; los cambios de mes refrescan la agenda desde el calendario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

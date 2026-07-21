@@ -6,7 +6,11 @@ import { Redis } from "@upstash/redis";
  * All server-side code that needs Redis (rate-limiting, webhook idempotency, etc.)
  * should import from here so we keep one connection pool.
  */
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!
-});
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (!redisUrl || !redisToken) {
+  throw new Error("UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required — add them to .env.local or Vercel env vars");
+}
+
+export const redis = new Redis({ url: redisUrl, token: redisToken });

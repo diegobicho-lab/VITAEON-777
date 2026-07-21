@@ -78,6 +78,13 @@ export async function POST(request: Request) {
     console.error("[Stripe webhook] Redis idempotency check failed — processing anyway:", redisError);
   }
 
+  // ── Event dispatch ───────────────────────────────────────────────────────────
+  // Each block is wrapped in try-catch so a single P2025 or DB timeout does not
+  // cause a 500 → Stripe retry storm. The idempotency key is already set, so if
+  // we return ok() after a caught error we at least stop the 72-h retry cycle
+  // and log the failure for investigation.
+  try {
+
   if (event.type === "payment_intent.succeeded" || event.type === "payment_intent.payment_failed") {
     const intent = event.data.object as Stripe.PaymentIntent;
     const paymentId = intent.metadata.paymentId;
@@ -548,6 +555,12 @@ export async function POST(request: Request) {
         });
       }
     }
+  }
+
+  } catch (dispatchError) {
+    // Log the error but still return 200 to prevent Stripe from retrying an
+    // event that was already marked as processed in the idempotency store.
+    console.error(`[Stripe webhook] Unhandled error processing event ${event.id} (${event.type}):`, dispatchError);
   }
 
   return ok({ received: true });

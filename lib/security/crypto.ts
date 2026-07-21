@@ -24,7 +24,7 @@ export function encryptSensitiveText(value: string) {
   return Buffer.concat([iv, tag, encrypted]).toString("base64");
 }
 
-export function decryptSensitiveText(payload: string) {
+function decryptSensitiveText(payload: string) {
   const buffer = Buffer.from(payload, "base64");
   const iv = buffer.subarray(0, IV_LENGTH);
   const tag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);

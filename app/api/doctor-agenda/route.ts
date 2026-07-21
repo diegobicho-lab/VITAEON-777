@@ -18,10 +18,18 @@ export async function GET(request: Request) {
   if (!doctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
   if (doctor.medal === MedicalMedal.obsidiana) return fail("OBSIDIAN_PROFILE_ONLY", "Obsidiana usa un panel comercial independiente.", 403);
 
-  await autoCancelExpiredAppointments();
+  // Fire-and-forget — does not block the agenda response (BUG-05/16).
+  void autoCancelExpiredAppointments().catch((err) => console.error("[doctor-agenda] auto-cancel error:", err));
 
   const now = new Date();
   const monthParam = requestUrl.searchParams.get("month");
+
+  // Validate month format before using it (BUG-04/17).
+  const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
+  if (monthParam && !MONTH_REGEX.test(monthParam)) {
+    return fail("INVALID_MONTH", "Formato de mes inválido. Usa YYYY-MM.", 422);
+  }
+
   const monthStart = monthParam ? new Date(`${monthParam}-01T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
   const startsAt = new Date(monthStart);
   startsAt.setDate(startsAt.getDate() - startsAt.getDay());

@@ -28,7 +28,7 @@ export async function GET() {
   const conversations = await prisma.medicalConversation.findMany({
     where:
       user.role === "DOCTOR"
-        ? { OR: [{ createdByDoctorId: doctor!.id }, { recipientDoctorId: doctor!.id }] }
+        ? { OR: [{ createdByDoctorId: doctor?.id }, { recipientDoctorId: doctor?.id }] }
         : {},
     include: {
       createdByDoctor: { select: { id: true, fullName: true, specialty: true } },
@@ -101,7 +101,8 @@ export async function POST(request: Request) {
         data: {
           conversationId: created.id,
           senderUserId: user.id,
-          body: sealSensitiveText(parsed.data.initialMessage) ?? ""
+          // initialMessage is validated min(1) by schema and guarded by the if above — non-null is guaranteed.
+        body: sealSensitiveText(parsed.data.initialMessage)!
         }
       });
     }

@@ -90,6 +90,9 @@ export async function PATCH(request: Request) {
   const parsed = marketplaceStatusSchema.safeParse(body);
   if (!parsed.success) return fail("VALIDATION_ERROR", "Estado inválido para el directorio.", 422, parsed.error.flatten());
 
+  const existingListing = await prisma.marketplaceListing.findUnique({ where: { id: parsed.data.listingId } });
+  if (!existingListing) return fail("LISTING_NOT_FOUND", "No se encontró el directorio comercial.", 404);
+
   const listing = await prisma.marketplaceListing.update({
     where: { id: parsed.data.listingId },
     data: {

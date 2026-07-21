@@ -138,16 +138,21 @@ export async function POST(request: Request) {
   }
 
   // Seal PHI fields with AES-256-GCM before persisting to the database.
-  const sealedData = sealPrescriptionData({
-    patientAge: parsed.data.patientAge,
-    diagnosis: parsed.data.diagnosis,
-    medicationInstructions: parsed.data.medicationInstructions,
-    dosage: parsed.data.dosage,
-    frequency: parsed.data.frequency,
-    duration: parsed.data.duration,
-    generalRecommendations: parsed.data.generalRecommendations,
-    additionalNotes: parsed.data.additionalNotes
-  });
+  let sealedData: ReturnType<typeof sealPrescriptionData>;
+  try {
+    sealedData = sealPrescriptionData({
+      patientAge: parsed.data.patientAge,
+      diagnosis: parsed.data.diagnosis,
+      medicationInstructions: parsed.data.medicationInstructions,
+      dosage: parsed.data.dosage,
+      frequency: parsed.data.frequency,
+      duration: parsed.data.duration,
+      generalRecommendations: parsed.data.generalRecommendations,
+      additionalNotes: parsed.data.additionalNotes
+    });
+  } catch {
+    return fail("ENCRYPTION_FAILED", "No fue posible cifrar la receta. Verifica la configuración del servidor.", 500);
+  }
 
   const prescriptionData = {
     ...sealedData,

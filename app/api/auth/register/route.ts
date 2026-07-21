@@ -109,7 +109,8 @@ export async function POST(request: Request) {
   });
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
-  await sendTransactionalEmail({
+  // Fire-and-forget — email failure must not block registration or return a 500.
+  void sendTransactionalEmail({
     to: user.email,
     subject: `Bienvenido a VITAEON, ${user.name.split(" ")[0]}`,
     text:
@@ -137,12 +138,13 @@ export async function POST(request: Request) {
             emailButton("Buscar especialistas", appUrl)
           ].join("")
     )
-  });
+  }).catch((err) => console.error("[register] Failed to send welcome email:", err));
 
   if (user.role === Role.DOCTOR) {
     const admins = await prisma.user.findMany({ where: { role: Role.ADMIN, isActive: true }, select: { email: true } });
     const adminAppUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
-    await Promise.all(
+    // Fire-and-forget — admin notification failure must not block registration.
+    void Promise.all(
       admins.map((admin) =>
         sendTransactionalEmail({
           to: admin.email,
@@ -158,7 +160,7 @@ export async function POST(request: Request) {
           )
         })
       )
-    );
+    ).catch((err) => console.error("[register] Failed to send admin notification email:", err));
   }
 
   return ok(currentUser, { status: 201 });

@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db/prisma";
 import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createManyNotifications } from "@/lib/notifications/notifications";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
-import { sealSensitiveText } from "@/lib/security/crypto";
+import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 
 const assistantAppointmentSchema = z.object({
   patientId: z.string().min(1),         // Patient.id (no userId)
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
       }
     });
 
-    return ok(appointment, { status: 201 });
+    return ok({ ...appointment, reason: openSensitiveText(appointment.reason) }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "SLOT_UNAVAILABLE") {
       return fail("SLOT_UNAVAILABLE", "El horario ya no está disponible.", 409);

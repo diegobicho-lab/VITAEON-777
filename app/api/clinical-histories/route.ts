@@ -138,7 +138,9 @@ export async function POST(request: Request) {
   if (!appointment) return fail("APPOINTMENT_NOT_FOUND", "La cita activa no pertenece a este médico y paciente.", 404);
 
   // Seal PHI fields with AES-256-GCM before persisting to the database.
-  const sealedPhi = sealClinicalHistory({
+  let sealedPhi: ReturnType<typeof sealClinicalHistory>;
+  try {
+    sealedPhi = sealClinicalHistory({
     identificationCard: parsed.data.identificationCard,
     ethnicGroup: parsed.data.ethnicGroup,
     consultationReason: parsed.data.consultationReason,
@@ -160,7 +162,10 @@ export async function POST(request: Request) {
     prognosis: parsed.data.prognosis,
     healthStatus: parsed.data.healthStatus,
     additionalMedicalNotes: parsed.data.additionalMedicalNotes
-  });
+    });
+  } catch {
+    return fail("ENCRYPTION_FAILED", "No fue posible cifrar la historia clínica. Verifica la configuración del servidor.", 500);
+  }
 
   const historyData = {
     appointmentId: parsed.data.appointmentId,
