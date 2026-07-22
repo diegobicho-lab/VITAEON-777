@@ -687,7 +687,7 @@ function PaymentBadge({ status, provider }: { status: string; provider: string }
 
 function Shell({ eyebrow, title, children, headerExtra }: { eyebrow: string; title: string; children: ReactNode; headerExtra?: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#faf9f7_0%,#ffffff_50%,#eef5f8_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
+    <main className="min-h-screen bg-[linear-gradient(160deg,#eef4f9_0%,#f4f8fc_40%,#edf2f7_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
       <section className="mx-auto max-w-7xl">
         <header className="mb-8 border-b border-silver/40 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>

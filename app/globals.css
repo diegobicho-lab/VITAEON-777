@@ -5,6 +5,9 @@
 /* ─── Base ──────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  /* Prevents rubber-band scroll revealing a white browser background */
+  background: #071726;
+  overscroll-behavior: none;
 }
 
 body {
@@ -13,11 +16,12 @@ body {
   background:
     radial-gradient(circle at top left, rgba(17, 109, 157, 0.08), transparent 32rem),
     radial-gradient(circle at bottom right, rgba(238, 245, 248, 0.6), transparent 40rem),
-    linear-gradient(180deg, #faf9f7 0%, #ffffff 44%, #eef5f8 100%);
+    linear-gradient(180deg, #faf9f7 0%, #f8fafc 44%, #eef5f8 100%);
   font-family: var(--font-sans, "Plus Jakarta Sans"), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
 }
 
 * {
