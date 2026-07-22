@@ -1055,12 +1055,13 @@ export function DoctorDashboardClient() {
 
       if (subscriptionResult !== "success") return;
 
-      // Volvemos de Stripe con éxito — el webhook puede tardar unos segundos en
-      // actualizar el plan en la DB.  Hacemos polling hasta 4 veces (12 s máx.).
+      // Volvemos de Stripe con éxito — el webhook puede tardar varios segundos en
+      // actualizar el plan en la DB.  Hacemos polling hasta 12 veces (36 s máx.)
+      // y si no hay respuesta recargamos la página automáticamente.
       setActiveSection("suscripcion");
       setMessage("Verificando tu suscripción…");
 
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         await new Promise<void>((r) => setTimeout(r, 3000));
         try {
           const doc = await clientApi<DoctorProfile>("/api/doctors/me");
@@ -1076,11 +1077,12 @@ export function DoctorDashboardClient() {
         } catch { /* continúa al siguiente intento */ }
       }
 
-      // Después de 12 s sin confirmación, el webhook probablemente no está
-      // configurado en Stripe para la URL de producción.
-      setMessage(
-        "Tu pago fue registrado. El plan puede tardar unos minutos en activarse. Si no cambia, recarga la página o contacta soporte."
-      );
+      // Después de 36 s sin confirmación recargamos la página una sola vez;
+      // para ese momento el webhook de Stripe ya debería haber llegado y el
+      // estado real se mostrará al recargar.
+      setMessage("Pago registrado, recargando para confirmar tu plan…");
+      await new Promise<void>((r) => setTimeout(r, 2000));
+      window.location.reload();
     })();
 
     // La carga inicial corre una sola vez; los cambios de mes refrescan la agenda desde el calendario.
