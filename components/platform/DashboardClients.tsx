@@ -1044,6 +1044,7 @@ export function DoctorDashboardClient() {
   async function handleWizardComplete(data: WizardData) {
     const priceCents = data.consultationPriceCents ? parseInt(data.consultationPriceCents, 10) : undefined;
     const durationMins = data.consultationDurationMinutes ? parseInt(data.consultationDurationMinutes, 10) : undefined;
+    const yearsExp = data.yearsExperience ? parseInt(data.yearsExperience, 10) : undefined;
     const certificationsList = data.certifications?.trim() ? [data.certifications.trim()] : undefined;
 
     await clientApi("/api/doctors/me", {
@@ -1055,6 +1056,7 @@ export function DoctorDashboardClient() {
         subSpecialty: data.subSpecialty || undefined,
         professionalLicense: data.professionalLicense || undefined,
         university: data.university || undefined,
+        yearsExperience: yearsExp,
         consultationPriceCents: priceCents,
         consultationDurationMinutes: durationMins,
         bio: data.bio || undefined,

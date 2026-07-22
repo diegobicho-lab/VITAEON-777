@@ -249,6 +249,13 @@ export default function DoctorOnboardingWizard({
 
         {/* Body */}
         <div className="max-h-[55vh] overflow-y-auto px-7 py-6">
+          {/* Error pinned at the top so it's always visible regardless of scroll position */}
+          {error && (
+            <p className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {error}
+            </p>
+          )}
+
           {step === 1 && (
             <div className="grid gap-4">
               <Label text="Nombre completo">
@@ -458,11 +465,6 @@ export default function DoctorOnboardingWizard({
             </div>
           )}
 
-          {error && (
-            <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-              {error}
-            </p>
-          )}
         </div>
 
         {/* Footer */}

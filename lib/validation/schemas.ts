@@ -171,6 +171,7 @@ export const doctorProfileUpdateSchema = z.object({
   whatsappUrl: z.string().max(500).optional(),
   affiliateCode: z.string().trim().min(4).max(80).optional(),
   hospitalId: z.string().min(1).optional(),
+  yearsExperience: z.number().int().min(0).max(70).optional(),
   consultationPriceCents: z.number().int().min(0).max(2500000).optional(),
   consultationDurationMinutes: z.number().int().min(15).max(180).optional(),
   professionalLicense: z.string().min(4).max(80).optional(),

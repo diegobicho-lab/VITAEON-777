@@ -97,6 +97,7 @@ export async function PATCH(request: Request) {
     "professionalLicense",
     "achievements",
     "certifications",
+    "yearsExperience",
     "consultationPriceCents",
     "consultationDurationMinutes"
   ];
