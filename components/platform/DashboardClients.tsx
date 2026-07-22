@@ -703,9 +703,17 @@ const planActivatingConfig = {
     label: "Plan Diamante",
     iconColor: "text-sky-200",
   },
+  obsidiana: {
+    gradient: "bg-gradient-to-br from-[#0a0a0f] via-[#111827] to-[#1e293b]",
+    accent: "text-amber-400",
+    ring: "bg-amber-400/15",
+    dot: "bg-amber-400/70",
+    label: "Plan Obsidiana",
+    iconColor: "text-amber-300",
+  },
 } as const;
 
-function PlanActivatingCard({ plan }: { plan: "amatista" | "diamante" | null }) {
+function PlanActivatingCard({ plan }: { plan: keyof typeof planActivatingConfig | null }) {
   const cfg = plan ? planActivatingConfig[plan] : planActivatingConfig.diamante;
   return (
     <section className={`relative overflow-hidden rounded-[1.75rem] ${cfg.gradient} p-10 text-white`}>
@@ -1015,7 +1023,7 @@ export function DoctorDashboardClient() {
   const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [activatingPlan, setActivatingPlan] = useState<"amatista" | "diamante" | null>(null);
+  const [activatingPlan, setActivatingPlan] = useState<keyof typeof planActivatingConfig | null>(null);
   const [additionalLocations, setAdditionalLocations] = useState<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>([]);
   const [newLocHospitalId, setNewLocHospitalId] = useState("");
   const [newLocNotes, setNewLocNotes] = useState("");
@@ -1126,7 +1134,7 @@ export function DoctorDashboardClient() {
       // en background hasta 75 intentos × 4 s = 5 min.  Sin recargas: la tarjeta
       // se transforma en mensaje de éxito en cuanto el webhook actualiza la DB.
       const planParam = params.get("plan");
-      const validPlan = planParam === "amatista" || planParam === "diamante" ? planParam : null;
+      const validPlan = (planParam && planParam in planActivatingConfig) ? planParam as keyof typeof planActivatingConfig : null;
       setActivatingPlan(validPlan);
       setActiveSection("suscripcion");
       setMessage("");
@@ -1139,11 +1147,11 @@ export function DoctorDashboardClient() {
         try {
           const doc = await clientApi<DoctorProfile>("/api/doctors/me");
           if (doc.subscriptionStatus === "ACTIVE" && doc.medal !== "oro") {
-            const planLabel = doc.medal === "amatista" ? "Amatista" : "Diamante";
+            const planLabel = doc.medal in planActivatingConfig ? planActivatingConfig[doc.medal as keyof typeof planActivatingConfig].label : `Plan ${doc.medal}`;
             setMedal(doc.medal);
             setProfile(doc);
             setActivatingPlan(null);
-            setMessage(`✓ ¡Plan ${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.`);
+            setMessage(`✓ ¡${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.`);
             void load();
             return;
           }
@@ -4107,12 +4115,46 @@ export function ObsidianDashboardClient() {
   const [subscriptionAction, setSubscriptionAction] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [activatingPlan, setActivatingPlan] = useState<keyof typeof planActivatingConfig | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const subscriptionResult = params.get("subscription");
+    const planParam = params.get("plan");
+    if (subscriptionResult) window.history.replaceState({}, "", window.location.pathname);
+
     loadProfile().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "No fue posible cargar tu perfil Obsidiana.");
       setLoading(false);
     });
+
+    if (subscriptionResult !== "success") return;
+
+    const validPlan = (planParam && planParam in planActivatingConfig) ? planParam as keyof typeof planActivatingConfig : "obsidiana" as const;
+    setActivatingPlan(validPlan);
+
+    let pollAttempts = 0;
+    const MAX_POLL = 75;
+
+    const pollActivation = async () => {
+      pollAttempts++;
+      try {
+        const data = await clientApi<ObsidianProfile | null>("/api/obsidiana-profile");
+        if (data?.subscriptionStatus === "ACTIVE") {
+          setActivatingPlan(null);
+          setMessage(`✓ ¡${planActivatingConfig[validPlan].label} activo! Tu perfil comercial ya aparece en el directorio.`);
+          return;
+        }
+      } catch { /* continúa */ }
+      if (pollAttempts < MAX_POLL) {
+        setTimeout(() => void pollActivation(), 4000);
+      } else {
+        setActivatingPlan(null);
+        setMessage("Tu pago fue registrado, pero la activación está tardando más de lo esperado. Recarga la página o contacta soporte.");
+      }
+    };
+
+    setTimeout(() => void pollActivation(), 4000);
   }, []);
 
   async function loadProfile() {
@@ -4239,14 +4281,20 @@ export function ObsidianDashboardClient() {
             </div>
           </div>
 
-          {loading && (
+          {activatingPlan && (
+            <div className="mt-8">
+              <PlanActivatingCard plan={activatingPlan} />
+            </div>
+          )}
+
+          {loading && !activatingPlan && (
             <div className="mt-8 flex items-center gap-3 rounded-3xl bg-slate-50 p-5 text-slate-500">
               <Loader2 className="h-5 w-5 animate-spin" />
               Cargando tu perfil comercial...
             </div>
           )}
 
-          {!loading && (
+          {!loading && !activatingPlan && (
             <>
             <section className="mt-8 rounded-[1.75rem] border border-silver/70 bg-slate-50 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
