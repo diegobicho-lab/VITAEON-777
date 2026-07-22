@@ -305,6 +305,7 @@ export default function DoctorOnboardingWizard({
                   maxLength={120}
                   icon={<Stethoscope className="h-4 w-4 text-slate-400" />}
                 />
+                <p className="mt-1 text-right text-xs text-slate-400">{data.subSpecialty.length} / 120</p>
               </Label>
             </div>
           )}
@@ -336,7 +337,7 @@ export default function DoctorOnboardingWizard({
                   icon={<Briefcase className="h-4 w-4 text-slate-400" />}
                 />
               </Label>
-              <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología (máx. 160 caracteres)">
+              <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología">
                 <Input
                   value={data.certifications}
                   onChange={(v) => set("certifications", v)}
@@ -344,6 +345,7 @@ export default function DoctorOnboardingWizard({
                   maxLength={160}
                   icon={<Star className="h-4 w-4 text-slate-400" />}
                 />
+                <p className="mt-1 text-right text-xs text-slate-400">{data.certifications.length} / 160</p>
               </Label>
             </div>
           )}
