@@ -18,7 +18,6 @@ import {
   BadgeCheck,
   Briefcase,
   Building2,
-  Calendar,
   CheckCircle2,
   ChevronRight,
   CreditCard,
@@ -75,23 +74,27 @@ interface Props {
 
 /* ── Steps config ──────────────────────────────────────────── */
 const STEPS = [
-  { number: 1, label: "Básico",      icon: <User className="h-4 w-4" /> },
-  { number: 2, label: "Profesional", icon: <BadgeCheck className="h-4 w-4" /> },
-  { number: 3, label: "Consulta",    icon: <Stethoscope className="h-4 w-4" /> },
-  { number: 4, label: "Contacto",    icon: <MapPin className="h-4 w-4" /> },
-  { number: 5, label: "Plan",        icon: <Star className="h-4 w-4" /> }
+  { number: 1, label: "Básico",      icon: <User className="h-3.5 w-3.5" /> },
+  { number: 2, label: "Profesional", icon: <BadgeCheck className="h-3.5 w-3.5" /> },
+  { number: 3, label: "Consulta",    icon: <Stethoscope className="h-3.5 w-3.5" /> },
+  { number: 4, label: "Contacto",    icon: <MapPin className="h-3.5 w-3.5" /> },
+  { number: 5, label: "Plan",        icon: <Star className="h-3.5 w-3.5" /> }
 ];
 
 const PLANS: Array<{
   id: Plan; name: string; price: string; period: string;
-  badge: string; features: string[]; recommended?: boolean;
+  badge: string; cardSelected: string; cardBase: string;
+  dotColor: string; features: string[]; recommended?: boolean;
 }> = [
   {
     id: "oro",
     name: "Oro",
     price: "Gratis",
     period: "para siempre",
-    badge: "bg-amber-100 text-amber-700",
+    badge: "bg-amber-100 text-amber-700 border border-amber-200",
+    cardSelected: "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 ring-2 ring-amber-200/50",
+    cardBase: "border-slate-200 bg-white hover:border-amber-200 hover:shadow-sm",
+    dotColor: "bg-amber-400",
     features: ["Perfil público verificado", "Una especialidad", "Un hospital", "Visibilidad normal"]
   },
   {
@@ -99,7 +102,10 @@ const PLANS: Array<{
     name: "Diamante",
     price: "$499 MXN",
     period: "por mes",
-    badge: "bg-sky-100 text-sky-700",
+    badge: "bg-sky-100 text-sky-700 border border-sky-200",
+    cardSelected: "border-sky-300 bg-gradient-to-br from-sky-50 to-cyan-50 ring-2 ring-sky-200/50",
+    cardBase: "border-slate-200 bg-white hover:border-sky-200 hover:shadow-sm",
+    dotColor: "bg-sky-400",
     features: ["Todo el plan Oro", "Prioridad en búsquedas", "Agenda online", "Aparece sobre perfiles Oro"]
   },
   {
@@ -107,7 +113,10 @@ const PLANS: Array<{
     name: "Amatista",
     price: "$999 MXN",
     period: "por mes",
-    badge: "bg-violet-600 text-white",
+    badge: "bg-gradient-to-r from-violet-500 to-purple-600 text-white",
+    cardSelected: "border-violet-400 bg-gradient-to-br from-violet-50 to-purple-50 ring-2 ring-violet-200/60",
+    cardBase: "border-slate-200 bg-white hover:border-violet-200 hover:shadow-sm",
+    dotColor: "bg-violet-500",
     recommended: true,
     features: [
       "Todo el plan Diamante",
@@ -130,6 +139,7 @@ export default function DoctorOnboardingWizard({
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [animating, setAnimating] = useState(false);
 
   const [data, setData] = useState<WizardData>({
     fullName: "",
@@ -177,16 +187,34 @@ export default function DoctorOnboardingWizard({
     }
     if (step === 3) {
       if (!data.consultationPriceCents) return "Ingresa el precio de tu consulta.";
-      if (!data.bio.trim() || data.bio.length < 40)
-        return "Escribe una presentación de al menos 40 caracteres.";
+      if (!data.bio.trim() || data.bio.length < 100)
+        return "Escribe una presentación de al menos 100 caracteres.";
     }
     return null;
   }
 
-  function next() {
+  /** Avanza al siguiente paso con animación de fade + slide */
+  function goNext() {
     const err = validate();
     if (err) { setError(err); return; }
-    if (step < 5) setStep((s) => s + 1);
+    if (step < 5) {
+      setAnimating(true);
+      setTimeout(() => {
+        setStep((s) => s + 1);
+        setError("");
+        setAnimating(false);
+      }, 180);
+    }
+  }
+
+  /** Regresa al paso anterior con animación */
+  function goPrev() {
+    setAnimating(true);
+    setTimeout(() => {
+      setStep((s) => s - 1);
+      setError("");
+      setAnimating(false);
+    }, 180);
   }
 
   async function finish() {
@@ -203,48 +231,55 @@ export default function DoctorOnboardingWizard({
   }
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+  const bioOk = data.bio.length >= 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071726]/70 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl overflow-hidden rounded-[2rem] bg-white shadow-[0_32px_80px_rgba(7,23,38,0.30)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071726]/80 p-4 backdrop-blur-md">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-[2rem] bg-white shadow-[0_40px_120px_rgba(7,23,38,0.35),0_0_0_1px_rgba(7,23,38,0.07)]">
 
-        {/* Skip */}
+        {/* Franja de color en la parte superior — elimina el "borde blanco" */}
+        <div className="h-[3px] w-full bg-gradient-to-r from-[#1e9bd4] via-[#0a7abf] to-[#7c3aed]" />
+
+        {/* Botón cerrar */}
         <button
           onClick={onSkip}
-          className="absolute right-5 top-5 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          className="absolute right-5 top-5 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           aria-label="Omitir wizard"
         >
           <X className="h-4 w-4" />
         </button>
 
-        {/* Header */}
-        <div className="border-b border-slate-100 px-7 pb-5 pt-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#1e9bd4]">
-            Completa tu perfil
+        {/* Header — fondo levemente distinto al cuerpo para separación visual */}
+        <div className="bg-[#f8fafc] px-7 pb-5 pt-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-[#1e9bd4]">
+            Configura tu perfil médico
           </p>
-          <h2 className="mt-1 text-xl font-semibold text-[#071726]">
-            {STEPS[step - 1].label} — Paso {step} de {STEPS.length}
+          <h2 className="mt-1 text-xl font-bold text-[#071726]">
+            {STEPS[step - 1].label}
+            <span className="ml-2 text-sm font-normal text-slate-400">
+              Paso {step} de {STEPS.length}
+            </span>
           </h2>
 
-          {/* Progress bar */}
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+          {/* Barra de progreso */}
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
             <div
-              className="h-full rounded-full bg-[#1e9bd4] transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-[#1e9bd4] to-[#0a7abf] transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
 
-          {/* Step pills */}
-          <div className="mt-3 flex gap-2">
+          {/* Pills de pasos */}
+          <div className="mt-3 flex gap-1.5">
             {STEPS.map((s) => (
               <div
                 key={s.number}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all duration-300 ${
                   s.number === step
-                    ? "bg-[#071726] text-white"
+                    ? "bg-[#071726] text-white shadow-sm"
                     : s.number < step
-                    ? "bg-emerald-50 text-emerald-600"
-                    : "bg-slate-50 text-slate-400"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100/80 text-slate-400"
                 }`}
               >
                 {s.number < step ? <CheckCircle2 className="h-3 w-3" /> : s.icon}
@@ -254,267 +289,299 @@ export default function DoctorOnboardingWizard({
           </div>
         </div>
 
-        {/* Body */}
-        <div className="max-h-[55vh] overflow-y-auto px-7 py-6">
-          {/* Error pinned at the top so it's always visible regardless of scroll position */}
+        {/* Cuerpo — fondo blanco puro para contraste con header/footer */}
+        <div className="max-h-[54vh] overflow-y-auto bg-white px-7 py-6">
+
+          {/* Error siempre visible en la parte superior */}
           {error && (
-            <p className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-              {error}
-            </p>
-          )}
-
-          {step === 1 && (
-            <div className="grid gap-4">
-              <Label text="Nombre completo">
-                <Input
-                  value={data.fullName}
-                  onChange={(v) => set("fullName", v)}
-                  placeholder="Dr. Juan García López"
-                  icon={<User className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Especialidad">
-                <select
-                  value={data.specialtyId}
-                  onChange={(e) => set("specialtyId", e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:ring-2 focus:ring-[#1e9bd4]/10"
-                >
-                  <option value="">Selecciona tu especialidad…</option>
-                  {specialties.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </Label>
-              <Label text="Hospital o clínica principal">
-                <select
-                  value={data.hospitalId}
-                  onChange={(e) => set("hospitalId", e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:ring-2 focus:ring-[#1e9bd4]/10"
-                >
-                  <option value="">Selecciona un hospital…</option>
-                  {hospitals.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
-              </Label>
-              <Label text="Subespecialidad / Enfoque">
-                <Input
-                  value={data.subSpecialty}
-                  onChange={(v) => set("subSpecialty", v)}
-                  placeholder="Ej: Cardiología intervencionista"
-                  maxLength={120}
-                  icon={<Stethoscope className="h-4 w-4 text-slate-400" />}
-                />
-                <p className="mt-1 text-right text-xs text-slate-400">{data.subSpecialty.length} / 120</p>
-              </Label>
+            <div className="mb-4 flex items-start gap-2.5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
+              <span className="mt-0.5 flex-shrink-0 text-base leading-none text-red-400">⚠</span>
+              <p className="text-sm font-semibold text-red-700">{error}</p>
             </div>
           )}
 
-          {step === 2 && (
-            <div className="grid gap-4">
-              <Label text="Cédula profesional">
-                <Input
-                  value={data.professionalLicense}
-                  onChange={(v) => set("professionalLicense", v)}
-                  placeholder="12345678"
-                  icon={<BadgeCheck className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Universidad de titulación">
-                <Input
-                  value={data.university}
-                  onChange={(v) => set("university", v)}
-                  placeholder="Universidad de Guanajuato"
-                  icon={<Building2 className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Años de experiencia">
-                <Input
-                  value={data.yearsExperience}
-                  onChange={(v) => set("yearsExperience", v)}
-                  placeholder="12"
-                  type="number"
-                  icon={<Briefcase className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología">
-                <Input
-                  value={data.certifications}
-                  onChange={(v) => set("certifications", v)}
-                  placeholder="Certificaciones y logros"
-                  maxLength={160}
-                  icon={<Star className="h-4 w-4 text-slate-400" />}
-                />
-                <p className="mt-1 text-right text-xs text-slate-400">{data.certifications.length} / 160</p>
-              </Label>
-            </div>
-          )}
+          {/* Contenido del paso — animado al cambiar */}
+          <div
+            className={`transition-all duration-200 ease-out ${
+              animating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+            }`}
+          >
 
-          {step === 3 && (
-            <div className="grid gap-4">
-              <Label text="Precio de consulta (MXN)" hint="Ej: 1000 para $1,000 MXN">
-                <Input
-                  value={String(Number(data.consultationPriceCents) / 100)}
-                  onChange={(v) => set("consultationPriceCents", String(Math.round(Number(v) * 100)))}
-                  placeholder="1000"
-                  type="number"
-                  icon={<CreditCard className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Duración de consulta (minutos)">
-                <select
-                  value={data.consultationDurationMinutes}
-                  onChange={(e) => set("consultationDurationMinutes", e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:ring-2 focus:ring-[#1e9bd4]/10"
-                >
-                  {[20, 30, 40, 45, 50, 60, 90].map((m) => (
-                    <option key={m} value={m}>{m} minutos</option>
-                  ))}
-                </select>
-              </Label>
-              <Label text="Presentación profesional" hint="Mínimo 40 caracteres. Describe tu experiencia y enfoque.">
-                <textarea
-                  value={data.bio}
-                  onChange={(e) => set("bio", e.target.value)}
-                  rows={4}
-                  placeholder="Especialista en… con X años de experiencia en… Me enfoco en…"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:ring-2 focus:ring-[#1e9bd4]/10"
-                />
-                <p className="mt-1 text-right text-xs text-slate-400">{data.bio.length} / 40 mín.</p>
-              </Label>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="grid gap-4">
-              <Label text="Dirección del consultorio" hint="Opcional pero mejora tu visibilidad en búsquedas">
-                <Input
-                  value={data.officeAddress}
-                  onChange={(v) => set("officeAddress", v)}
-                  placeholder="Blvd. Campestre 123, Col. Jardines del Moral"
-                  icon={<MapPin className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Teléfono profesional">
-                <Input
-                  value={data.professionalPhone}
-                  onChange={(v) => set("professionalPhone", v)}
-                  placeholder="+52 477 123 4567"
-                  type="tel"
-                  icon={<Phone className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="WhatsApp (URL o número)">
-                <Input
-                  value={data.whatsappUrl}
-                  onChange={(v) => set("whatsappUrl", v)}
-                  placeholder="https://wa.me/524771234567"
-                  icon={<Phone className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="Instagram (URL, opcional)">
-                <Input
-                  value={data.instagramUrl}
-                  onChange={(v) => set("instagramUrl", v)}
-                  placeholder="https://instagram.com/drjuangarcia"
-                  icon={<Instagram className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-              <Label text="LinkedIn (URL, opcional)">
-                <Input
-                  value={data.linkedinUrl}
-                  onChange={(v) => set("linkedinUrl", v)}
-                  placeholder="https://linkedin.com/in/drjuangarcia"
-                  icon={<Linkedin className="h-4 w-4 text-slate-400" />}
-                />
-              </Label>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div className="grid gap-3">
-              <p className="text-sm leading-6 text-slate-500">
-                Puedes empezar con el plan Oro gratuito y cambiar en cualquier momento desde tu panel.
-              </p>
-              {PLANS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => set("plan", p.id)}
-                  className={`relative rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                    data.plan === p.id
-                      ? "border-[#1e9bd4]/50 bg-[#e8f6fc] ring-2 ring-[#1e9bd4]/20"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  {p.recommended && (
-                    <span className="absolute right-3 top-3 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      Recomendado
-                    </span>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.badge}`}>{p.name}</span>
-                    <span className="font-bold text-[#071726]">{p.price}</span>
-                    <span className="text-xs text-slate-400">{p.period}</span>
-                    {data.plan === p.id && (
-                      <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-[#1e9bd4]" />
-                    )}
-                  </div>
-                  <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs text-slate-500">
-                        <span className="mt-0.5 h-1 w-1 flex-shrink-0 rounded-full bg-[#1e9bd4]" />
-                        {f}
-                      </li>
+            {/* ── Paso 1: Información básica ── */}
+            {step === 1 && (
+              <div className="grid gap-4">
+                <Label text="Nombre completo">
+                  <Input
+                    value={data.fullName}
+                    onChange={(v) => set("fullName", v)}
+                    placeholder="Dr. Juan García López"
+                    icon={<User className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Especialidad">
+                  <select
+                    value={data.specialtyId}
+                    onChange={(e) => set("specialtyId", e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  >
+                    <option value="">Selecciona tu especialidad…</option>
+                    {specialties.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
-                  </ul>
-                </button>
-              ))}
-              <p className="mt-2 text-xs leading-5 text-slate-400">
-                Para planes Diamante y Amatista se abrirá un checkout seguro de Stripe después de crear tu perfil.
-              </p>
-            </div>
-          )}
+                  </select>
+                </Label>
+                <Label text="Hospital o clínica principal">
+                  <select
+                    value={data.hospitalId}
+                    onChange={(e) => set("hospitalId", e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  >
+                    <option value="">Selecciona un hospital…</option>
+                    {hospitals.map((h) => (
+                      <option key={h.id} value={h.id}>{h.name}</option>
+                    ))}
+                  </select>
+                </Label>
+                <Label text="Subespecialidad / Enfoque">
+                  <Input
+                    value={data.subSpecialty}
+                    onChange={(v) => set("subSpecialty", v)}
+                    placeholder="Ej: Cardiología intervencionista"
+                    maxLength={120}
+                    icon={<Stethoscope className="h-4 w-4 text-slate-400" />}
+                  />
+                  <p className="mt-1 text-right text-xs text-slate-400">{data.subSpecialty.length} / 120</p>
+                </Label>
+              </div>
+            )}
 
+            {/* ── Paso 2: Datos profesionales ── */}
+            {step === 2 && (
+              <div className="grid gap-4">
+                <Label text="Cédula profesional">
+                  <Input
+                    value={data.professionalLicense}
+                    onChange={(v) => set("professionalLicense", v)}
+                    placeholder="12345678"
+                    icon={<BadgeCheck className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Universidad de titulación">
+                  <Input
+                    value={data.university}
+                    onChange={(v) => set("university", v)}
+                    placeholder="Universidad de Guanajuato"
+                    icon={<Building2 className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Años de experiencia">
+                  <Input
+                    value={data.yearsExperience}
+                    onChange={(v) => set("yearsExperience", v)}
+                    placeholder="12"
+                    type="number"
+                    icon={<Briefcase className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología">
+                  <Input
+                    value={data.certifications}
+                    onChange={(v) => set("certifications", v)}
+                    placeholder="Certificaciones y logros"
+                    maxLength={160}
+                    icon={<Star className="h-4 w-4 text-slate-400" />}
+                  />
+                  <p className="mt-1 text-right text-xs text-slate-400">{data.certifications.length} / 160</p>
+                </Label>
+              </div>
+            )}
+
+            {/* ── Paso 3: Consulta y presentación ── */}
+            {step === 3 && (
+              <div className="grid gap-4">
+                <Label text="Precio de consulta (MXN)" hint="Ej: 1000 para $1,000 MXN">
+                  <Input
+                    value={String(Number(data.consultationPriceCents) / 100)}
+                    onChange={(v) => set("consultationPriceCents", String(Math.round(Number(v) * 100)))}
+                    placeholder="1000"
+                    type="number"
+                    icon={<CreditCard className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Duración de consulta (minutos)">
+                  <select
+                    value={data.consultationDurationMinutes}
+                    onChange={(e) => set("consultationDurationMinutes", e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  >
+                    {[20, 30, 40, 45, 50, 60, 90].map((m) => (
+                      <option key={m} value={m}>{m} minutos</option>
+                    ))}
+                  </select>
+                </Label>
+                <Label text="Presentación profesional" hint="Mínimo 100 caracteres. Cuéntale a tus pacientes quién eres y en qué te especializas.">
+                  <textarea
+                    value={data.bio}
+                    onChange={(e) => set("bio", e.target.value)}
+                    rows={4}
+                    placeholder="Especialista en… con X años de experiencia en… Me enfoco en…"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  />
+                  <p className={`mt-1 text-right text-xs font-medium transition-colors duration-200 ${
+                    bioOk ? "text-emerald-500" : "text-slate-400"
+                  }`}>
+                    {data.bio.length} / 100 mín.{bioOk ? " ✓" : ""}
+                  </p>
+                </Label>
+              </div>
+            )}
+
+            {/* ── Paso 4: Contacto y ubicación ── */}
+            {step === 4 && (
+              <div className="grid gap-4">
+                <Label text="Dirección del consultorio" hint="Opcional pero mejora tu visibilidad en búsquedas">
+                  <Input
+                    value={data.officeAddress}
+                    onChange={(v) => set("officeAddress", v)}
+                    placeholder="Blvd. Campestre 123, Col. Jardines del Moral"
+                    icon={<MapPin className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Teléfono profesional">
+                  <Input
+                    value={data.professionalPhone}
+                    onChange={(v) => set("professionalPhone", v)}
+                    placeholder="+52 477 123 4567"
+                    type="tel"
+                    icon={<Phone className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="WhatsApp (URL o número)">
+                  <Input
+                    value={data.whatsappUrl}
+                    onChange={(v) => set("whatsappUrl", v)}
+                    placeholder="https://wa.me/524771234567"
+                    icon={<Phone className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="Instagram (URL, opcional)">
+                  <Input
+                    value={data.instagramUrl}
+                    onChange={(v) => set("instagramUrl", v)}
+                    placeholder="https://instagram.com/drjuangarcia"
+                    icon={<Instagram className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+                <Label text="LinkedIn (URL, opcional)">
+                  <Input
+                    value={data.linkedinUrl}
+                    onChange={(v) => set("linkedinUrl", v)}
+                    placeholder="https://linkedin.com/in/drjuangarcia"
+                    icon={<Linkedin className="h-4 w-4 text-slate-400" />}
+                  />
+                </Label>
+              </div>
+            )}
+
+            {/* ── Paso 5: Elección de plan ── */}
+            {step === 5 && (
+              <div className="grid gap-3">
+                <p className="text-sm leading-6 text-slate-500">
+                  Puedes empezar con el plan Oro gratuito y cambiar en cualquier momento desde tu panel.
+                </p>
+                {PLANS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => set("plan", p.id)}
+                    className={`relative rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+                      data.plan === p.id ? p.cardSelected : p.cardBase
+                    }`}
+                  >
+                    {/* Badge "Recomendado" en Amatista */}
+                    {p.recommended && (
+                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        ⭐ Recomendado
+                      </span>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${p.badge}`}>
+                        {p.name}
+                      </span>
+                      <span className="font-bold text-[#071726]">{p.price}</span>
+                      <span className="text-xs text-slate-400">{p.period}</span>
+                      {data.plan === p.id && (
+                        <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-[#1e9bd4]" />
+                      )}
+                    </div>
+
+                    <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1">
+                      {p.features.map((f) => (
+                        <li key={f} className="flex items-start gap-1.5 text-xs text-slate-500">
+                          <span className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${p.dotColor}`} />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                ))}
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  Para planes Diamante y Amatista se abrirá un checkout seguro de Stripe al guardar tu perfil.
+                </p>
+              </div>
+            )}
+
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-100 px-7 py-5">
+        {/* Footer — mismo fondo que el header, sin borde duro */}
+        <div className="flex items-center justify-between bg-[#f8fafc] px-7 py-5">
           <button
             type="button"
-            onClick={() => step > 1 ? setStep((s) => s - 1) : onSkip()}
-            className="rounded-full px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100"
+            onClick={() => step > 1 ? goPrev() : onSkip()}
+            className="rounded-full px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-200/70 hover:text-slate-700"
           >
             {step > 1 ? "Atrás" : "Omitir"}
           </button>
 
-          <div className="flex items-center gap-2">
-            {/* Dots */}
+          {/* Dots de navegación */}
+          <div className="flex items-center gap-1.5">
             {STEPS.map((s) => (
               <div
                 key={s.number}
-                className={`rounded-full transition ${
-                  s.number === step ? "h-2 w-5 bg-[#071726]" : "h-2 w-2 bg-slate-200"
+                className={`rounded-full transition-all duration-300 ${
+                  s.number === step
+                    ? "h-2 w-5 bg-[#071726]"
+                    : s.number < step
+                    ? "h-2 w-2 bg-emerald-400"
+                    : "h-2 w-2 bg-slate-200"
                 }`}
               />
             ))}
           </div>
 
+          {/* Botón principal — texto dinámico según plan en paso 5 */}
           <button
             type="button"
-            onClick={step === 5 ? finish : next}
+            onClick={step === 5 ? finish : goNext}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : step === 5 ? (
-              <><Calendar className="h-4 w-4" /> Guardar y activar</>
+              data.plan === "oro" ? (
+                <><CheckCircle2 className="h-4 w-4" /> Activar perfil</>
+              ) : (
+                <><CreditCard className="h-4 w-4" /> Ir al pago</>
+              )
             ) : (
               <>Siguiente <ChevronRight className="h-4 w-4" /></>
             )}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -525,7 +592,7 @@ function Label({ text, hint, children }: { text: string; hint?: string; children
   return (
     <div>
       <label className="mb-1.5 block text-sm font-semibold text-[#071726]">{text}</label>
-      {hint && <p className="mb-2 text-xs text-slate-400">{hint}</p>}
+      {hint && <p className="mb-2 text-xs leading-5 text-slate-400">{hint}</p>}
       {children}
     </div>
   );

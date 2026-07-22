@@ -1074,8 +1074,18 @@ export function DoctorDashboardClient() {
     await load();
 
     if (data.plan !== "oro") {
-      setActiveSection("suscripcion");
-      setMessage(`¡Perfil completado! Ahora activa el plan ${data.plan === "amatista" ? "Amatista" : "Diamante"} para publicar tu perfil con prioridad.`);
+      // Inicia el checkout de Stripe directamente — si falla, aterriza en la
+      // pestaña de suscripción con el mensaje de error visible.
+      try {
+        await checkoutPlan(data.plan as DoctorProfile["medal"]);
+      } catch (err) {
+        setMessage(
+          err instanceof Error
+            ? err.message
+            : "No fue posible iniciar el pago del plan. Ve a Suscripción para intentarlo de nuevo."
+        );
+        setActiveSection("suscripcion");
+      }
     } else {
       setMessage("¡Perfil completado con éxito! Publica tu disponibilidad para recibir pacientes.");
     }
