@@ -159,15 +159,15 @@ export default function DoctorOnboardingWizard({
 
   function validate(): string | null {
     if (step === 1) {
-      if (!data.fullName.trim())       return "Ingresa tu nombre completo.";
-      if (!data.specialtyId)           return "Selecciona tu especialidad.";
-      if (!data.hospitalId)            return "Selecciona tu hospital o clínica.";
-      if (!data.subSpecialty.trim())   return "Ingresa tu subespecialidad o enfoque.";
+      if (data.fullName.trim().length < 3)     return "Ingresa tu nombre completo (mínimo 3 caracteres).";
+      if (!data.specialtyId)                   return "Selecciona tu especialidad.";
+      if (!data.hospitalId)                    return "Selecciona tu hospital o clínica.";
+      if (data.subSpecialty.trim().length < 3) return "La subespecialidad debe tener al menos 3 caracteres.";
     }
     if (step === 2) {
-      if (!data.professionalLicense.trim()) return "Ingresa tu cédula profesional.";
-      if (!data.university.trim())          return "Ingresa tu universidad de titulación.";
-      if (!data.yearsExperience)            return "Ingresa tus años de experiencia.";
+      if (data.professionalLicense.trim().length < 4) return "La cédula profesional debe tener al menos 4 caracteres.";
+      if (!data.university.trim())                    return "Ingresa tu universidad de titulación.";
+      if (!data.yearsExperience)                      return "Ingresa tus años de experiencia.";
     }
     if (step === 3) {
       if (!data.consultationPriceCents) return "Ingresa el precio de tu consulta.";
@@ -188,8 +188,9 @@ export default function DoctorOnboardingWizard({
     setError("");
     try {
       await onComplete(data);
-    } catch {
-      setError("Ocurrió un error al guardar. Intenta de nuevo.");
+    } catch (err) {
+      // Show the actual API error so the user (and developer) know what to fix.
+      setError(err instanceof Error ? err.message : "Ocurrió un error al guardar. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
