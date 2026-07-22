@@ -65,7 +65,15 @@ export async function PATCH(request: Request) {
 
   const body = await request.json().catch(() => null);
   const parsed = doctorProfileUpdateSchema.safeParse(body);
-  if (!parsed.success) return fail("VALIDATION_ERROR", "Perfil médico inválido.", 422, parsed.error.flatten());
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    // Log field-level errors server-side to help diagnose wizard issues
+    console.error("[doctors/me PATCH] Validation failed:", JSON.stringify(fieldErrors));
+    const fieldSummary = Object.entries(fieldErrors)
+      .map(([f, errs]) => `${f}: ${(errs ?? []).join(", ")}`)
+      .join(" | ");
+    return fail("VALIDATION_ERROR", `Perfil médico inválido. ${fieldSummary}`, 422, fieldErrors);
+  }
 
   const existingDoctor = await prisma.doctor.findUnique({ where: { userId: user.id }, include: { specialty: true } });
   if (!existingDoctor) return fail("DOCTOR_PROFILE_REQUIRED", "El usuario no tiene perfil médico.", 409);
