@@ -159,15 +159,21 @@ export default function DoctorOnboardingWizard({
 
   function validate(): string | null {
     if (step === 1) {
-      if (data.fullName.trim().length < 3)     return "Ingresa tu nombre completo (mínimo 3 caracteres).";
-      if (!data.specialtyId)                   return "Selecciona tu especialidad.";
-      if (!data.hospitalId)                    return "Selecciona tu hospital o clínica.";
-      if (data.subSpecialty.trim().length < 3) return "La subespecialidad debe tener al menos 3 caracteres.";
+      if (data.fullName.trim().length < 3)       return "Ingresa tu nombre completo (mínimo 3 caracteres).";
+      if (data.fullName.trim().length > 120)     return "El nombre no puede exceder 120 caracteres.";
+      if (!data.specialtyId)                     return "Selecciona tu especialidad.";
+      if (!data.hospitalId)                      return "Selecciona tu hospital o clínica.";
+      if (data.subSpecialty.trim().length < 3)   return "La subespecialidad debe tener al menos 3 caracteres.";
+      if (data.subSpecialty.trim().length > 120) return "La subespecialidad no puede exceder 120 caracteres.";
     }
     if (step === 2) {
-      if (data.professionalLicense.trim().length < 4) return "La cédula profesional debe tener al menos 4 caracteres.";
-      if (!data.university.trim())                    return "Ingresa tu universidad de titulación.";
-      if (!data.yearsExperience)                      return "Ingresa tus años de experiencia.";
+      if (data.professionalLicense.trim().length < 4)  return "La cédula profesional debe tener al menos 4 caracteres.";
+      if (data.professionalLicense.trim().length > 80)  return "La cédula profesional no puede exceder 80 caracteres.";
+      if (!data.university.trim())                      return "Ingresa tu universidad de titulación.";
+      if (data.university.trim().length > 180)          return "La universidad no puede exceder 180 caracteres.";
+      if (!data.yearsExperience)                        return "Ingresa tus años de experiencia.";
+      if (data.certifications && data.certifications.trim().length > 160)
+        return "Las certificaciones no pueden exceder 160 caracteres.";
     }
     if (step === 3) {
       if (!data.consultationPriceCents) return "Ingresa el precio de tu consulta.";
@@ -296,6 +302,7 @@ export default function DoctorOnboardingWizard({
                   value={data.subSpecialty}
                   onChange={(v) => set("subSpecialty", v)}
                   placeholder="Ej: Cardiología intervencionista"
+                  maxLength={120}
                   icon={<Stethoscope className="h-4 w-4 text-slate-400" />}
                 />
               </Label>
@@ -329,11 +336,12 @@ export default function DoctorOnboardingWizard({
                   icon={<Briefcase className="h-4 w-4 text-slate-400" />}
                 />
               </Label>
-              <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología">
+              <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología (máx. 160 caracteres)">
                 <Input
                   value={data.certifications}
                   onChange={(v) => set("certifications", v)}
                   placeholder="Certificaciones y logros"
+                  maxLength={160}
                   icon={<Star className="h-4 w-4 text-slate-400" />}
                 />
               </Label>
@@ -526,12 +534,14 @@ function Input({
   onChange,
   placeholder,
   type = "text",
+  maxLength,
   icon
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  maxLength?: number;
   icon?: React.ReactNode;
 }) {
   return (
@@ -546,6 +556,7 @@ function Input({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        maxLength={maxLength}
         className={`w-full rounded-2xl border border-slate-200 bg-slate-50/80 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10 ${
           icon ? "pl-10 pr-4" : "px-4"
         }`}
