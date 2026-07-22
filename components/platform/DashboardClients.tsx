@@ -1036,8 +1036,54 @@ export function DoctorDashboardClient() {
   }
 
   useEffect(() => {
-    load();
-    // La carga inicial debe correr una sola vez; los cambios de mes refrescan la agenda desde el calendario.
+    // Lee ?subscription=success|cancelled que Stripe añade al redirigir de vuelta.
+    const params = new URLSearchParams(window.location.search);
+    const subscriptionResult = params.get("subscription");
+    // Limpia el parámetro de la URL sin recargar la página.
+    if (subscriptionResult) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    void (async () => {
+      await load();
+
+      if (subscriptionResult === "cancelled") {
+        setActiveSection("suscripcion");
+        setMessage("El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.");
+        return;
+      }
+
+      if (subscriptionResult !== "success") return;
+
+      // Volvemos de Stripe con éxito — el webhook puede tardar unos segundos en
+      // actualizar el plan en la DB.  Hacemos polling hasta 4 veces (12 s máx.).
+      setActiveSection("suscripcion");
+      setMessage("Verificando tu suscripción…");
+
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await new Promise<void>((r) => setTimeout(r, 3000));
+        try {
+          const doc = await clientApi<DoctorProfile>("/api/doctors/me");
+          if (doc.subscriptionStatus === "ACTIVE" && doc.medal !== "oro") {
+            const planLabel = doc.medal === "amatista" ? "Amatista" : "Diamante";
+            setMedal(doc.medal);
+            setProfile(doc);
+            setMessage(`✓ ¡Plan ${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.`);
+            // Refresco completo en background para sincronizar todo el estado.
+            void load();
+            return;
+          }
+        } catch { /* continúa al siguiente intento */ }
+      }
+
+      // Después de 12 s sin confirmación, el webhook probablemente no está
+      // configurado en Stripe para la URL de producción.
+      setMessage(
+        "Tu pago fue registrado. El plan puede tardar unos minutos en activarse. Si no cambia, recarga la página o contacta soporte."
+      );
+    })();
+
+    // La carga inicial corre una sola vez; los cambios de mes refrescan la agenda desde el calendario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
