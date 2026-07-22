@@ -2415,9 +2415,12 @@ export function DoctorDashboardClient() {
                   </span>
                 </label>
               </div>
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 <button onClick={updateProfile} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">Guardar perfil</button>
-                <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="Referencia privada para verificación" className="w-full rounded-full bg-slate-50 px-4 py-3 outline-none sm:max-w-xs" />
+                <div className="flex w-full flex-col gap-1 sm:max-w-xs">
+                  <p className="px-1 text-xs font-semibold text-slate-500">Link a tus documentos de verificación (cédula, título…)</p>
+                  <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="https://drive.google.com/…" className="w-full rounded-full bg-slate-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-medical/20" />
+                </div>
                 <button onClick={submitVerification} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">Enviar verificación</button>
               </div>
             </section>
