@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       subscription_data: {
         metadata: subscriptionMetadata
       },
-      success_url: `${appUrl}${dashboardPath}?subscription=success`,
+      success_url: `${appUrl}${dashboardPath}?subscription=success&plan=${parsed.data.plan}`,
       cancel_url: `${appUrl}${dashboardPath}?subscription=cancelled`,
       metadata: subscriptionMetadata
     });

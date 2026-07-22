@@ -685,6 +685,72 @@ function PaymentBadge({ status, provider }: { status: string; provider: string }
   );
 }
 
+// ─── Plan activation card ─────────────────────────────────────────────────────
+const planActivatingConfig = {
+  amatista: {
+    gradient: "bg-gradient-to-br from-[#2d1b69] via-[#4c1d95] to-[#6d28d9]",
+    accent: "text-violet-300",
+    ring: "bg-violet-400/20",
+    dot: "bg-violet-300/80",
+    label: "Plan Amatista",
+    iconColor: "text-violet-200",
+  },
+  diamante: {
+    gradient: "bg-gradient-to-br from-[#071726] via-[#0a3d5c] to-[#0a7abf]",
+    accent: "text-sky-300",
+    ring: "bg-sky-400/20",
+    dot: "bg-sky-300/80",
+    label: "Plan Diamante",
+    iconColor: "text-sky-200",
+  },
+} as const;
+
+function PlanActivatingCard({ plan }: { plan: "amatista" | "diamante" | null }) {
+  const cfg = plan ? planActivatingConfig[plan] : planActivatingConfig.diamante;
+  return (
+    <section className={`relative overflow-hidden rounded-[1.75rem] ${cfg.gradient} p-10 text-white`}>
+      {/* Decorative orbs */}
+      <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/5" />
+      <div className="pointer-events-none absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-white/[0.03]" />
+
+      <div className="relative flex flex-col items-center text-center">
+        {/* Pulsing icon */}
+        <div className="relative mb-8 flex items-center justify-center">
+          <div className={`absolute h-32 w-32 animate-ping rounded-full ${cfg.ring}`} style={{ animationDuration: "2.2s" }} />
+          <div className={`absolute h-20 w-20 animate-pulse rounded-full ${cfg.ring}`} />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
+            <CreditCard className={`h-7 w-7 ${cfg.iconColor}`} />
+          </div>
+        </div>
+
+        <p className={`text-xs font-semibold uppercase tracking-[0.32em] ${cfg.accent}`}>Verificando con Stripe</p>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight">
+          Activando {plan ? cfg.label : "tu plan"}
+        </h2>
+        <p className="mt-4 max-w-sm text-base leading-7 text-white/70">
+          Tu pago fue recibido. Estamos confirmando la activación. Esto toma solo unos momentos.
+        </p>
+
+        {/* Animated bouncing dots */}
+        <div className="mt-8 flex items-center gap-2.5">
+          {([0, 160, 320] as const).map((delay) => (
+            <div
+              key={delay}
+              className={`h-2 w-2 animate-bounce rounded-full ${cfg.dot}`}
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </div>
+
+        <p className="mt-10 text-xs text-white/35">
+          No cierres esta ventana · Tu pago está seguro con Stripe
+        </p>
+      </div>
+    </section>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Shell({ eyebrow, title, children, headerExtra }: { eyebrow: string; title: string; children: ReactNode; headerExtra?: ReactNode }) {
   return (
     <main className="min-h-screen bg-[linear-gradient(160deg,#eef4f9_0%,#f4f8fc_40%,#edf2f7_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
@@ -949,6 +1015,7 @@ export function DoctorDashboardClient() {
   const [prescriptionStatus, setPrescriptionStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [activatingPlan, setActivatingPlan] = useState<"amatista" | "diamante" | null>(null);
   const [additionalLocations, setAdditionalLocations] = useState<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>([]);
   const [newLocHospitalId, setNewLocHospitalId] = useState("");
   const [newLocNotes, setNewLocNotes] = useState("");
@@ -1055,34 +1122,44 @@ export function DoctorDashboardClient() {
 
       if (subscriptionResult !== "success") return;
 
-      // Volvemos de Stripe con éxito — el webhook puede tardar varios segundos en
-      // actualizar el plan en la DB.  Hacemos polling hasta 12 veces (36 s máx.)
-      // y si no hay respuesta recargamos la página automáticamente.
+      // Volvemos de Stripe — mostramos la tarjeta de activación y hacemos polling
+      // en background hasta 75 intentos × 4 s = 5 min.  Sin recargas: la tarjeta
+      // se transforma en mensaje de éxito en cuanto el webhook actualiza la DB.
+      const planParam = params.get("plan");
+      const validPlan = planParam === "amatista" || planParam === "diamante" ? planParam : null;
+      setActivatingPlan(validPlan);
       setActiveSection("suscripcion");
-      setMessage("Verificando tu suscripción…");
+      setMessage("");
 
-      for (let attempt = 0; attempt < 12; attempt++) {
-        await new Promise<void>((r) => setTimeout(r, 3000));
+      let pollAttempts = 0;
+      const MAX_POLL = 75; // 5 min máximo
+
+      const pollActivation = async () => {
+        pollAttempts++;
         try {
           const doc = await clientApi<DoctorProfile>("/api/doctors/me");
           if (doc.subscriptionStatus === "ACTIVE" && doc.medal !== "oro") {
             const planLabel = doc.medal === "amatista" ? "Amatista" : "Diamante";
             setMedal(doc.medal);
             setProfile(doc);
+            setActivatingPlan(null);
             setMessage(`✓ ¡Plan ${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.`);
-            // Refresco completo en background para sincronizar todo el estado.
             void load();
             return;
           }
-        } catch { /* continúa al siguiente intento */ }
-      }
+        } catch { /* continúa */ }
+        if (pollAttempts < MAX_POLL) {
+          setTimeout(() => void pollActivation(), 4000);
+        } else {
+          // Después de 5 min sin respuesta — mensaje sin recarga
+          setActivatingPlan(null);
+          setMessage(
+            "Tu pago fue registrado, pero la activación está tardando más de lo esperado. Recarga la página en un momento o contacta soporte si el plan no cambia."
+          );
+        }
+      };
 
-      // Después de 36 s sin confirmación recargamos la página una sola vez;
-      // para ese momento el webhook de Stripe ya debería haber llegado y el
-      // estado real se mostrará al recargar.
-      setMessage("Pago registrado, recargando para confirmar tu plan…");
-      await new Promise<void>((r) => setTimeout(r, 2000));
-      window.location.reload();
+      setTimeout(() => void pollActivation(), 4000);
     })();
 
     // La carga inicial corre una sola vez; los cambios de mes refrescan la agenda desde el calendario.
@@ -2121,7 +2198,11 @@ export function DoctorDashboardClient() {
             />
           )}
 
-          {activeSection === "suscripcion" && (
+          {activeSection === "suscripcion" && activatingPlan && (
+            <PlanActivatingCard plan={activatingPlan} />
+          )}
+
+          {activeSection === "suscripcion" && !activatingPlan && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
