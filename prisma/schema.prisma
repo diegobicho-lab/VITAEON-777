@@ -345,6 +345,7 @@ model Appointment {
   secretaryCreated    Boolean           @default(false)
   guestPatientName    String?
   guestPatientPhone   String?
+  reminderSentAt      DateTime?
   payments            Payment[]
   reviews             DoctorReview[]
   cancellationRequests CancellationRequest[]
