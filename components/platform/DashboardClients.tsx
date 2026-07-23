@@ -645,6 +645,22 @@ function Badge({ value }: { value: string }) {
   );
 }
 
+function PlanBadge({ medal }: { medal: DoctorProfile["medal"] }) {
+  const styles: Record<DoctorProfile["medal"], { bg: string; text: string; dot: string; border: string }> = {
+    oro:       { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-400",  border: "border-amber-200" },
+    diamante:  { bg: "bg-sky-50",     text: "text-sky-700",    dot: "bg-sky-500",    border: "border-sky-200"   },
+    amatista:  { bg: "bg-violet-50",  text: "text-violet-700", dot: "bg-violet-500", border: "border-violet-200"},
+    obsidiana: { bg: "bg-slate-100",  text: "text-slate-700",  dot: "bg-slate-500",  border: "border-slate-300" },
+  };
+  const s = styles[medal] ?? styles.oro;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold leading-none ${s.bg} ${s.text} ${s.border}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
+      {planLabels[medal]}
+    </span>
+  );
+}
+
 function paymentReadableStatus(status: string, provider: string) {
   if (status === "FAILED") return "Pago fallido";
   if (status === "REFUNDED") return "Pago reembolsado";
@@ -2034,7 +2050,7 @@ export function DoctorDashboardClient() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
-                <Badge value={`PLAN ${planLabels[medal]}`} />
+                <PlanBadge medal={medal} />
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
               </div>
             </div>
@@ -2539,8 +2555,8 @@ export function DoctorDashboardClient() {
                   </button>
                 </div>
                 {amatistaToolsEnabled && (
-                  <p className="mt-5 rounded-3xl bg-sky-50 p-4 text-sm leading-6 text-sky-700">
-                    Plan Amatista: próximamente tendrás exportación PDF de historias y resúmenes clínicos con IA.
+                  <p className="mt-5 rounded-3xl bg-violet-50 p-4 text-sm leading-6 text-violet-700">
+                    ✓ Plan Amatista: La exportación PDF con resumen IA está disponible dentro de cada historia clínica.
                   </p>
                 )}
               </section>
