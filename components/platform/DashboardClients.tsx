@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Hash, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, Users, Wallet, XCircle } from "lucide-react";
+import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -197,6 +197,9 @@ type DoctorAgenda = {
         specialty: string;
         paymentStatus: string;
         paymentProvider: string;
+        secretaryCreated?: boolean;
+        guestPatientName?: string | null;
+        guestPatientPhone?: string | null;
       };
     }>;
   }>;
@@ -238,6 +241,7 @@ type MedicationResult = {
     contraindications: string;
     warnings: string;
     referenceDose?: string;
+    interactions?: string;
     source: string;
     sourceUrl?: string;
   }>;
@@ -2210,6 +2214,10 @@ export function DoctorDashboardClient() {
             />
           )}
 
+          {activeSection === "disponibilidad" && (
+            <SecretaryLinkSection medal={medal} />
+          )}
+
           {activeSection === "agenda" && (
             <AppointmentList
               appointments={appointments}
@@ -3073,6 +3081,244 @@ function BetaPrivateMode({
   );
 }
 
+/* ── Enlace de Secretaría ─────────────────────────────────────── */
+
+type SecretaryLinkData = {
+  token: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+} | null;
+
+function SecretaryLinkSection({ medal }: { medal: DoctorProfile["medal"] }) {
+  const [link, setLink] = useState<SecretaryLinkData>(null);
+  const [loadingLink, setLoadingLink] = useState(true);
+  const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  const isPlanAllowed = medal === "diamante" || medal === "amatista";
+
+  const appUrl = typeof window !== "undefined" ? window.location.origin : "https://vitaeon.mx";
+  const portalUrl = link ? `${appUrl}/secretaria/${link.token}` : "";
+
+  useEffect(() => {
+    if (!isPlanAllowed) { setLoadingLink(false); return; }
+    void (async () => {
+      try {
+        const res = await clientApi<SecretaryLinkData>("/api/doctor/secretary-link");
+        setLink(res);
+      } catch { /* silencioso si no hay link */ }
+      setLoadingLink(false);
+    })();
+  }, [isPlanAllowed]);
+
+  async function generate() {
+    if (pin.length < 4) { setLinkError("El PIN debe tener al menos 4 dígitos."); return; }
+    setSaving(true);
+    setLinkError("");
+    try {
+      const res = await clientApi<{ token: string; isActive: boolean; createdAt: string; updatedAt: string }>(
+        "/api/doctor/secretary-link",
+        { method: "POST", body: JSON.stringify({ pin }) }
+      );
+      setLink(res);
+      setPin("");
+      setShowForm(false);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : "No fue posible generar el enlace.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deactivate() {
+    if (!window.confirm("¿Desactivar el enlace de secretaría? La secretaria ya no podrá acceder con el enlace actual.")) return;
+    setDeleting(true);
+    try {
+      await clientApi("/api/doctor/secretary-link", { method: "DELETE" });
+      setLink(null);
+    } catch { /* silencioso */ }
+    setDeleting(false);
+  }
+
+  function copyLink() {
+    void navigator.clipboard.writeText(portalUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (!isPlanAllowed) {
+    return (
+      <section className="dashboard-card rounded-[1.75rem] border-silver/70 mt-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Secretaría</p>
+            <h2 className="mt-2 text-2xl font-semibold text-deep">Enlace para secretaría</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Genera un enlace único con PIN para que tu secretaria o recepcionista pueda registrar citas sin necesitar cuenta VITAEON. Disponible en los planes Diamante y Amatista.
+            </p>
+          </div>
+          <span className="inline-block rounded-full bg-amber-100 px-4 py-1.5 text-xs font-semibold text-amber-700">
+            Plan Diamante o Amatista
+          </span>
+        </div>
+        <div className="mt-6 rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-8 text-center">
+          <Key className="mx-auto h-8 w-8 text-slate-300" />
+          <p className="mt-3 text-sm text-slate-400">Actualiza tu plan para activar el enlace de secretaría.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70 mt-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Secretaría · Recepción</p>
+          <h2 className="mt-2 text-2xl font-semibold text-deep">Enlace para secretaría</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Tu secretaria abre este enlace en su dispositivo, ingresa el PIN y accede solo al calendario y al registro de citas — sin tocar tus datos clínicos ni financieros.
+          </p>
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-50">
+          <Key className="h-5 w-5 text-sky-600" />
+        </div>
+      </div>
+
+      {loadingLink ? (
+        <div className="mt-6 flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin text-medical" />
+          Verificando enlace…
+        </div>
+      ) : link ? (
+        <div className="mt-6 space-y-4">
+          {/* URL del portal */}
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">Enlace activo</p>
+                <p className="mt-1 truncate text-sm font-mono text-slate-700">{portalUrl}</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={copyLink}
+                  className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {copied ? "Copiado" : "Copiar"}
+                </button>
+                <a
+                  href={portalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Abrir
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Instrucciones */}
+          <div className="rounded-2xl bg-sky-50/60 px-5 py-4 text-sm leading-6 text-sky-800">
+            <strong>Cómo usar:</strong> Copia el enlace y compártelo con tu secretaria. Al entrar le pedirá el PIN que tú estableciste. La sesión dura 24 horas. No se crea ninguna cuenta VITAEON para la secretaria.
+          </div>
+
+          {/* Acciones */}
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              onClick={() => { setShowForm(true); setPin(""); setLinkError(""); }}
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              <Key className="h-4 w-4" />
+              Cambiar PIN / regenerar enlace
+            </button>
+            <button
+              onClick={deactivate}
+              disabled={deleting}
+              className="flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+              Desactivar enlace
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-8 text-center">
+          <Key className="mx-auto h-8 w-8 text-slate-300" />
+          <p className="mt-3 text-sm font-semibold text-slate-600">Sin enlace activo</p>
+          <p className="mt-1 text-sm text-slate-400">Genera un enlace con PIN para que tu secretaria pueda registrar citas.</p>
+          <button
+            onClick={() => { setShowForm(true); setLinkError(""); }}
+            className="mt-5 flex items-center gap-2 mx-auto rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+          >
+            <Key className="h-4 w-4" />
+            Generar enlace de secretaría
+          </button>
+        </div>
+      )}
+
+      {/* Formulario PIN */}
+      {showForm && (
+        <div className="mt-5 rounded-2xl border border-silver/50 bg-white p-5">
+          <p className="font-semibold text-deep">{link ? "Cambiar PIN y regenerar enlace" : "Crear enlace de secretaría"}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            El enlace anterior quedará inválido. Comparte el nuevo enlace y PIN con tu secretaria.
+          </p>
+          <div className="mt-4 flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="mb-2 block text-sm font-semibold text-deep">PIN de acceso (4–6 dígitos)</label>
+              <div className="relative">
+                <input
+                  type={showPin ? "text" : "password"}
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="· · · ·"
+                  className="w-full rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 text-center text-xl tracking-widest text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          {linkError && (
+            <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700">{linkError}</p>
+          )}
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={generate}
+              disabled={saving || pin.length < 4}
+              className="flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+              {link ? "Regenerar enlace" : "Crear enlace"}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setPin(""); setLinkError(""); }}
+              className="rounded-full border border-silver px-5 py-3 text-sm font-semibold text-deep transition hover:border-slate-300"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function DoctorAgendaPanel({
   agenda,
   month,
@@ -3300,8 +3546,20 @@ function DoctorAgendaPanel({
                     <div className="mt-3 rounded-2xl border border-silver bg-slate-50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-deep">{slot.appointment.patientName}</p>
-                          <p className="mt-1 text-sm text-slate-600">{shortTime(slot.startsAt)} · {durationLabel(slot.startsAt, slot.endsAt)} · {slot.appointment.specialty}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-deep">
+                              {slot.appointment.guestPatientName ?? slot.appointment.patientName}
+                            </p>
+                            {slot.appointment.secretaryCreated && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 border border-sky-200">
+                                🗂 Secretaría
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {shortTime(slot.startsAt)} · {durationLabel(slot.startsAt, slot.endsAt)} · {slot.appointment.specialty}
+                            {slot.appointment.guestPatientPhone ? ` · ${slot.appointment.guestPatientPhone}` : ""}
+                          </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge value={slot.appointment.status} />
@@ -3849,33 +4107,48 @@ function MedicationSearchPanel({
       )}
       {result && result.status === "integration_pending" && (
         <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Próximamente disponible</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Referencia no disponible</p>
           <p className="mt-2 text-sm leading-6 text-amber-800">
-            La integración con una fuente farmacológica autorizada (COFEPRIS / PLM) está en configuración.
-            Mientras tanto, consulta el Vademécum PLM, Micromedex o la ficha técnica oficial del fabricante.
-          </p>
-          <p className="mt-3 text-xs text-amber-600">
-            Esta función se activará automáticamente cuando el administrador configure{" "}
-            <code className="rounded bg-amber-100 px-1 py-0.5 font-mono">MEDICATION_API_URL</code>.
+            La IA de referencia farmacológica no pudo responder en este momento. Intenta de nuevo o consulta directamente el Vademécum PLM, Micromedex o la ficha técnica del fabricante.
           </p>
         </div>
       )}
       {result && result.status === "ready" && (
-        <div className="mt-5 rounded-2xl border border-silver/50 bg-slate-50/60 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical">Fuente conectada</p>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{result.disclaimer}</p>
-          <div className="mt-4 grid gap-3">
-            {result.results.map((item) => (
-              <article key={`${item.name}-${item.source}`} className="rounded-2xl bg-white p-4">
-                <p className="font-semibold text-deep">{item.name}</p>
-                {item.activeSubstance && <p className="mt-1 text-sm text-slate-600">Sustancia activa: {item.activeSubstance}</p>}
-                <p className="mt-3 text-sm leading-6 text-slate-600">{item.indications}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600"><span className="font-semibold text-deep">Contraindicaciones:</span> {item.contraindications}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600"><span className="font-semibold text-deep">Advertencias:</span> {item.warnings}</p>
-                <p className="mt-3 text-xs font-semibold text-slate-500">Fuente: {item.source}</p>
-              </article>
-            ))}
+        <div className="mt-5 space-y-4">
+          <div className="rounded-2xl bg-sky-50/60 border border-sky-100 px-5 py-3">
+            <p className="text-xs leading-5 text-sky-700">{result.disclaimer}</p>
           </div>
+          {result.results.map((item) => (
+            <article key={`${item.name}-${item.source}`} className="rounded-2xl border border-silver/60 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-bold text-deep">{item.name}</p>
+                  {item.activeSubstance && (
+                    <p className="mt-0.5 text-sm text-slate-500">Sustancia activa: <span className="font-semibold text-slate-700">{item.activeSubstance}</span></p>
+                  )}
+                </div>
+                <span className="rounded-full border border-silver bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">{item.source}</span>
+              </div>
+              {item.presentations.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {item.presentations.map((p) => (
+                    <span key={p} className="rounded-full bg-medical/10 px-2.5 py-0.5 text-xs font-semibold text-medical">{p}</span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-4 space-y-2.5 text-sm leading-6 text-slate-700">
+                <p><span className="font-semibold text-deep">Indicaciones: </span>{item.indications}</p>
+                {item.referenceDose && (
+                  <p><span className="font-semibold text-deep">Dosis de referencia: </span>{item.referenceDose}</p>
+                )}
+                <p><span className="font-semibold text-deep">Contraindicaciones: </span>{item.contraindications}</p>
+                <p><span className="font-semibold text-deep">Advertencias: </span>{item.warnings}</p>
+                {item.interactions && (
+                  <p><span className="font-semibold text-deep">Interacciones relevantes: </span>{item.interactions}</p>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </section>

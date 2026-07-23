@@ -84,7 +84,10 @@ export async function GET(request: Request) {
               patientEmail: slot.appointment.patient.user.email,
               specialty: doctor.specialty.name,
               paymentStatus: slot.appointment.payments[0]?.status ?? "PENDING",
-              paymentProvider: slot.appointment.payments[0]?.provider ?? "CASH"
+              paymentProvider: slot.appointment.payments[0]?.provider ?? "CASH",
+              secretaryCreated: slot.appointment.secretaryCreated,
+              guestPatientName: slot.appointment.guestPatientName,
+              guestPatientPhone: slot.appointment.guestPatientPhone
             }
           : null
       }))

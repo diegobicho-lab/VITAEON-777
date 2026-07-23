@@ -209,6 +209,7 @@ model Doctor {
   prescriptions               Prescription[]
   additionalLocations         DoctorLocation[]
   assistants                  DoctorAssistant[]
+  secretaryLink               DoctorSecretaryLink?
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -341,6 +342,9 @@ model Appointment {
   originalAmountCents Int               @default(0)
   discountCents       Int               @default(0)
   discountLabel       String?
+  secretaryCreated    Boolean           @default(false)
+  guestPatientName    String?
+  guestPatientPhone   String?
   payments            Payment[]
   reviews             DoctorReview[]
   cancellationRequests CancellationRequest[]
@@ -629,4 +633,17 @@ model DoctorAssistant {
   createdAt DateTime @default(now())
 
   @@index([doctorId])
+}
+
+/// Enlace de secretaría — permite que la recepcionista registre citas sin necesitar cuenta VITAEON.
+/// El token es un UUID opaco generado por el médico. El PIN se guarda como hash bcrypt.
+model DoctorSecretaryLink {
+  id        String   @id @default(cuid())
+  doctorId  String   @unique
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  pinHash   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
