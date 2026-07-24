@@ -160,24 +160,26 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  // Images are private medical assets — require an authenticated session.
-  const user = await getCurrentUser();
-  if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para acceder a imágenes.", 401);
-
   const { supabaseUrl, serviceRoleKey, bucket, basePath } = getStorageConfig();
   if (!supabaseUrl || !serviceRoleKey) return fail("STORAGE_NOT_CONFIGURED", "Storage no configurado.", 503);
 
   const url = new URL(request.url);
   const objectPath = url.searchParams.get("path") ?? "";
   const normalizedPath = objectPath.replace(/^\/+/, "");
-  const allowedPrefixes = [
-    `${basePath}/`,
-    "doctor-profile-assets/",
-    "medical-verifications/"
-  ];
 
-  if (!allowedPrefixes.some((prefix) => normalizedPath.startsWith(prefix))) {
-    return fail("INVALID_IMAGE_PATH", "Ruta de imagen inválida.", 422);
+  // Profile photos are public (visible on the specialist listing to all visitors).
+  // Medical verifications and license photos are private — require authentication.
+  const publicPrefixes = ["doctor-profile-assets/"];
+  const privatePrefixes = [`${basePath}/`, "medical-verifications/"];
+  const isPublic = publicPrefixes.some((prefix) => normalizedPath.startsWith(prefix));
+  const isAllowed = isPublic || privatePrefixes.some((prefix) => normalizedPath.startsWith(prefix));
+
+  if (!isAllowed) return fail("INVALID_IMAGE_PATH", "Ruta de imagen inválida.", 422);
+
+  if (!isPublic) {
+    // Private assets — require an authenticated session.
+    const user = await getCurrentUser();
+    if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para acceder a imágenes.", 401);
   }
 
   const storageUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${normalizedPath}`;
