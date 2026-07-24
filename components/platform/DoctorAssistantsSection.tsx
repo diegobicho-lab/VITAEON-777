@@ -34,6 +34,7 @@ export function DoctorAssistantsSection({
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [sectionMessage, setSectionMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const isPlanAllowed = plan === "diamante" || plan === "amatista";
 
@@ -52,9 +53,14 @@ export function DoctorAssistantsSection({
 
   useEffect(() => { void load(); }, []);
 
+  function showMsg(text: string, ok: boolean) {
+    setSectionMessage({ text, ok });
+    setTimeout(() => setSectionMessage(null), 6000);
+  }
+
   async function invite() {
     if (!name.trim() || !email.trim()) {
-      onMessage("Completa el nombre y correo del asistente.");
+      showMsg("Completa el nombre y correo del asistente.", false);
       return;
     }
     setSaving(true);
@@ -65,10 +71,10 @@ export function DoctorAssistantsSection({
       });
       setName("");
       setEmail("");
-      onMessage("✓ Asistente invitado. Sus credenciales llegaron al correo proporcionado.");
+      showMsg("✓ Asistente invitado. Sus credenciales llegaron al correo proporcionado.", true);
       await load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : "No fue posible invitar al asistente.");
+      showMsg(err instanceof Error ? err.message : "No fue posible invitar al asistente.", false);
     } finally {
       setSaving(false);
     }
@@ -79,10 +85,10 @@ export function DoctorAssistantsSection({
     setRevoking(assistantId);
     try {
       await clientApi(`/api/doctor/assistants/${assistantId}`, { method: "DELETE" });
-      onMessage("✓ Acceso revocado. La cuenta del asistente fue eliminada.");
+      showMsg("✓ Acceso revocado. La cuenta del asistente fue eliminada.", true);
       await load();
     } catch (err) {
-      onMessage(err instanceof Error ? err.message : "No fue posible revocar el acceso.");
+      showMsg(err instanceof Error ? err.message : "No fue posible revocar el acceso.", false);
     } finally {
       setRevoking(null);
     }
@@ -119,6 +125,19 @@ export function DoctorAssistantsSection({
   /* ── Plan correcto ── */
   return (
     <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+      {/* Mensaje de estado — aparece justo arriba del encabezado de esta sección */}
+      {sectionMessage && (
+        <div
+          className={`mb-5 flex items-start gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium ${
+            sectionMessage.ok
+              ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+              : "bg-red-50 text-red-700 ring-1 ring-red-200"
+          }`}
+        >
+          <span>{sectionMessage.ok ? "✓" : "⚠"}</span>
+          <span>{sectionMessage.text}</span>
+        </div>
+      )}
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Asistente de recepción</p>
         <h2 className="mt-2 text-2xl font-semibold text-deep">Gestión de asistentes</h2>
