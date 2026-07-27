@@ -17,6 +17,12 @@ export const metadata: Metadata = {
     index: true,
     follow: true
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VITAEON"
+  },
   openGraph: {
     title: "VITAEON | Medicina privada premium",
     description: "Especialistas verificados, agenda médica y experiencia digital de alto nivel.",
@@ -29,7 +35,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#071726",
   width: "device-width",
-  initialScale: 1
+  initialScale: 1,
+  maximumScale: 5
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

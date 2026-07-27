@@ -486,6 +486,55 @@ function money(cents: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 }
 
+/* ── Profile completion ─────────────────────────────────────────── */
+type CompletionResult = { pct: number; missing: string[] };
+
+function computeProfileCompletion(profile: DoctorProfile): CompletionResult {
+  const checks: Array<{ label: string; filled: boolean }> = [
+    { label: "Foto de perfil", filled: Boolean(profile.imageUrl) },
+    { label: "Foto del consultorio", filled: Boolean(profile.practicePhotoUrl) },
+    { label: "Biografía profesional", filled: Boolean(profile.bio) },
+    { label: "Dirección del consultorio", filled: Boolean(profile.officeAddress) },
+    { label: "Teléfono profesional", filled: Boolean(profile.professionalPhone) },
+    { label: "Enlace a Google Maps", filled: Boolean(profile.mapsUrl) },
+    { label: "Universidad de egreso", filled: Boolean(profile.university) },
+    { label: "Redes sociales o WhatsApp", filled: Boolean(profile.whatsappUrl || profile.instagramUrl || profile.linkedinUrl) },
+    { label: "Cédula profesional", filled: Boolean(profile.professionalLicense) },
+    { label: "Logros o certificaciones", filled: profile.achievements.length > 0 || profile.certifications.length > 0 }
+  ];
+  const filled = checks.filter((c) => c.filled).length;
+  const missing = checks.filter((c) => !c.filled).map((c) => c.label).slice(0, 3);
+  return { pct: Math.round((filled / checks.length) * 100), missing };
+}
+
+function ProfileCompletionCard({ profile }: { profile: DoctorProfile }) {
+  const { pct, missing } = computeProfileCompletion(profile);
+  const tone = pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-400" : "bg-red-400";
+  const label = pct >= 80 ? "¡Perfil casi completo!" : pct >= 50 ? "Perfil en progreso" : "Perfil incompleto";
+  return (
+    <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Completado del perfil</p>
+        <span className="text-sm font-bold text-deep">{pct}%</span>
+      </div>
+      <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+        <div className={`h-full rounded-full transition-all duration-500 ${tone}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-2 text-xs font-semibold text-slate-500">{label}</p>
+      {missing.length > 0 && (
+        <p className="mt-2 text-xs text-slate-400">
+          Falta: {missing.join(" · ")}
+        </p>
+      )}
+      {pct < 100 && (
+        <p className="mt-2 text-[11px] text-slate-400">
+          Los perfiles completos reciben hasta 4× más citas.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function shortTime(value: string | Date) {
   return new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(value));
 }
@@ -878,8 +927,51 @@ export function PatientDashboardClient() {
     >
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
         <div className="mt-8 grid gap-5">
-          {appointments.length === 0 && <EmptyState text="Aún no tienes citas registradas." />}
-          {appointments.map((appointment) => (
+          {appointments.length === 0 && (
+            <div className="grid gap-4">
+              <EmptyState text="Aún no tienes citas registradas." />
+              <Link
+                href="/#busqueda"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#071726] px-6 py-3.5 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-fit"
+              >
+                <Search className="h-4 w-4" /> Agendar tu primera cita →
+              </Link>
+            </div>
+          )}
+          {/* Próxima cita destacada */}
+          {(() => {
+            const upcoming = [...appointments]
+              .filter((a) => ["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "ACCEPTED", "CONFIRMED"].includes(a.status))
+              .sort((a, b) => new Date(a.availabilitySlot.startsAt).getTime() - new Date(b.availabilitySlot.startsAt).getTime())[0];
+            if (!upcoming) return null;
+            const diffMs = new Date(upcoming.availabilitySlot.startsAt).getTime() - Date.now();
+            const diffHours = Math.round(diffMs / 3_600_000);
+            const diffDays = Math.round(diffMs / 86_400_000);
+            const timeLabel = diffMs < 0 ? "Próximamente" : diffHours < 2 ? "Muy pronto" : diffHours < 24 ? `En ${diffHours}h` : `En ${diffDays} día${diffDays !== 1 ? "s" : ""}`;
+            return (
+              <div className="rounded-[1.75rem] border-2 border-medical/30 bg-gradient-to-br from-sky-50 to-white p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-medical">Tu próxima cita</p>
+                <h3 className="mt-2 text-xl font-bold text-deep">{upcoming.doctor.fullName}</h3>
+                <p className="text-sm text-slate-500">{upcoming.doctor.specialty.name} · {upcoming.doctor.hospital.name}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-deep">
+                    <Calendar className="h-4 w-4 text-medical" /> {dateTime(upcoming.availabilitySlot.startsAt)}
+                  </span>
+                  <span className="rounded-full bg-medical px-3 py-1 text-xs font-bold text-white">{timeLabel}</span>
+                </div>
+              </div>
+            );
+          })()}
+          {/* Lista cronológica */}
+          {[...appointments]
+            .sort((a, b) => {
+              const active = ["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "ACCEPTED", "CONFIRMED"];
+              const aActive = active.includes(a.status) ? 0 : 1;
+              const bActive = active.includes(b.status) ? 0 : 1;
+              if (aActive !== bActive) return aActive - bActive;
+              return new Date(a.availabilitySlot.startsAt).getTime() - new Date(b.availabilitySlot.startsAt).getTime();
+            })
+            .map((appointment) => (
             <article key={appointment.id} className="relative overflow-hidden rounded-[1.75rem] border border-silver/70 bg-white/95 shadow-[0_4px_24px_rgba(8,32,51,0.05)] transition-shadow duration-300 hover:shadow-[0_12px_48px_rgba(8,32,51,0.09)]">
               {/* Status accent strip */}
               <div className={`absolute inset-y-0 left-0 w-1 ${appointmentAccentBg(appointment.status)}`} />
@@ -1948,6 +2040,26 @@ export function DoctorDashboardClient() {
     openPrintWindow("Receta médica VITAEON", body);
   }
 
+  function sharePrescriptionWhatsApp() {
+    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    if (!appointment) {
+      setPrescriptionStatus("Selecciona una receta antes de compartir.");
+      return;
+    }
+    const doctorName = prescriptionTemplate.doctorName || profile?.fullName || "VITAEON";
+    const specialty = prescriptionTemplate.specialty || profile?.specialty.name || "";
+    const patientName = appointment.patient.user.name;
+    const date = new Intl.DateTimeFormat("es-MX", { dateStyle: "long" }).format(new Date());
+    const diagnosis = prescriptionForm.diagnosis ? `\nDiagnóstico: ${prescriptionForm.diagnosis}` : "";
+    const meds = prescriptionForm.medicationInstructions ? `\nMedicamento: ${prescriptionForm.medicationInstructions}` : "";
+    const dosage = prescriptionForm.dosage ? ` · Dosis: ${prescriptionForm.dosage}` : "";
+    const freq = prescriptionForm.frequency ? ` · Frecuencia: ${prescriptionForm.frequency}` : "";
+    const duration = prescriptionForm.duration ? ` · Duración: ${prescriptionForm.duration}` : "";
+    const recs = prescriptionForm.generalRecommendations ? `\nRecomendaciones: ${prescriptionForm.generalRecommendations}` : "";
+    const msg = `🏥 *Receta VITAEON*\nPaciente: ${patientName}\nFecha: ${date}\nMédico: ${doctorName} — ${specialty}${diagnosis}${meds}${dosage}${freq}${duration}${recs}\n\n_Esta receta fue generada digitalmente por VITAEON · vitaeon.mx_`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  }
+
   const sections = [
     ["resumen", "Resumen"],
     ["agenda", "Agenda clínica"],
@@ -2132,7 +2244,8 @@ export function DoctorDashboardClient() {
                 <MetricMini label="Confirmadas" value={String(appointments.filter((item) => confirmedAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
               </div>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {profile && <div className="mt-6"><ProfileCompletionCard profile={profile} /></div>}
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Próximas citas</p>
                   <div className="mt-3 grid gap-2.5">
@@ -2614,6 +2727,7 @@ export function DoctorDashboardClient() {
                   onUploadAsset={uploadPrescriptionAsset}
                   onSave={savePrescription}
                   onPrint={printPrescription}
+                  onWhatsApp={sharePrescriptionWhatsApp}
                 />
               )}
 
@@ -3822,7 +3936,8 @@ function AmatistaPrescriptionPanel({
   onSaveTemplate,
   onUploadAsset,
   onSave,
-  onPrint
+  onPrint,
+  onWhatsApp
 }: {
   appointments: Appointment[];
   prescriptions: PrescriptionRecord[];
@@ -3842,6 +3957,7 @@ function AmatistaPrescriptionPanel({
   onUploadAsset: (kind: "prescription-header" | "prescription-signature", file?: File) => void;
   onSave: () => void;
   onPrint: () => void;
+  onWhatsApp: () => void;
 }) {
   const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
 
@@ -3977,6 +4093,18 @@ function AmatistaPrescriptionPanel({
           <div className="mt-5 flex flex-wrap gap-3">
             <button onClick={onSave} disabled={loading} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Guardar receta</button>
             <button onClick={onPrint} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep">Vista previa / imprimir</button>
+            <button
+              onClick={onWhatsApp}
+              disabled={!selectedAppointmentId}
+              title={!selectedAppointmentId ? "Selecciona una cita primero" : "Compartir resumen de receta por WhatsApp"}
+              className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.133.558 4.133 1.534 5.875L0 24l6.334-1.512A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.37l-.359-.214-3.724.889.923-3.619-.234-.373A9.818 9.818 0 1112 21.818z"/>
+              </svg>
+              Compartir por WhatsApp
+            </button>
           </div>
         </div>
       </div>

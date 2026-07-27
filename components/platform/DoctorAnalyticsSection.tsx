@@ -209,6 +209,30 @@ export function DoctorAnalyticsSection() {
         </div>
       </div>
 
+      {/* Insights accionables */}
+      <div className="mt-6 rounded-2xl border border-slate-100 bg-gradient-to-br from-[#071726]/[0.03] to-white p-5">
+        <p className="text-sm font-semibold text-[#071726]">💡 Insights para crecer</p>
+        <ul className="mt-3 grid gap-2.5 text-sm text-slate-600 sm:grid-cols-2">
+          {data.completionRate >= 90 ? (
+            <li className="flex gap-2"><span className="shrink-0 text-emerald-500">🏆</span>Tu tasa de citas completadas es excelente. Comparte tu perfil para atraer más pacientes.</li>
+          ) : data.completionRate >= 70 ? (
+            <li className="flex gap-2"><span className="shrink-0 text-amber-500">📈</span>Puedes mejorar tu tasa de completadas confirmando citas rápidamente.</li>
+          ) : (
+            <li className="flex gap-2"><span className="shrink-0 text-red-400">⚠️</span>Tu tasa de completadas es baja. Verifica si hay cancelaciones frecuentes y contacta a tus pacientes.</li>
+          )}
+          {data.cancelled90 > 0 && (
+            <li className="flex gap-2"><span className="shrink-0 text-slate-400">🔔</span>{data.cancelled90} {data.cancelled90 === 1 ? "cita cancelada" : "citas canceladas"} en 90 días. Los recordatorios automáticos reducen cancelaciones.</li>
+          )}
+          {data.revenueThisMonthCents === 0 && (
+            <li className="flex gap-2"><span className="shrink-0 text-slate-400">💳</span>Activa los cobros en línea con Stripe para registrar ingresos automáticamente en tu panel.</li>
+          )}
+          <li className="flex gap-2"><span className="shrink-0 text-sky-500">👤</span>Los médicos con foto, bio y dirección completas reciben 4× más visitas en su perfil público.</li>
+          {data.total90 > 0 && data.appointmentsByDay.some((d) => d.count === 0) && (
+            <li className="flex gap-2"><span className="shrink-0 text-violet-400">📅</span>Algunos días de la semana no tienes citas. Considera publicar disponibilidad en esos días.</li>
+          )}
+        </ul>
+      </div>
+
       {/* Status breakdown pills */}
       <div className="mt-5 flex flex-wrap gap-2">
         {Object.entries(data.byStatus)
