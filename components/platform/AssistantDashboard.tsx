@@ -69,6 +69,10 @@ function isToday(value: string) {
   );
 }
 
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 function readableStatus(status: string) {
   const map: Record<string, string> = {
     ACCEPTED: "Aceptada",
@@ -105,25 +109,150 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/* ── Sección de horarios del doctor ─────────────────────────── */
+
+function ScheduleSection({
+  slots,
+  appointments,
+  onBook
+}: {
+  slots: Slot[];
+  appointments: Appointment[];
+  onBook: (slotId: string) => void;
+}) {
+  const now = new Date();
+  const todayStart = startOfDay(now);
+
+  // Mapa de appointment.id → appointment completa (para obtener nombre del paciente)
+  const apptById = new Map(appointments.map((a) => [a.id, a]));
+
+  // Solo slots activos desde hoy en adelante
+  const relevant = slots
+    .filter((s) => s.isActive && new Date(s.startsAt) >= todayStart)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+  // Agrupar por fecha (clave: "2026-07-28")
+  const grouped = new Map<string, Slot[]>();
+  for (const s of relevant) {
+    const d = new Date(s.startsAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const arr = grouped.get(key) ?? [];
+    arr.push(s);
+    grouped.set(key, arr);
+  }
+
+  const dayFmt = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" });
+  const timeFmt = new Intl.DateTimeFormat("es-MX", { timeStyle: "short" });
+
+  return (
+    <section className="mb-8 rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-[#071726]">Horarios del doctor</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Horarios publicados. Los libres se pueden agendar directamente desde aquí.
+      </p>
+
+      {grouped.size === 0 ? (
+        <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
+          <Clock className="mx-auto h-7 w-7 text-slate-300" />
+          <p className="mt-2 text-sm text-slate-400">
+            El médico no tiene horarios publicados próximamente. Debe agregarlos desde su panel.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-5 space-y-6">
+          {[...grouped.entries()].map(([key, daySlots]) => {
+            const date = new Date(daySlots[0].startsAt);
+            const todayLabel = isToday(daySlots[0].startsAt);
+            const dayLabel = todayLabel
+              ? `Hoy — ${dayFmt.format(date)}`
+              : dayFmt.format(date).replace(/^\w/, (c) => c.toUpperCase());
+
+            return (
+              <div key={key}>
+                <p className="mb-2.5 text-xs font-bold uppercase tracking-[0.22em] text-[#1e9bd4]">
+                  {dayLabel}
+                </p>
+                <div className="grid gap-2">
+                  {daySlots.map((slot) => {
+                    const isPast = new Date(slot.startsAt) < now;
+                    const appt = slot.appointment ? apptById.get(slot.appointment.id) : undefined;
+                    const isFree = !slot.appointment;
+
+                    return (
+                      <div
+                        key={slot.id}
+                        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-3.5 transition ${
+                          isPast
+                            ? "bg-slate-50 opacity-40"
+                            : isFree
+                              ? "border border-emerald-100 bg-emerald-50"
+                              : "border border-slate-100 bg-slate-50/70"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              isPast ? "bg-slate-300" : isFree ? "bg-emerald-500" : "bg-slate-400"
+                            }`}
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-[#071726]">
+                              {timeFmt.format(new Date(slot.startsAt))}
+                              {" – "}
+                              {timeFmt.format(new Date(slot.endsAt))}
+                            </p>
+                            {appt ? (
+                              <p className="mt-0.5 text-xs text-slate-500">{appt.patient.user.name}</p>
+                            ) : isFree && !isPast ? (
+                              <p className="mt-0.5 text-xs text-emerald-600 font-medium">Disponible</p>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {isFree && !isPast ? (
+                          <button
+                            onClick={() => onBook(slot.id)}
+                            className="shrink-0 rounded-full bg-[#071726] px-4 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
+                          >
+                            Agendar →
+                          </button>
+                        ) : appt ? (
+                          <StatusBadge status={appt.status} />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 /* ── Modal de nueva cita ────────────────────────────────────── */
 
 function NewAppointmentModal({
   slots,
   doctorName,
   priceCents,
+  initialSlotId,
   onClose,
   onCreated
 }: {
   slots: Slot[];
   doctorName: string;
   priceCents: number;
+  initialSlotId?: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState<PatientResult[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
-  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [selectedSlotId, setSelectedSlotId] = useState(initialSlotId ?? "");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TRANSFER">("CASH");
   const [reason, setReason] = useState("");
   const [searching, setSearching] = useState(false);
@@ -134,6 +263,8 @@ function NewAppointmentModal({
     .filter((s) => s.isActive && !s.appointment && new Date(s.startsAt) > new Date())
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
     .slice(0, 40);
+
+  const timeFmt = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" });
 
   async function searchPatient() {
     if (query.trim().length < 3) return;
@@ -270,7 +401,7 @@ function NewAppointmentModal({
                 <option value="">-- Selecciona un horario --</option>
                 {freeSlots.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {dateTime(s.startsAt)}{isToday(s.startsAt) ? " · HOY" : ""}
+                    {timeFmt.format(new Date(s.startsAt))}{isToday(s.startsAt) ? " · HOY" : ""}
                   </option>
                 ))}
               </select>
@@ -345,6 +476,7 @@ export function AssistantDashboardClient() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [bookSlotId, setBookSlotId] = useState<string | undefined>(undefined);
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -371,6 +503,16 @@ export function AssistantDashboardClient() {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/";
+  }
+
+  function openModal(slotId?: string) {
+    setBookSlotId(slotId);
+    setShowModal(true);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    setBookSlotId(undefined);
   }
 
   const todayAppointments = appointments.filter(
@@ -422,12 +564,18 @@ export function AssistantDashboardClient() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => openModal()}
               disabled={!me}
               className="flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:opacity-40"
             >
               <UserPlus className="h-4 w-4" />
               Nueva cita
+            </button>
+            <button
+              onClick={load}
+              className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Actualizar
             </button>
             <button
               onClick={logout}
@@ -439,7 +587,11 @@ export function AssistantDashboardClient() {
         </header>
 
         {message && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
+          <div className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-semibold ${
+            message.startsWith("✓")
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}>
             {message}
           </div>
         )}
@@ -483,23 +635,24 @@ export function AssistantDashboardClient() {
           </div>
         )}
 
+        {/* Horarios del doctor — agenda de disponibilidad */}
+        {me && (
+          <ScheduleSection
+            slots={slots}
+            appointments={appointments}
+            onBook={(slotId) => openModal(slotId)}
+          />
+        )}
+
         {/* Citas de hoy */}
         <section className="mb-8 rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-[#071726]">Agenda de hoy</h2>
-            <button
-              onClick={load}
-              className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Actualizar
-            </button>
-          </div>
+          <h2 className="text-xl font-bold text-[#071726]">Agenda de hoy</h2>
 
           {todayAppointments.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
               <p className="text-sm text-slate-400">Sin citas programadas para hoy.</p>
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => openModal()}
                 disabled={!me}
                 className="mt-4 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-40"
               >
@@ -565,9 +718,10 @@ export function AssistantDashboardClient() {
           slots={slots}
           doctorName={me.doctor.fullName}
           priceCents={me.doctor.consultationPriceCents}
-          onClose={() => setShowModal(false)}
+          initialSlotId={bookSlotId}
+          onClose={closeModal}
           onCreated={() => {
-            setShowModal(false);
+            closeModal();
             setMessage("✓ Cita creada correctamente. El paciente recibió una notificación por correo.");
             void load();
           }}
