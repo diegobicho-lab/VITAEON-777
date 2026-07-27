@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, Users, Wallet, XCircle } from "lucide-react";
+import { BadgeCheck, Bell, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, User, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -829,18 +829,38 @@ function PlanActivatingCard({ plan }: { plan: keyof typeof planActivatingConfig 
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+/* ── Dashboard top navbar (mobile + desktop) ──────────────────── */
+function DashboardNavbar() {
+  return (
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-silver/30 bg-white/90 px-4 py-3 backdrop-blur-md sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between">
+        <Link href="/" className="text-[15px] font-bold tracking-tight text-deep">VITAEON</Link>
+        <Link
+          href="/"
+          className="flex items-center gap-1 rounded-full border border-silver/60 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-deep"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" /> Inicio
+        </Link>
+      </div>
+    </header>
+  );
+}
+
 function Shell({ eyebrow, title, children, headerExtra }: { eyebrow: string; title: string; children: ReactNode; headerExtra?: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[linear-gradient(160deg,#eef4f9_0%,#f4f8fc_40%,#edf2f7_100%)] px-4 pb-24 pt-28 text-ink sm:px-6 sm:pt-32">
-      <section className="mx-auto max-w-7xl">
-        <header className="mb-8 border-b border-silver/40 pb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>
-          <h1 className="mt-3 text-3xl font-bold text-deep sm:text-4xl">{title}</h1>
-          {headerExtra}
-        </header>
-        {children}
-      </section>
-    </main>
+    <>
+      <DashboardNavbar />
+      <main className="min-h-screen bg-[linear-gradient(160deg,#eef4f9_0%,#f4f8fc_40%,#edf2f7_100%)] px-4 pb-28 pt-16 text-ink sm:px-6 sm:pb-24 sm:pt-20">
+        <section className="mx-auto max-w-7xl">
+          <header className="mb-6 border-b border-silver/40 pb-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">{eyebrow}</p>
+            <h1 className="mt-2 text-2xl font-bold text-deep sm:mt-3 sm:text-4xl">{title}</h1>
+            {headerExtra}
+          </header>
+          {children}
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -1057,6 +1077,54 @@ export function PatientDashboardClient() {
         </div>
       )}
     </Shell>
+  );
+}
+
+/* ── Mobile bottom nav — doctor dashboard ─────────────────────── */
+type DoctorSection = "resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas";
+
+function DoctorMobileNav({
+  activeSection,
+  onSelect,
+  unreadCount
+}: {
+  activeSection: DoctorSection;
+  onSelect: (s: DoctorSection) => void;
+  unreadCount: number;
+}) {
+  const primary: Array<{ id: DoctorSection; label: string; Icon: React.FC<{ className?: string }> }> = [
+    { id: "resumen", label: "Inicio", Icon: ({ className }) => <Stethoscope className={className} /> },
+    { id: "agenda", label: "Agenda", Icon: ({ className }) => <Calendar className={className} /> },
+    { id: "disponibilidad", label: "Horarios", Icon: ({ className }) => <Clock className={className} /> },
+    { id: "perfil", label: "Perfil", Icon: ({ className }) => <User className={className} /> },
+    { id: "notificaciones", label: "Alertas", Icon: ({ className }) => <Bell className={className} /> },
+  ];
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      aria-label="Navegación principal"
+    >
+      <div className="grid grid-cols-5">
+        {primary.map(({ id, label, Icon }) => {
+          const active = activeSection === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onSelect(id)}
+              className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-400"}`}
+            >
+              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-400"}`} />
+              {label}
+              {id === "notificaciones" && unreadCount > 0 && (
+                <span className="absolute right-[18%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
@@ -2129,6 +2197,7 @@ export function DoctorDashboardClient() {
   const readyForPilot = completedOnboarding === onboardingItems.length && profile?.subscriptionStatus === "ACTIVE";
 
   return (
+    <>
     <Shell eyebrow="Médicos" title="Panel médico">
       {/* Wizard de onboarding — aparece automáticamente cuando el perfil está incompleto */}
       {showWizard && !loading && (
@@ -2160,19 +2229,20 @@ export function DoctorDashboardClient() {
       {loading ? <LoadingState /> : (
         <div className="mt-8 grid gap-6">
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
-            <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <BadgeCheck className="h-8 w-8 text-medical" />
-                <h2 className="mt-4 text-3xl font-semibold text-deep">{profile?.fullName}</h2>
-                <p className="mt-2 text-slate-600">{profile?.specialty.name} · {profile?.hospital.name}</p>
+                <BadgeCheck className="h-7 w-7 text-medical sm:h-8 sm:w-8" />
+                <h2 className="mt-3 text-xl font-semibold text-deep sm:mt-4 sm:text-3xl">{profile?.fullName}</h2>
+                <p className="mt-1 text-sm text-slate-600 sm:mt-2">{profile?.specialty.name} · {profile?.hospital.name}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
                 <PlanBadge medal={medal} />
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
               </div>
             </div>
-            <nav className="scroll-fade-x mt-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Secciones del panel">
+            {/* Tabs: hidden on mobile (bottom nav handles primary tabs); visible on md+ */}
+            <nav className="scroll-fade-x mt-5 hidden gap-2 overflow-x-auto pb-1 no-scrollbar md:flex" aria-label="Secciones del panel">
               {sections.map(([id, label]) => (
                 <button
                   key={id}
@@ -2183,6 +2253,18 @@ export function DoctorDashboardClient() {
                 </button>
               ))}
             </nav>
+            {/* Mobile: compact 2-col tab grid for all sections */}
+            <div className="mt-4 grid grid-cols-2 gap-2 md:hidden">
+              {sections.map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={`rounded-2xl px-3 py-2.5 text-[13px] font-semibold transition-all text-left ${activeSection === id ? "bg-[#071726] text-white shadow-soft" : "border border-silver/50 bg-white/80 text-slate-600"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
 
@@ -2770,6 +2852,12 @@ export function DoctorDashboardClient() {
         </div>
       )}
     </Shell>
+    <DoctorMobileNav
+      activeSection={activeSection}
+      onSelect={setActiveSection}
+      unreadCount={notifications.filter((n) => !n.isRead).length}
+    />
+    </>
   );
 }
 
