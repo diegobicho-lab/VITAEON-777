@@ -1387,6 +1387,22 @@ export default function VitaeonPlatform() {
                   <option value="PATIENT">Paciente</option>
                   <option value="DOCTOR">Médico</option>
                 </select>
+                {authForm.role === "PATIENT" && (
+                  <div>
+                    <input
+                      value={authForm.phone}
+                      onChange={(event) => setAuthForm({ ...authForm, phone: event.target.value })}
+                      placeholder="WhatsApp (ej. +52 477 000 0000)"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                    />
+                    <p className="mt-1.5 px-1 text-xs text-slate-400">
+                      Opcional · Tu recepcionista podrá contactarte por WhatsApp para confirmar citas.
+                    </p>
+                  </div>
+                )}
               </>
             )}
             <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
