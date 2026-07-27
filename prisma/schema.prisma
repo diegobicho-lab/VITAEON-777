@@ -347,6 +347,8 @@ model Appointment {
   guestPatientName    String?
   guestPatientPhone   String?
   reminderSentAt      DateTime?
+  reminder2hSentAt    DateTime?
+  assistantNotes      String?           @db.Text
   payments            Payment[]
   reviews             DoctorReview[]
   cancellationRequests CancellationRequest[]

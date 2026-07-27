@@ -5,7 +5,7 @@ import { findNextAvailableSlot } from "@/lib/appointments/reschedule";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
+import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createManyNotifications } from "@/lib/notifications/notifications";
 import { getStripe } from "@/lib/payments/stripe";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
@@ -654,6 +654,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     type: action.toLowerCase(),
     notifyAdmin
   });
+
+  // ── Post-consult review invitation ────────────────────────────────────────
+  // When a doctor marks a consultation COMPLETED, send the patient an email
+  // inviting them to leave a verified review. Fire-and-forget (non-blocking).
+  if (action === "COMPLETE") {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
+    const patientEmail = updated.patient.user.email;
+    const isGhost = patientEmail.endsWith("@vitaeon.internal");
+
+    if (!isGhost) {
+      sendTransactionalEmail({
+        to: patientEmail,
+        subject: `¿Cómo estuvo tu consulta con ${updated.doctor.fullName}?`,
+        text: `Tu cita con ${updated.doctor.fullName} fue marcada como completada. Si deseas, puedes dejar una opinión verificada sobre tu experiencia.`,
+        html: emailShell(
+          "¿Cómo estuvo tu consulta?",
+          `<p>Hola <strong>${updated.patient.user.name}</strong>,</p>
+          <p>Tu cita con <strong>${updated.doctor.fullName}</strong> (${updated.doctor.specialty.name}) acaba de ser registrada como completada.</p>
+          <p>Tu opinión ayuda a otros pacientes a elegir con confianza. Solo toma un momento:</p>
+          ${emailButton("Dejar mi opinión en VITAEON", `${appUrl}/dashboard/patient`)}`
+        )
+      }).catch((err) => console.error("[review-invite:email:failed]", err));
+    }
+  }
 
   return ok({ ...updated, reason: openSensitiveText(updated.reason) });
 }

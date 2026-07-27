@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
+import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
 import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
 import DoctorOnboardingWizard, { type WizardData } from "@/components/platform/DoctorOnboardingWizard";
 import { clientApi } from "@/services/client/api";
@@ -1010,7 +1011,7 @@ export function DoctorDashboardClient() {
   const [affiliateCode, setAffiliateCode] = useState("");
   const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
   const [reviewReply, setReviewReply] = useState("");
-  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes">("resumen");
+  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas">("resumen");
   const [achievementsText, setAchievementsText] = useState("");
   const [certificationsText, setCertificationsText] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
@@ -1957,7 +1958,8 @@ export function DoctorDashboardClient() {
     ["opiniones", "Opiniones"],
     ["recursos", "Recursos Clínicos"],
     ["notificaciones", "Notificaciones"],
-    ["asistentes", "Asistentes"]
+    ["asistentes", "Asistentes"],
+    ["estadisticas", "Estadísticas"]
   ] as const;
 
   const onboardingItems = [
@@ -2529,6 +2531,8 @@ export function DoctorDashboardClient() {
               onMessage={setMessage}
             />
           )}
+
+          {activeSection === "estadisticas" && <DoctorAnalyticsSection />}
 
           {activeSection === "notificaciones" && (
             <div className="grid gap-6">
