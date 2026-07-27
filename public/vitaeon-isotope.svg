@@ -1,14 +1,10 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
-  <!-- V on transparent background — for use on light surfaces -->
-  <polygon
-    points='12,20 52,20 100,158 148,20 188,20 188,42 100,172 12,42'
-    fill='#071726'
-  />
   <path
-    d='M 52,20 Q 100,0 148,20'
-    fill='none'
-    stroke='#1e9bd4'
-    stroke-width='6'
-    stroke-linecap='round'
+    d='M 100,18
+       C 72,35 18,112 26,178
+       L 174,178
+       C 182,112 128,35 100,18
+       Z'
+    fill='currentColor'
   />
 </svg>
