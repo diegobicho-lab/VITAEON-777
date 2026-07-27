@@ -18,6 +18,13 @@ export const metadata: Metadata = {
     follow: true
   },
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png",   sizes: "192x192", type: "image/png" }
+    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192" }]
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -28,7 +35,8 @@ export const metadata: Metadata = {
     description: "Especialistas verificados, agenda médica y experiencia digital de alto nivel.",
     type: "website",
     locale: "es_MX",
-    siteName: "VITAEON"
+    siteName: "VITAEON",
+    images: [{ url: "/og-logo.png", width: 1200, height: 630, alt: "VITAEON" }]
   }
 };
 
