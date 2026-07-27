@@ -1,11 +1,1 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
-  <defs>
-    <mask id='vm'>
-      <rect width='200' height='200' fill='black'/>
-      <circle cx='100' cy='100' r='74' fill='white'/>
-      <circle cx='100' cy='100' r='46' fill='black'/>
-      <polygon points='100,133 60,207 140,207' fill='black'/>
-    </mask>
-  </defs>
-  <rect width='200' height='200' fill='currentColor' mask='url(#vm)'/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><mask id="vm"><rect width="200" height="200" fill="black"/><circle cx="100" cy="100" r="74" fill="white"/><circle cx="100" cy="100" r="43" fill="black"/><polygon points="100,131 68,183 132,183" fill="black"/></mask></defs><rect width="200" height="200" fill="currentColor" mask="url(#vm)"/></svg>
