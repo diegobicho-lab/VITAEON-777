@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Bell, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, User, Users, Wallet, XCircle } from "lucide-react";
+import { BadgeCheck, BarChart2, Bell, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Home, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, User, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -878,6 +878,40 @@ function LoadingState() {
   );
 }
 
+/* ── Mobile bottom nav — patient dashboard ─────────────────────── */
+function PatientMobileNav() {
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      aria-label="Navegación paciente"
+    >
+      <div className="grid grid-cols-3">
+        <button
+          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-medical transition-colors"
+          aria-current="page"
+        >
+          <Calendar className="h-5 w-5 text-medical" />
+          Mis Citas
+        </button>
+        <Link
+          href="/#busqueda"
+          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-400 transition-colors"
+        >
+          <Search className="h-5 w-5 text-slate-400" />
+          Buscar médico
+        </Link>
+        <Link
+          href="/"
+          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-400 transition-colors"
+        >
+          <Home className="h-5 w-5 text-slate-400" />
+          Inicio
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
 export function PatientDashboardClient() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -925,6 +959,7 @@ export function PatientDashboardClient() {
   const activas = appointments.filter((a) => ["PENDING", "ACCEPTED", "CONFIRMED"].includes(a.status)).length;
 
   return (
+    <>
     <Shell
       eyebrow="Pacientes"
       title="Tu expediente premium"
@@ -1077,6 +1112,8 @@ export function PatientDashboardClient() {
         </div>
       )}
     </Shell>
+    <PatientMobileNav />
+    </>
   );
 }
 
@@ -2861,6 +2898,47 @@ export function DoctorDashboardClient() {
   );
 }
 
+/* ── Mobile bottom nav — admin dashboard ─────────────────────── */
+type AdminSection = "resumen" | "verificaciones" | "medicos" | "pacientes" | "citas" | "pagos" | "opiniones" | "catalogos" | "directorio" | "auditoria";
+
+function AdminMobileNav({
+  activeSection,
+  onSelect
+}: {
+  activeSection: AdminSection;
+  onSelect: (s: AdminSection) => void;
+}) {
+  const primary: Array<{ id: AdminSection; label: string; Icon: React.FC<{ className?: string }> }> = [
+    { id: "resumen", label: "Resumen", Icon: ({ className }) => <BarChart2 className={className} /> },
+    { id: "verificaciones", label: "Verif.", Icon: ({ className }) => <ShieldCheck className={className} /> },
+    { id: "medicos", label: "Médicos", Icon: ({ className }) => <BadgeCheck className={className} /> },
+    { id: "citas", label: "Citas", Icon: ({ className }) => <Calendar className={className} /> },
+    { id: "pagos", label: "Pagos", Icon: ({ className }) => <CreditCard className={className} /> },
+  ];
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      aria-label="Navegación administración"
+    >
+      <div className="grid grid-cols-5">
+        {primary.map(({ id, label, Icon }) => {
+          const active = activeSection === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onSelect(id)}
+              className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-400"}`}
+            >
+              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-400"}`} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 export function AdminDashboardClient() {
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -2877,6 +2955,20 @@ export function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [activeSection, setActiveSection] = useState<AdminSection>("resumen");
+
+  const adminSections: Array<[AdminSection, string]> = [
+    ["resumen", "Resumen"],
+    ["verificaciones", "Verificaciones"],
+    ["medicos", "Médicos"],
+    ["pacientes", "Pacientes"],
+    ["citas", "Citas"],
+    ["pagos", "Pagos"],
+    ["opiniones", "Opiniones"],
+    ["catalogos", "Catálogos"],
+    ["directorio", "Directorio"],
+    ["auditoria", "Auditoría"],
+  ];
 
   async function load() {
     setLoading(true);
@@ -2960,28 +3052,63 @@ export function AdminDashboardClient() {
   }
 
   return (
+    <>
     <Shell eyebrow="Administración" title="Centro de control VITAEON">
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
         <div className="mt-8 grid gap-6">
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Metric icon={<ShieldCheck />} label="Verificaciones" value={String(verifications.length)} />
-            <Metric icon={<Calendar />} label="Citas" value={String(appointments.length)} />
-            <Metric icon={<BadgeCheck />} label="Médicos" value={String(doctors.length)} />
-            <Metric icon={<CreditCard />} label="Pagos" value={String(payments.length)} />
-            <Metric icon={<CreditCard />} label="Suscripciones" value={money(subscriptionPayments.filter((payment) => payment.status === "PAID").reduce((total, payment) => total + payment.amountCents, 0))} />
-            <Metric icon={<Users />} label="Pacientes" value={String(patients.length)} />
-            <Metric icon={<MessageCircle />} label="Opiniones" value={String(reviews?.total ?? 0)} />
-            <Metric icon={<Clock />} label="Auditoría" value={String(logs.length)} />
-          </div>
-          <BetaPrivateMode
-            doctors={doctors}
-            patients={patients}
-            appointments={appointments}
-            payments={payments}
-            subscriptionPayments={subscriptionPayments}
-            reviews={reviews}
-            logs={logs}
-          />
+
+          {/* ── Navigation header ── */}
+          <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">VITAEON Admin</p>
+                <h2 className="mt-1 text-xl font-semibold text-deep sm:text-2xl">Centro de control</h2>
+              </div>
+              <ShieldCheck className="h-7 w-7 shrink-0 text-slate-200" />
+            </div>
+            <nav className="scroll-fade-x mt-5 hidden gap-2 overflow-x-auto pb-1 no-scrollbar md:flex">
+              {adminSections.map(([id, label]) => (
+                <button key={id} onClick={() => setActiveSection(id)}
+                  className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${activeSection === id ? "bg-[#071726] text-white shadow-soft" : "border border-silver/60 bg-white/80 text-slate-600 hover:border-silver hover:bg-white hover:text-deep"}`}>
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-4 grid grid-cols-2 gap-2 md:hidden">
+              {adminSections.map(([id, label]) => (
+                <button key={id} onClick={() => setActiveSection(id)}
+                  className={`rounded-2xl px-3 py-2.5 text-[13px] font-semibold transition-all text-left ${activeSection === id ? "bg-[#071726] text-white shadow-soft" : "border border-silver/50 bg-white/80 text-slate-600"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
+          </section>
+
+          {/* ── Resumen ── */}
+          {activeSection === "resumen" && (<>
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+              <Metric icon={<ShieldCheck />} label="Verificaciones" value={String(verifications.length)} />
+              <Metric icon={<Calendar />} label="Citas" value={String(appointments.length)} />
+              <Metric icon={<BadgeCheck />} label="Médicos" value={String(doctors.length)} />
+              <Metric icon={<CreditCard />} label="Pagos" value={String(payments.length)} />
+              <Metric icon={<CreditCard />} label="Suscripciones" value={money(subscriptionPayments.filter((payment) => payment.status === "PAID").reduce((total, payment) => total + payment.amountCents, 0))} />
+              <Metric icon={<Users />} label="Pacientes" value={String(patients.length)} />
+              <Metric icon={<MessageCircle />} label="Opiniones" value={String(reviews?.total ?? 0)} />
+              <Metric icon={<Clock />} label="Auditoría" value={String(logs.length)} />
+            </div>
+            <BetaPrivateMode
+              doctors={doctors}
+              patients={patients}
+              appointments={appointments}
+              payments={payments}
+              subscriptionPayments={subscriptionPayments}
+              reviews={reviews}
+              logs={logs}
+            />
+          </>)}
+          {/* ── Verificaciones ── */}
+          {activeSection === "verificaciones" && (<>
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Seguimiento clínico sensible</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -3034,6 +3161,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          </>)}
+
+          {/* ── Catálogos ── */}
+          {activeSection === "catalogos" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Catálogos clínicos</h2>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -3049,8 +3180,11 @@ export function AdminDashboardClient() {
                 <button onClick={createHospital} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Crear hospital</button>
               </div>
             </div>
-            {message && <p className="mt-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
+          )}
+
+          {/* ── Médicos ── */}
+          {activeSection === "medicos" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Médicos registrados</h2>
             <div className="mt-5 grid gap-3">
@@ -3074,6 +3208,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
+          {/* ── Citas ── */}
+          {activeSection === "citas" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Citas recientes</h2>
             <div className="mt-5 grid gap-3">
@@ -3089,6 +3227,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
+          {/* ── Pagos ── */}
+          {activeSection === "pagos" && (<>
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Pagos recientes</h2>
             <div className="mt-5 grid gap-3">
@@ -3120,6 +3262,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          </>)}
+
+          {/* ── Pacientes ── */}
+          {activeSection === "pacientes" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Pacientes</h2>
             <div className="mt-5 grid gap-3">
@@ -3143,6 +3289,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
+          {/* ── Opiniones ── */}
+          {activeSection === "opiniones" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Opiniones y moderación</h2>
             <div className="mt-5 grid gap-3">
@@ -3165,6 +3315,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
+          {/* ── Directorio ── */}
+          {activeSection === "directorio" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Directorio comercial</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -3195,6 +3349,10 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
+          {/* ── Auditoría ── */}
+          {activeSection === "auditoria" && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <h2 className="text-2xl font-semibold text-deep">Últimos accesos y acciones</h2>
             <div className="mt-5 grid gap-3">
@@ -3206,9 +3364,13 @@ export function AdminDashboardClient() {
               ))}
             </div>
           </section>
+          )}
+
         </div>
       )}
     </Shell>
+    <AdminMobileNav activeSection={activeSection} onSelect={setActiveSection} />
+    </>
   );
 }
 
