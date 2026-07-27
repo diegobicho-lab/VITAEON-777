@@ -23,7 +23,7 @@ type AssistantItem = {
 
 export function DoctorAssistantsSection({
   plan,
-  onMessage
+  onMessage: _onMessage
 }: {
   plan: string; // "oro" | "diamante" | "amatista" | "obsidiana"
   onMessage: (msg: string) => void;

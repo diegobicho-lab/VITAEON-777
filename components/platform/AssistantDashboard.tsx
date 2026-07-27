@@ -278,7 +278,7 @@ function ScheduleSection({
                                   <p className="mt-0.5 text-xs text-slate-500">{appt.patient.phone}</p>
                                 )}
                                 {appt.reason && (
-                                  <p className="mt-0.5 text-xs italic text-slate-400">"{appt.reason}"</p>
+                                  <p className="mt-0.5 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
                                 )}
                               </>
                             ) : isFree && !isPast ? (
@@ -773,7 +773,7 @@ export function AssistantDashboardClient() {
                           {appt.patient.phone ? ` · ${appt.patient.phone}` : ""}
                         </p>
                         {appt.reason && (
-                          <p className="mt-1 text-xs italic text-slate-400">"{appt.reason}"</p>
+                          <p className="mt-1 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
@@ -820,7 +820,7 @@ export function AssistantDashboardClient() {
                         {appt.patient.phone ? ` · ${appt.patient.phone}` : ""}
                       </p>
                       {appt.reason && (
-                        <p className="mt-1 text-xs italic text-slate-400">"{appt.reason}"</p>
+                        <p className="mt-1 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
