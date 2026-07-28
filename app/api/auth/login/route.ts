@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { ok, fail } from "@/lib/api-response";
+import { createMfaChallengeToken } from "@/lib/auth/mfa";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
@@ -31,6 +32,15 @@ export async function POST(request: Request) {
     role: user.role as CurrentUser["role"],
     sessionVersion: user.sessionVersion
   };
+
+  if (user.role === "ADMIN" && process.env.ADMIN_MFA_REQUIRED === "true") {
+    if (!process.env.ADMIN_MFA_TOTP_SECRET) {
+      return fail("MFA_NOT_CONFIGURED", "MFA de administración no está configurado.", 503);
+    }
+    const challengeToken = await createMfaChallengeToken(currentUser);
+    return ok({ requiresMfa: true, challengeToken });
+  }
+
   const token = await createSessionToken(currentUser);
   await setSessionCookie(token);
   await auditLog({ actorUserId: user.id, action: "LOGIN_SUCCESS", entityType: "User", entityId: user.id });

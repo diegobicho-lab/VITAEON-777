@@ -490,10 +490,12 @@ export default function VitaeonPlatform() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
+  const [mfaChallengeToken, setMfaChallengeToken] = useState("");
   const [authForm, setAuthForm] = useState({
     name: "",
     email: "",
     password: "",
+    mfaCode: "",
     role: "PATIENT",
     phone: "",
     medal: "oro" as DoctorListItem["medal"]
@@ -742,6 +744,29 @@ export default function VitaeonPlatform() {
       setError("Ingresa tu nombre completo para crear tu cuenta.");
       return;
     }
+    if (mfaChallengeToken) {
+      if (!authForm.mfaCode.trim()) {
+        setError("Ingresa el código de autenticación.");
+        return;
+      }
+      try {
+        const signedUser = await clientApi<CurrentUser>("/api/auth/mfa/verify", {
+          method: "POST",
+          body: JSON.stringify({ challengeToken: mfaChallengeToken, code: authForm.mfaCode })
+        });
+        setUser(signedUser);
+        setMfaChallengeToken("");
+        setAuthOpen(false);
+        track("auth_completed", { role: signedUser.role, mode: "mfa" });
+        window.setTimeout(() => {
+          window.location.href = "/dashboard/admin";
+        }, 120);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "No fue posible verificar el código.");
+      }
+      return;
+    }
+
     const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
     const body =
       authMode === "login"
@@ -755,7 +780,12 @@ export default function VitaeonPlatform() {
             medal: authForm.role === "DOCTOR" ? authForm.medal : undefined
           };
     try {
-      const signedUser = await clientApi<CurrentUser | { message: string }>(path, { method: "POST", body: JSON.stringify(body) });
+      const signedUser = await clientApi<CurrentUser | { message: string } | { requiresMfa: true; challengeToken: string }>(path, { method: "POST", body: JSON.stringify(body) });
+      if ("requiresMfa" in signedUser) {
+        setMfaChallengeToken(signedUser.challengeToken);
+        setError("Ingresa el código de Google Authenticator para continuar.");
+        return;
+      }
       if (!("id" in signedUser)) {
         setError(signedUser.message);
         return;
@@ -1411,8 +1441,11 @@ export default function VitaeonPlatform() {
             )}
             <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" autoComplete={authMode === "login" ? "current-password" : "new-password"} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            {mfaChallengeToken && (
+              <input value={authForm.mfaCode} onChange={(event) => setAuthForm({ ...authForm, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="Código MFA" inputMode="numeric" autoComplete="one-time-code" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            )}
             {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
-            <button type="button" onClick={submitAuth} className="w-full rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{authMode === "login" ? "Entrar" : "Registrarme"}</button>
+            <button type="button" onClick={submitAuth} className="w-full rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{mfaChallengeToken ? "Verificar código" : authMode === "login" ? "Entrar" : "Registrarme"}</button>
             <button type="button" onClick={toggleAuthMode} className="text-sm font-semibold text-medical">
               {authMode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
             </button>

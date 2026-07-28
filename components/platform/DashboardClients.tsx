@@ -11,6 +11,20 @@ import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsS
 import DoctorOnboardingWizard, { type WizardData } from "@/components/platform/DoctorOnboardingWizard";
 import { clientApi } from "@/services/client/api";
 
+type AppointmentsResponse = {
+  appointments: Appointment[];
+  nextCursor: string | null;
+};
+
+type PatientProfile = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerifiedAt?: string | null;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+};
+
 type Appointment = {
   id: string;
   status: string;
@@ -914,6 +928,14 @@ function PatientMobileNav() {
 
 export function PatientDashboardClient() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsNextCursor, setAppointmentsNextCursor] = useState<string | null>(null);
+  const [appointmentsLoadingMore, setAppointmentsLoadingMore] = useState(false);
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileBirthDate, setProfileBirthDate] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -921,7 +943,16 @@ export function PatientDashboardClient() {
     setLoading(true);
     setError("");
     try {
-      setAppointments(await clientApi<Appointment[]>("/api/appointments"));
+      const [appointmentPage, patientProfile] = await Promise.all([
+        clientApi<AppointmentsResponse>("/api/appointments?take=20"),
+        clientApi<PatientProfile>("/api/patients/me")
+      ]);
+      setAppointments(appointmentPage.appointments);
+      setAppointmentsNextCursor(appointmentPage.nextCursor);
+      setProfile(patientProfile);
+      setProfileName(patientProfile.name);
+      setProfilePhone(patientProfile.phone ?? "");
+      setProfileBirthDate(patientProfile.dateOfBirth ? patientProfile.dateOfBirth.slice(0, 10) : "");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible cargar tus citas.");
     } finally {
@@ -942,6 +973,46 @@ export function PatientDashboardClient() {
     document.addEventListener("visibilitychange", refreshOnFocus);
     return () => document.removeEventListener("visibilitychange", refreshOnFocus);
   }, []);
+
+  async function loadMoreAppointments() {
+    if (!appointmentsNextCursor) return;
+    setAppointmentsLoadingMore(true);
+    setError("");
+    try {
+      const page = await clientApi<AppointmentsResponse>(`/api/appointments?take=20&cursor=${encodeURIComponent(appointmentsNextCursor)}`);
+      setAppointments((current) => [...current, ...page.appointments]);
+      setAppointmentsNextCursor(page.nextCursor);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible cargar más citas.");
+    } finally {
+      setAppointmentsLoadingMore(false);
+    }
+  }
+
+  async function savePatientProfile() {
+    setProfileSaving(true);
+    setProfileMessage("");
+    setError("");
+    try {
+      const saved = await clientApi<PatientProfile>("/api/patients/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: profileName,
+          phone: profilePhone || undefined,
+          dateOfBirth: profileBirthDate || null
+        })
+      });
+      setProfile(saved);
+      setProfileName(saved.name);
+      setProfilePhone(saved.phone ?? "");
+      setProfileBirthDate(saved.dateOfBirth ? saved.dateOfBirth.slice(0, 10) : "");
+      setProfileMessage("Perfil actualizado correctamente.");
+    } catch (caught) {
+      setProfileMessage(caught instanceof Error ? caught.message : "No fue posible actualizar tu perfil.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   async function updatePatientAppointment(id: string, action: "REQUEST_CANCELLATION" | "REQUEST_RESCHEDULE") {
     await clientApi(`/api/appointments/${id}`, {
@@ -982,6 +1053,27 @@ export function PatientDashboardClient() {
     >
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : (
         <div className="mt-8 grid gap-5">
+          {profile && (
+            <section className="rounded-[1.75rem] border border-silver/70 bg-white/95 p-5 shadow-[0_4px_24px_rgba(8,32,51,0.05)]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-medical">Editar perfil de paciente</p>
+                  <h2 className="mt-2 text-xl font-bold text-deep">Datos personales</h2>
+                  <p className="mt-1 text-sm text-slate-500">{profile.emailVerifiedAt ? "Correo verificado" : "Verifica tu correo para reservar citas."} · {profile.email}</p>
+                </div>
+                <Badge value={profile.emailVerifiedAt ? "EMAIL VERIFICADO" : "EMAIL PENDIENTE"} />
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <label className="grid gap-1.5 text-sm font-semibold text-deep">Nombre completo<input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" /></label>
+                <label className="grid gap-1.5 text-sm font-semibold text-deep">WhatsApp<input value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} type="tel" inputMode="tel" className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" /></label>
+                <label className="grid gap-1.5 text-sm font-semibold text-deep">Fecha de nacimiento<input value={profileBirthDate} onChange={(event) => setProfileBirthDate(event.target.value)} type="date" className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" /></label>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={savePatientProfile} disabled={profileSaving} className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:opacity-60">{profileSaving && <Loader2 className="h-4 w-4 animate-spin" />} Guardar perfil</button>
+                {profileMessage && <p className="text-sm font-semibold text-slate-600">{profileMessage}</p>}
+              </div>
+            </section>
+          )}
           {appointments.length === 0 && (
             <div className="grid gap-4">
               <EmptyState text="Aún no tienes citas registradas." />
@@ -1109,6 +1201,11 @@ export function PatientDashboardClient() {
               </div>
             </article>
           ))}
+          {appointmentsNextCursor && (
+            <button type="button" onClick={loadMoreAppointments} disabled={appointmentsLoadingMore} className="mx-auto inline-flex items-center gap-2 rounded-full border border-silver bg-white px-5 py-3 text-sm font-semibold text-deep transition hover:-translate-y-0.5 hover:shadow-premium disabled:opacity-60">
+              {appointmentsLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />} Ver más anteriores
+            </button>
+          )}
         </div>
       )}
     </Shell>
@@ -1263,7 +1360,7 @@ export function DoctorDashboardClient() {
     try {
     const [doctor, appointmentData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
       clientApi<DoctorProfile>("/api/doctors/me"),
-      clientApi<Appointment[]>("/api/appointments"),
+      clientApi<AppointmentsResponse>("/api/appointments?take=20"),
       clientApi<DoctorAgenda>(`/api/doctor-agenda?month=${monthKey(month)}`),
       clientApi<Array<{ id: string; name: string; specialty: string; hospital: string }>>("/api/doctors"),
       clientApi<SpecialtyOption[]>("/api/specialties"),
@@ -1298,7 +1395,7 @@ export function DoctorDashboardClient() {
     setCertificationsText(doctor.certifications.join("\n"));
     setLegalAccepted(doctor.legalDeclarationAccepted);
     setPrice(String(Math.round(doctor.consultationPriceCents / 100)));
-    setAppointments(appointmentData);
+    setAppointments(appointmentData.appointments);
     setAgenda(agendaData);
     setDoctorOptions(doctorData.filter((item) => item.id !== doctor.id));
     setSpecialties(specialtyData);
@@ -2976,7 +3073,7 @@ export function AdminDashboardClient() {
     try {
       const [verificationData, appointmentData, doctorData, paymentData, subscriptionPaymentData, patientData, logData, reviewData, listingData] = await Promise.all([
         clientApi<Verification[]>("/api/medical-verifications"),
-        clientApi<Appointment[]>("/api/appointments"),
+        clientApi<AppointmentsResponse>("/api/appointments?take=20"),
         clientApi<{ doctors: AdminDoctorSummary[]; pagination: { page: number; pageSize: number; total: number; totalPages: number; hasNextPage: boolean } }>("/api/admin/doctors"),
         clientApi<PaymentSummary[]>("/api/payments"),
         clientApi<SubscriptionPaymentSummary[]>("/api/subscription-payments"),
@@ -2986,7 +3083,7 @@ export function AdminDashboardClient() {
         clientApi<MarketplaceListingSummary[]>("/api/admin/marketplace-listings")
       ]);
       setVerifications(verificationData);
-      setAppointments(appointmentData);
+      setAppointments(appointmentData.appointments);
       setDoctors(doctorData.doctors);
       setPayments(paymentData);
       setSubscriptionPayments(subscriptionPaymentData);

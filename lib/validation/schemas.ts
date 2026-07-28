@@ -24,6 +24,43 @@ export const registerSchema = z.object({
   phone: z.string().min(8).max(30).optional()
 });
 
+export const emailVerificationSchema = z.object({
+  token: z.string().min(32).max(240)
+});
+
+export const mfaVerifySchema = z.object({
+  challengeToken: z.string().min(32).max(1200),
+  code: z.string().trim().regex(/^\d{6}$/, "Ingresa un código de 6 dígitos.")
+});
+
+export const patientProfileUpdateSchema = z.object({
+  name: z.string().trim().min(3).max(120).optional(),
+  phone: z.string().trim().min(8).max(30).optional().or(z.literal("")),
+  dateOfBirth: z.coerce.date().optional().nullable()
+});
+
+export const appointmentListQuerySchema = z.object({
+  cursor: z.string().min(1).optional(),
+  take: z.coerce.number().int().min(1).max(50).default(20),
+  status: z
+    .enum([
+      "PENDING",
+      "PENDING_DOCTOR_ACCEPTANCE",
+      "ACCEPTED",
+      "CONFIRMED",
+      "AUTO_CANCELLED",
+      "CANCELLED",
+      "COMPLETED",
+      "NO_SHOW",
+      "RESCHEDULE_REQUESTED",
+      "RESCHEDULED",
+      "CANCELLATION_REQUESTED",
+      "REFUND_PENDING",
+      "REFUNDED"
+    ])
+    .optional()
+});
+
 export const appointmentCreateSchema = z.object({
   doctorId: z.string().min(1),
   availabilitySlotId: z.string().min(1),

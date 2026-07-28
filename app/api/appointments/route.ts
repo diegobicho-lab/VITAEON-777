@@ -9,22 +9,27 @@ import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mai
 import { createManyNotifications } from "@/lib/notifications/notifications";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
-import { appointmentCreateSchema } from "@/lib/validation/schemas";
+import { appointmentCreateSchema, appointmentListQuerySchema } from "@/lib/validation/schemas";
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para ver citas.", 401);
+
+  const url = new URL(request.url);
+  const parsedQuery = appointmentListQuerySchema.safeParse({
+    cursor: url.searchParams.get("cursor") ?? undefined,
+    take: url.searchParams.get("take") ?? undefined,
+    status: url.searchParams.get("status") ?? undefined
+  });
+  if (!parsedQuery.success) return fail("VALIDATION_ERROR", "Filtros de citas inválidos.", 422, parsedQuery.error.flatten());
+
+  const { cursor, take, status } = parsedQuery.data;
 
   // Fire-and-forget: do not await so we don't add latency to the user's request.
   // A Vercel Cron (vercel.json) now runs this every hour as the primary mechanism.
   void autoCancelExpiredAppointments().catch((err) =>
     console.error("[appointments GET] background auto-cancel error:", err)
   );
-
-  // Hard cap: prevents loading thousands of rows for users with long history.
-  // The dashboard only displays the most recent N appointments.
-  // Full cursor pagination is a planned future enhancement.
-  const APPOINTMENTS_HARD_LIMIT = user.role === "ADMIN" || user.role === "STAFF" ? 200 : 100;
 
   // Para ASSISTANT: cargar las citas del médico al que está vinculado
   let assistantDoctorId: string | null = null;
@@ -36,17 +41,21 @@ export async function GET() {
     assistantDoctorId = link?.doctorId ?? null;
   }
 
+  const where: Prisma.AppointmentWhereInput =
+    user.role === "PATIENT"
+      ? { patient: { userId: user.id } }
+      : user.role === "DOCTOR"
+        ? { doctor: { userId: user.id } }
+        : user.role === "ASSISTANT"
+          ? assistantDoctorId
+            ? { doctorId: assistantDoctorId }
+            : { id: "no-results" } // asistente sin médico vinculado → vacío seguro
+          : {};
+
+  if (status) where.status = status as AppointmentStatus;
+
   const appointments = await prisma.appointment.findMany({
-    where:
-      user.role === "PATIENT"
-        ? { patient: { userId: user.id } }
-        : user.role === "DOCTOR"
-          ? { doctor: { userId: user.id } }
-          : user.role === "ASSISTANT"
-            ? assistantDoctorId
-              ? { doctorId: assistantDoctorId }
-              : { id: "no-results" } // asistente sin médico vinculado → vacío seguro
-            : {},
+    where,
     include: {
       doctor: { include: { specialty: true, hospital: true } },
       patient: { include: { user: true } },
@@ -54,10 +63,19 @@ export async function GET() {
       payments: true
     },
     orderBy: { createdAt: "desc" },
-    take: APPOINTMENTS_HARD_LIMIT
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
+    take: take + 1
   });
 
-  return ok(appointments.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })));
+  const hasNextPage = appointments.length > take;
+  const visibleAppointments = hasNextPage ? appointments.slice(0, take) : appointments;
+  const nextCursor = hasNextPage ? visibleAppointments[visibleAppointments.length - 1]?.id ?? null : null;
+
+  return ok({
+    appointments: visibleAppointments.map((appointment) => ({ ...appointment, reason: openSensitiveText(appointment.reason) })),
+    nextCursor
+  });
 }
 
 export async function POST(request: Request) {
@@ -71,8 +89,14 @@ export async function POST(request: Request) {
   const parsed = appointmentCreateSchema.safeParse(body);
   if (!parsed.success) return fail("VALIDATION_ERROR", "Datos de cita inválidos.", 422, parsed.error.flatten());
 
-  const patient = await prisma.patient.findUnique({ where: { userId: user.id } });
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    include: { user: { select: { emailVerifiedAt: true } } }
+  });
   if (!patient) return fail("PATIENT_PROFILE_REQUIRED", "El usuario no tiene perfil de paciente.", 409);
+  if (!patient.user.emailVerifiedAt) {
+    return fail("EMAIL_NOT_VERIFIED", "Verifica tu correo antes de reservar citas.", 403);
+  }
 
   try {
     const appointment = await prisma.$transaction(async (tx) => {

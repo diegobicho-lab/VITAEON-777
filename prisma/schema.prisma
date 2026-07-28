@@ -108,6 +108,7 @@ model User {
   name                 String
   passwordHash         String
   sessionVersion       Int                   @default(0)
+  emailVerifiedAt      DateTime?
   role                 Role                  @default(PATIENT)
   isActive             Boolean               @default(true)
   patient              Patient?
@@ -118,12 +119,25 @@ model User {
   sentMessages         MedicalChatMessage[]
   notifications        Notification[]
   passwordResetTokens  PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
   subscriptionPayments SubscriptionPayment[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
 
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)

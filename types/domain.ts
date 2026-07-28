@@ -37,6 +37,7 @@ export interface CurrentUser {
   name: string;
   role: Role;
   sessionVersion?: number;
+  emailVerifiedAt?: string | Date | null;
 }
 
 export interface DoctorListItem {

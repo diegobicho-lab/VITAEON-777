@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { MedicalMedal, Prisma, Role, VerificationStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { fail, ok } from "@/lib/api-response";
@@ -11,6 +12,10 @@ import type { CurrentUser } from "@/types/domain";
 
 const REGISTRATION_ACCEPTED_MESSAGE =
   "Si los datos son válidos, procesaremos tu registro y te enviaremos las instrucciones correspondientes.";
+
+function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 export async function POST(request: Request) {
   const limit = await rateLimitByIp("auth:register", { limit: 4, windowMs: 10 * 60_000 });
@@ -27,6 +32,8 @@ export async function POST(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const emailVerificationToken = crypto.randomBytes(32).toString("base64url");
+  const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60_000);
 
   let user;
   try {
@@ -37,6 +44,14 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         passwordHash,
         role: parsed.data.role === "DOCTOR" ? Role.DOCTOR : Role.PATIENT
+      }
+    });
+
+    await tx.emailVerificationToken.create({
+      data: {
+        userId: created.id,
+        tokenHash: hashToken(emailVerificationToken),
+        expiresAt: emailVerificationExpiresAt
       }
     });
 
@@ -123,19 +138,22 @@ export async function POST(request: Request) {
   });
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
+  const verificationUrl = `${appUrl}/api/auth/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
   // Fire-and-forget — email failure must not block registration or return a 500.
   void sendTransactionalEmail({
     to: user.email,
     subject: `Bienvenido a VITAEON, ${user.name.split(" ")[0]}`,
     text:
       user.role === Role.DOCTOR
-        ? "Tu cuenta médica fue creada. Completa tu perfil profesional, disponibilidad y verificación desde tu panel para aparecer en el directorio."
-        : "Tu cuenta de paciente fue creada. Ya puedes buscar especialistas verificados, reservar citas y pagar en línea.",
+        ? `Tu cuenta médica fue creada. Verifica tu correo aquí: ${verificationUrl}. Después completa tu perfil profesional, disponibilidad y verificación desde tu panel.`
+        : `Tu cuenta de paciente fue creada. Verifica tu correo aquí: ${verificationUrl}. Después podrás reservar citas y pagar en línea.`,
     html: emailShell(
       user.role === Role.DOCTOR ? `Bienvenido, ${user.name.split(" ")[0]}` : `Bienvenido a VITAEON, ${user.name.split(" ")[0]}`,
       user.role === Role.DOCTOR
         ? [
             `<p>Tu cuenta médica fue creada correctamente en <strong>VITAEON</strong>.</p>`,
+            `<p>Primero verifica tu correo para activar reservas y funciones sensibles.</p>`,
+            emailButton("Verificar correo", verificationUrl),
             `<p>Para aparecer en el directorio de pacientes necesitas:</p>`,
             `<ul style="margin:12px 0;padding-left:20px;color:#374151;">`,
             `<li style="margin-bottom:6px;">Completar tu perfil profesional y subir foto</li>`,
@@ -148,8 +166,8 @@ export async function POST(request: Request) {
           ].join("")
         : [
             `<p>Tu cuenta de paciente fue creada correctamente en <strong>VITAEON</strong>.</p>`,
-            `<p>Ahora puedes buscar especialistas médicos verificados en León, Guanajuato, reservar citas y pagar en línea de forma segura.</p>`,
-            emailButton("Buscar especialistas", appUrl)
+            `<p>Verifica tu correo para poder reservar citas y continuar con pagos en línea.</p>`,
+            emailButton("Verificar correo", verificationUrl)
           ].join("")
     )
   }).catch((err) => console.error("[register] Failed to send welcome email:", err));
