@@ -7,6 +7,8 @@ import { auditLog } from "@/lib/audit/audit";
 import { prisma } from "@/lib/db/prisma";
 import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 
+const AUTH_TOKEN_RETENTION_DAYS = 30;
+
 export function verifyCronRequest(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -78,6 +80,43 @@ export async function runExpireSubscriptionsCron(now = new Date()) {
   });
 
   return { expiredCount: result.count, ranAt: now.toISOString() };
+}
+
+export async function purgeExpiredAuthTokens(now = new Date()) {
+  const retentionCutoff = new Date(now.getTime() - AUTH_TOKEN_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+  const [passwordResetTokens, emailVerificationTokens] = await prisma.$transaction([
+    prisma.passwordResetToken.deleteMany({
+      where: {
+        OR: [
+          { usedAt: { not: null, lt: retentionCutoff } },
+          { expiresAt: { lt: retentionCutoff } }
+        ]
+      }
+    }),
+    prisma.emailVerificationToken.deleteMany({
+      where: {
+        OR: [
+          { usedAt: { not: null, lt: retentionCutoff } },
+          { expiresAt: { lt: retentionCutoff } }
+        ]
+      }
+    })
+  ]);
+
+  const result = {
+    passwordResetTokensDeleted: passwordResetTokens.count,
+    emailVerificationTokensDeleted: emailVerificationTokens.count,
+    retentionDays: AUTH_TOKEN_RETENTION_DAYS,
+    ranAt: now.toISOString()
+  };
+
+  await auditLog({
+    action: "CRON_PURGE_AUTH_TOKENS",
+    metadata: result
+  });
+
+  return result;
 }
 
 export async function send24HourAppointmentReminders(now = new Date()) {
