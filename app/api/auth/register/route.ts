@@ -1,4 +1,4 @@
-import { MedicalMedal, Role, VerificationStatus } from "@prisma/client";
+import { MedicalMedal, Prisma, Role, VerificationStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
@@ -8,6 +8,9 @@ import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mai
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { registerSchema } from "@/lib/validation/schemas";
 import type { CurrentUser } from "@/types/domain";
+
+const REGISTRATION_ACCEPTED_MESSAGE =
+  "Si los datos son válidos, procesaremos tu registro y te enviaremos las instrucciones correspondientes.";
 
 export async function POST(request: Request) {
   const limit = await rateLimitByIp("auth:register", { limit: 4, windowMs: 10 * 60_000 });
@@ -19,11 +22,15 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return fail("EMAIL_ALREADY_REGISTERED", "Este correo ya está registrado.", 409);
+  if (existing) {
+    return ok({ message: REGISTRATION_ACCEPTED_MESSAGE }, { status: 202 });
+  }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
-  const user = await prisma.$transaction(async (tx) => {
+  let user;
+  try {
+    user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
       data: {
         email,
@@ -88,14 +95,21 @@ export async function POST(request: Request) {
       });
     }
 
-    return created;
-  });
+      return created;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return ok({ message: REGISTRATION_ACCEPTED_MESSAGE }, { status: 202 });
+    }
+    throw error;
+  }
 
   const currentUser: CurrentUser = {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role as CurrentUser["role"]
+    role: user.role as CurrentUser["role"],
+    sessionVersion: user.sessionVersion
   };
   const token = await createSessionToken(currentUser);
   await setSessionCookie(token);

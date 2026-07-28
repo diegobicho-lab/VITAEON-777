@@ -13,7 +13,12 @@ function getSecret() {
 }
 
 export async function createSessionToken(user: CurrentUser) {
-  return new SignJWT(user as unknown as Record<string, unknown>)
+  const sessionUser = {
+    ...user,
+    sessionVersion: user.sessionVersion ?? 0
+  };
+
+  return new SignJWT(sessionUser as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
@@ -29,14 +34,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const sessionUser = verified.payload as unknown as CurrentUser;
     const user = await prisma.user.findUnique({
       where: { id: sessionUser.id },
-      select: { id: true, email: true, name: true, role: true, isActive: true }
+      select: { id: true, email: true, name: true, role: true, isActive: true, sessionVersion: true }
     });
     if (!user?.isActive) return null;
+    if ((sessionUser.sessionVersion ?? 0) !== user.sessionVersion) return null;
+
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role as CurrentUser["role"]
+      role: user.role as CurrentUser["role"],
+      sessionVersion: user.sessionVersion
     };
   } catch {
     return null;

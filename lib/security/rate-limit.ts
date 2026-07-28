@@ -8,6 +8,8 @@ import { redis } from "@/lib/db/redis";
 const limiters = new Map<string, Ratelimit>();
 
 function getLimiter(limit: number, windowMs: number): Ratelimit {
+  if (!redis) throw new Error("Redis is not configured");
+
   const key = `${limit}:${windowMs}`;
   if (!limiters.has(key)) {
     limiters.set(
@@ -37,13 +39,22 @@ export async function getClientIp() {
 }
 
 export async function rateLimit(key: string, options: { limit: number; windowMs: number }) {
-  const limiter = getLimiter(options.limit, options.windowMs);
-  const result = await limiter.limit(key);
-  return {
-    allowed: result.success,
-    remaining: result.remaining,
-    resetAt: result.reset
-  };
+  try {
+    const limiter = getLimiter(options.limit, options.windowMs);
+    const result = await limiter.limit(key);
+    return {
+      allowed: result.success,
+      remaining: result.remaining,
+      resetAt: result.reset
+    };
+  } catch (error) {
+    console.warn("[rate-limit] Redis unavailable; allowing request without rate limit.", error);
+    return {
+      allowed: true,
+      remaining: options.limit,
+      resetAt: Date.now() + options.windowMs
+    };
+  }
 }
 
 export async function rateLimitByIp(scope: string, options: { limit: number; windowMs: number }) {

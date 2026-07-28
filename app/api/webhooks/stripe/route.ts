@@ -65,6 +65,8 @@ export async function POST(request: Request) {
   // We use Redis as a distributed lock so duplicate deliveries are no-ops.
   const idempotencyKey = `vitaeon:stripe:event:${event.id}`;
   try {
+    if (!redis) throw new Error("Redis is not configured");
+
     // SET NX returns "OK" only when the key didn't exist before — meaning this
     // is the first time we see this event.  EX sets the TTL automatically.
     const isNew = await redis.set(idempotencyKey, "1", { nx: true, ex: STRIPE_EVENT_IDEMPOTENCY_TTL });

@@ -36,6 +36,7 @@ export interface CurrentUser {
   email: string;
   name: string;
   role: Role;
+  sessionVersion?: number;
 }
 
 export interface DoctorListItem {

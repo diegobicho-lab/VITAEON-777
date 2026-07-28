@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role as CurrentUser["role"]
+    role: user.role as CurrentUser["role"],
+    sessionVersion: user.sessionVersion
   };
   const token = await createSessionToken(currentUser);
   await setSessionCookie(token);
