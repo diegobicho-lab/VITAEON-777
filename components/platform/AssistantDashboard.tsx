@@ -41,6 +41,11 @@ type Appointment = {
   payments: Array<{ status: string; provider: string; amountCents: number }>;
 };
 
+type AppointmentsResponse = {
+  appointments: Appointment[];
+  nextCursor: string | null;
+};
+
 type PatientResult = {
   userId: string;
   patientId: string | null;
@@ -579,11 +584,11 @@ export function AssistantDashboardClient() {
     try {
       const [meData, apptData, slotData] = await Promise.all([
         clientApi<AssistantMe>("/api/assistants/me"),
-        clientApi<Appointment[]>("/api/appointments"),
+        clientApi<AppointmentsResponse>("/api/appointments?take=20"),
         clientApi<Slot[]>("/api/availability")
       ]);
       setMe(meData);
-      setAppointments(apptData);
+      setAppointments(apptData.appointments);
       setSlots(slotData);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Error al cargar datos.");
