@@ -755,7 +755,11 @@ export default function VitaeonPlatform() {
             medal: authForm.role === "DOCTOR" ? authForm.medal : undefined
           };
     try {
-      const signedUser = await clientApi<CurrentUser>(path, { method: "POST", body: JSON.stringify(body) });
+      const signedUser = await clientApi<CurrentUser | { message: string }>(path, { method: "POST", body: JSON.stringify(body) });
+      if (!("id" in signedUser)) {
+        setError(signedUser.message);
+        return;
+      }
       setUser(signedUser);
       setAuthOpen(false);
       track("auth_completed", { role: signedUser.role, mode: authMode });
