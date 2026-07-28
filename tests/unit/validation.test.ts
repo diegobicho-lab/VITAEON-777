@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  appointmentCreateSchema,
-  appointmentUpdateSchema,
-  doctorVerificationSchema,
+	  appointmentCreateSchema,
+	  appointmentUpdateSchema,
+	  doctorProfileUpdateSchema,
+	  doctorVerificationSchema,
   hospitalCreateSchema,
   loginSchema,
   specialtyCreateSchema
@@ -62,5 +63,21 @@ describe("validaciones clínicas VITAEON", () => {
     expect(specialty.success && specialty.data.name).toBe("Medicina Interna");
     expect(hospital.success && hospital.data.name).toBe("Hospital Ángeles León");
     expect(specialtyCreateSchema.safeParse({ name: "<script>alert(1)</script>" }).success).toBe(false);
+  });
+
+  it("rechaza URLs médicas con protocolos no seguros", () => {
+    expect(
+      doctorProfileUpdateSchema.safeParse({
+        whatsappUrl: "javascript:alert(document.cookie)",
+        websiteUrl: "https://vitaeon.mx"
+      }).success
+    ).toBe(false);
+
+    expect(
+      doctorProfileUpdateSchema.safeParse({
+        whatsappUrl: "https://wa.me/5214771234567",
+        websiteUrl: "https://vitaeon.mx"
+      }).success
+    ).toBe(true);
   });
 });

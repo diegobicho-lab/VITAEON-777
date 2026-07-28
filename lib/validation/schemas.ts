@@ -150,6 +150,20 @@ export const availabilityBulkSchema = z
     path: ["date"]
   });
 
+const externalUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .url("Ingresa una URL válida.")
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === "https:" || protocol === "http:";
+    } catch {
+      return false;
+    }
+  }, "La URL debe usar http o https.");
+
 export const doctorProfileUpdateSchema = z.object({
   fullName: z.string().min(3).max(120).optional(),
   specialtyId: z.string().min(1).optional(),
@@ -162,13 +176,13 @@ export const doctorProfileUpdateSchema = z.object({
   officeAddress: z.string().max(240).optional(),
   officeReference: z.string().max(180).optional(),
   cityState: z.string().max(140).optional(),
-  mapsUrl: z.string().max(500).optional(),
+  mapsUrl: externalUrlSchema.optional(),
   professionalPhone: z.string().max(40).optional(),
-  instagramUrl: z.string().max(500).optional(),
-  facebookUrl: z.string().max(500).optional(),
-  linkedinUrl: z.string().max(500).optional(),
-  websiteUrl: z.string().max(500).optional(),
-  whatsappUrl: z.string().max(500).optional(),
+  instagramUrl: externalUrlSchema.optional(),
+  facebookUrl: externalUrlSchema.optional(),
+  linkedinUrl: externalUrlSchema.optional(),
+  websiteUrl: externalUrlSchema.optional(),
+  whatsappUrl: externalUrlSchema.optional(),
   affiliateCode: z.string().trim().min(4).max(80).optional(),
   hospitalId: z.string().min(1).optional(),
   yearsExperience: z.number().int().min(0).max(70).optional(),

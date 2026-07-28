@@ -165,14 +165,26 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const objectPath = url.searchParams.get("path") ?? "";
-  const normalizedPath = objectPath.replace(/^\/+/, "");
+  const normalizedPath = objectPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const pathSegments = normalizedPath.split("/");
+  const safePath = path.posix.normalize(normalizedPath);
+
+  if (
+    !normalizedPath ||
+    normalizedPath.includes("\0") ||
+    pathSegments.some((segment) => segment === "..") ||
+    safePath === "." ||
+    safePath.startsWith("../")
+  ) {
+    return fail("INVALID_IMAGE_PATH", "Ruta de imagen inválida.", 422);
+  }
 
   // Profile photos are public (visible on the specialist listing to all visitors).
   // Medical verifications and license photos are private — require authentication.
   const publicPrefixes = ["doctor-profile-assets/"];
   const privatePrefixes = [`${basePath}/`, "medical-verifications/"];
-  const isPublic = publicPrefixes.some((prefix) => normalizedPath.startsWith(prefix));
-  const isAllowed = isPublic || privatePrefixes.some((prefix) => normalizedPath.startsWith(prefix));
+  const isPublic = publicPrefixes.some((prefix) => safePath.startsWith(prefix));
+  const isAllowed = isPublic || privatePrefixes.some((prefix) => safePath.startsWith(prefix));
 
   if (!isAllowed) return fail("INVALID_IMAGE_PATH", "Ruta de imagen inválida.", 422);
 
@@ -182,7 +194,7 @@ export async function GET(request: Request) {
     if (!user) return fail("UNAUTHENTICATED", "Inicia sesión para acceder a imágenes.", 401);
   }
 
-  const storageUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${normalizedPath}`;
+  const storageUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${safePath}`;
   const response = await fetch(storageUrl, {
     headers: {
       Authorization: `Bearer ${serviceRoleKey}`,

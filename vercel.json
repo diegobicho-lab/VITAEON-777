@@ -1,19 +1,11 @@
 {
   "crons": [
     {
-      "path": "/api/cron/auto-cancel",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/expire-subscriptions",
+      "path": "/api/cron/maintenance",
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/cron/appointment-reminders",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/appointment-reminders-2h",
+      "path": "/api/cron/reminders",
       "schedule": "0 13 * * *"
     }
   ]

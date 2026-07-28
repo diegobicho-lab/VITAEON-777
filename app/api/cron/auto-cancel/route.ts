@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
-import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
-import { auditLog } from "@/lib/audit/audit";
+import { runAutoCancelCron, verifyCronRequest } from "@/lib/cron/jobs";
 
 /**
  * Vercel Cron Job — auto-cancel expired appointments.
@@ -14,30 +13,11 @@ import { auditLog } from "@/lib/audit/audit";
  * traffic.  This endpoint guarantees cancellations happen on schedule.
  */
 export async function GET(request: NextRequest) {
-  // Verify the Vercel cron secret to prevent unauthorized calls.
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    // Return 401 — same as a wrong secret so we don't leak that the var is missing.
-    return fail("UNAUTHORIZED", "Invalid cron secret.", 401);
-  }
-
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return fail("UNAUTHORIZED", "Invalid cron secret.", 401);
-  }
+  const authError = verifyCronRequest(request);
+  if (authError) return authError;
 
   try {
-    const result = await autoCancelExpiredAppointments();
-    const count = result.count;
-
-    await auditLog({
-      action: "CRON_AUTO_CANCEL_APPOINTMENTS",
-      entityType: "Appointment",
-      metadata: { cancelledCount: count, ranAt: new Date().toISOString() }
-    });
-
-    return ok({ cancelledCount: count, ranAt: new Date().toISOString() });
+    return ok(await runAutoCancelCron());
   } catch (error) {
     console.error("[Cron auto-cancel] Failed:", error);
     return fail("CRON_FAILED", "Auto-cancel cron job failed.", 500);
