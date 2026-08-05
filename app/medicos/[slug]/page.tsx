@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { stripBlockedDateSlots } from "@/lib/availability/availability";
 import { prisma } from "@/lib/db/prisma";
 import { publicDoctorWhere } from "@/lib/doctors/public-doctor-filter";
 
@@ -12,7 +13,7 @@ type PageProps = {
 };
 
 async function getDoctor(slug: string) {
-  return prisma.doctor.findFirst({
+  const doctor = await prisma.doctor.findFirst({
     where: {
       slug,
       ...publicDoctorWhere
@@ -37,6 +38,13 @@ async function getDoctor(slug: string) {
       }
     }
   });
+
+  if (!doctor) return null;
+
+  // Mismo criterio que el listado público y la reserva: los días bloqueados
+  // por el médico no se ofrecen al paciente.
+  const [withOpenDays] = await stripBlockedDateSlots(prisma, [doctor]);
+  return withOpenDays;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

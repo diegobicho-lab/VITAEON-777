@@ -214,6 +214,7 @@ model Doctor {
   professionalLicense         String?
   verification                MedicalVerification?
   availabilitySlots           AvailabilitySlot[]
+  blockedDates                DoctorBlockedDate[]
   appointments                Appointment[]
   cancellationRequests        CancellationRequest[]
   conversationsCreated        MedicalConversation[] @relation("ConversationCreator")
@@ -286,6 +287,22 @@ model AvailabilitySlot {
   @@unique([doctorId, startsAt])
   @@index([doctorId, startsAt, isActive])
   @@index([doctorId, repeatBatchId])
+}
+
+/// Fecha completa marcada como no disponible por el médico.
+/// `date` se guarda como medianoche UTC del día natural en zona clínica
+/// (America/Mexico_City) para que la comparación por día sea exacta.
+model DoctorBlockedDate {
+  id        String   @id @default(cuid())
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([doctorId, date])
+  @@index([doctorId, date])
 }
 
 model Notification {

@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, BarChart2, Bell, Brain, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Home, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, User, Users, Wallet, XCircle } from "lucide-react";
+import { BadgeCheck, BarChart2, Bell, Brain, Calendar, CalendarOff, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, CreditCard, Eye, EyeOff, ExternalLink, FileText, Hash, Home, Key, Loader2, MessageCircle, Pill, Printer, Search, Send, ShieldCheck, Stethoscope, Tag, Trash2, Upload, User, Users, Wallet, XCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -936,8 +936,31 @@ export function PatientDashboardClient() {
   const [profileBirthDate, setProfileBirthDate] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  async function resendVerification() {
+    if (resendingVerification) return;
+    setResendingVerification(true);
+    setResendMessage("");
+    try {
+      const result = await clientApi<{ sent?: boolean; alreadyVerified?: boolean; message: string }>(
+        "/api/auth/verify-email/resend",
+        { method: "POST", body: "{}" }
+      );
+      setResendMessage(result.message);
+      // Si el correo ya estaba verificado, refrescamos para quitar el aviso.
+      if (result.alreadyVerified) await load();
+    } catch (caught) {
+      setResendMessage(
+        caught instanceof Error ? caught.message : "No pudimos reenviar el correo. Intenta de nuevo en unos minutos."
+      );
+    } finally {
+      setResendingVerification(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -1063,6 +1086,33 @@ export function PatientDashboardClient() {
                 </div>
                 <Badge value={profile.emailVerifiedAt ? "EMAIL VERIFICADO" : "EMAIL PENDIENTE"} />
               </div>
+
+              {/* Salida de autoservicio: sin esto, un paciente cuyo enlace expiró
+                  quedaba bloqueado para reservar sin ninguna acción disponible. */}
+              {!profile.emailVerifiedAt && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm leading-6 text-amber-900">
+                    Necesitas verificar tu correo antes de reservar. Revisa tu bandeja de entrada y la carpeta de spam.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={resendVerification}
+                      disabled={resendingVerification}
+                      aria-busy={resendingVerification}
+                      className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {resendingVerification && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                      {resendingVerification ? "Enviando…" : "Reenviar enlace de verificación"}
+                    </button>
+                    {resendMessage && (
+                      <p role="status" aria-live="polite" className="text-sm font-semibold text-amber-900">
+                        {resendMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 <label className="grid gap-1.5 text-sm font-semibold text-deep">Nombre completo<input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" /></label>
                 <label className="grid gap-1.5 text-sm font-semibold text-deep">WhatsApp<input value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} type="tel" inputMode="tel" className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" /></label>
@@ -1344,6 +1394,23 @@ export function DoctorDashboardClient() {
   const [newLocNotes, setNewLocNotes] = useState("");
   const [message, setMessage] = useState("");
   const [subscriptionAction, setSubscriptionAction] = useState("");
+  // Confirmaciones diferenciadas: antes un fallo real quedaba mudo porque
+  // clientApi lanza y ningún handler lo capturaba.
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [submittingVerification, setSubmittingVerification] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<Array<{ id: string; date: string; reason?: string | null }>>([]);
+  const [blockDateInput, setBlockDateInput] = useState("");
+  const [blockDateReason, setBlockDateReason] = useState("");
+  const [blockDatePreview, setBlockDatePreview] = useState<{
+    date: string;
+    freeSlots: number;
+    bookedSlots: number;
+    activeAppointments: Array<{ id: string; startsAt: string; status: string; patientName: string | null }>;
+  } | null>(null);
+  const [blockDateBusy, setBlockDateBusy] = useState(false);
+  const [connectStatusState, setConnectStatusState] = useState<"idle" | "checking" | "done" | "error">("idle");
+  const [connectStatusMessage, setConnectStatusMessage] = useState("");
   const assistantEnabled = medal === "amatista";
   const collaborationEnabled = medal === "amatista";
   const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
@@ -1414,6 +1481,9 @@ export function DoctorDashboardClient() {
     /* Consultorios adicionales */
     const locationData = await clientApi<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>("/api/doctor-locations").catch(() => []);
     setAdditionalLocations(locationData);
+
+    /* Días marcados como no disponibles — misma fuente que usa el paciente */
+    await loadBlockedDates();
 
     /* Mostrar wizard si el perfil está incompleto (médico recién registrado) */
     const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
@@ -1489,6 +1559,18 @@ export function DoctorDashboardClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sincroniza el estado de cobros al abrir la sección "Cobros", UNA sola vez por
+  // sesión de panel. El webhook `account.updated` sigue siendo el mecanismo
+  // principal; esto es el respaldo para cuando el médico vuelve de Stripe y el
+  // webhook aún no llegó. La guarda por estado evita bucles y polling.
+  useEffect(() => {
+    if (activeSection !== "cobros") return;
+    if (connectStatusState !== "idle") return;
+    if (!profile?.stripeAccountId) return;
+    void refreshConnectStatus(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, connectStatusState, profile?.stripeAccountId]);
+
   async function handleWizardComplete(data: WizardData) {
     const priceCents = data.consultationPriceCents ? parseInt(data.consultationPriceCents, 10) : undefined;
     const durationMins = data.consultationDurationMinutes ? parseInt(data.consultationDurationMinutes, 10) : undefined;
@@ -1518,6 +1600,31 @@ export function DoctorDashboardClient() {
       })
     });
 
+    // Publica el horario habitual con el MISMO endpoint que "Agenda clínica →
+    // Configurar horarios". Wizard y dashboard escriben en AvailabilitySlot con
+    // idéntico formato, así que lo configurado aquí aparece allá y viceversa.
+    let availabilityNote = "";
+    if (data.availabilityWeekdays.length > 0) {
+      try {
+        const published = await clientApi<{ created: number; skipped: number }>("/api/availability/bulk", {
+          method: "POST",
+          body: JSON.stringify({
+            startTime: data.availabilityStartTime,
+            endTime: data.availabilityEndTime,
+            durationMinutes: durationMins === 60 ? 60 : 45,
+            repeatWeekdays: data.availabilityWeekdays
+          })
+        });
+        availabilityNote = ` Publicamos ${published.created} horarios en tu agenda.`;
+      } catch (err) {
+        // El perfil sí se guardó: no se revierte, solo se informa con precisión.
+        availabilityNote =
+          err instanceof Error
+            ? ` Tu perfil se guardó, pero no pudimos publicar los horarios: ${err.message}`
+            : " Tu perfil se guardó, pero no pudimos publicar los horarios. Configúralos desde Agenda clínica.";
+      }
+    }
+
     setShowWizard(false);
     await load();
 
@@ -1535,7 +1642,7 @@ export function DoctorDashboardClient() {
         setActiveSection("suscripcion");
       }
     } else {
-      setMessage("¡Perfil completado con éxito! Publica tu disponibilidad para recibir pacientes.");
+      setMessage(`¡Perfil completado con éxito!${availabilityNote}`);
     }
   }
 
@@ -1733,36 +1840,102 @@ export function DoctorDashboardClient() {
     window.location.href = response.url;
   }
 
-  async function refreshConnectStatus() {
-    setMessage("");
-    await clientApi("/api/stripe/connect/status");
-    setMessage("Estado de cobros actualizado.");
-    await load();
+  /**
+   * Consulta el estado real de Stripe Connect desde el backend.
+   * `silent` = intento automático al abrir Cobros; sin él es la acción manual.
+   */
+  async function refreshConnectStatus(silent = false) {
+    if (connectStatusState === "checking") return;
+    setConnectStatusState("checking");
+    setConnectStatusMessage("Consultando estado de cobros…");
+    if (!silent) setFeedback(null);
+
+    try {
+      const status = await clientApi<{
+        chargesEnabled: boolean;
+        payoutsEnabled: boolean;
+        stripeAccountId: string | null;
+        statusLabel: string;
+      }>("/api/stripe/connect/status");
+
+      setConnectStatusState("done");
+      if (!status.stripeAccountId) {
+        setConnectStatusMessage("Todavía no conectas una cuenta de cobro.");
+      } else if (status.chargesEnabled && status.payoutsEnabled) {
+        setConnectStatusMessage("Estado actualizado correctamente. Tu cuenta puede recibir pagos.");
+      } else {
+        setConnectStatusMessage("La cuenta todavía requiere información adicional en Stripe.");
+      }
+      await load();
+    } catch (error) {
+      setConnectStatusState("error");
+      setConnectStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error al verificar el estado. Puedes volver a intentarlo."
+      );
+    }
   }
 
   async function submitVerification() {
-    setMessage("");
-    await clientApi("/api/medical-verifications", {
-      method: "POST",
-      body: JSON.stringify({
-        professionalLicense,
-        documents: documentUrl ? [documentUrl] : []
-      })
-    });
-    setProfessionalLicense("");
-    setDocumentUrl("");
-    setMessage("Verificación enviada a revisión administrativa.");
-    await load();
-  }
+    if (submittingVerification) return;
+    setFeedback(null);
 
-  async function updateProfile() {
-    setMessage("");
-    if (!legalAccepted) {
-      setMessage("Debes aceptar que tu información profesional es real y verificable antes de guardar tu perfil.");
+    const license = professionalLicense.trim();
+    if (license.length < 4) {
+      setFeedback({ tone: "error", text: "Escribe tu cédula profesional antes de enviar la verificación." });
       return;
     }
 
-    await clientApi("/api/doctors/me", {
+    setSubmittingVerification(true);
+    try {
+      await clientApi("/api/medical-verifications", {
+        method: "POST",
+        body: JSON.stringify({
+          professionalLicense: license,
+          documents: documentUrl.trim() ? [documentUrl.trim()] : []
+        })
+      });
+      setDocumentUrl("");
+      setFeedback({
+        tone: "success",
+        text: "Recibimos tus documentos. El equipo de VITAEON revisará tu información."
+      });
+      await load();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "No fue posible enviar la verificación. Revisa los campos indicados e inténtalo nuevamente."
+      });
+    } finally {
+      setSubmittingVerification(false);
+    }
+  }
+
+  async function updateProfile() {
+    if (savingProfile) return;
+    setFeedback(null);
+
+    if (!legalAccepted) {
+      setFeedback({
+        tone: "error",
+        text: "Debes aceptar que tu información profesional es real y verificable antes de guardar tu perfil."
+      });
+      return;
+    }
+
+    const priceValue = Number(price);
+    if (!Number.isFinite(priceValue) || priceValue < 0) {
+      setFeedback({ tone: "error", text: "El precio de consulta debe ser un número válido." });
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      await clientApi("/api/doctors/me", {
       method: "PATCH",
       body: JSON.stringify({
         fullName,
@@ -1790,12 +1963,101 @@ export function DoctorDashboardClient() {
         professionalLicense: professionalLicense || undefined,
         legalDeclarationAccepted: legalAccepted,
         affiliateCode: affiliateCode || undefined,
-        consultationPriceCents: Math.round(Number(price) * 100)
+        consultationPriceCents: Math.round(priceValue * 100)
       })
-    });
-    setAffiliateCode("");
-    setMessage("Perfil profesional actualizado.");
-    await load();
+      });
+      setAffiliateCode("");
+      setFeedback({ tone: "success", text: "Tu perfil se guardó correctamente." });
+      await load();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "No fue posible guardar tu perfil. Revisa los campos indicados e inténtalo nuevamente."
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  /* ── Días no disponibles ───────────────────────────────────────── */
+
+  async function loadBlockedDates() {
+    const data = await clientApi<Array<{ id: string; date: string; reason?: string | null }>>(
+      "/api/availability/blocked-dates"
+    ).catch(() => []);
+    setBlockedDates(data);
+  }
+
+  /** Consulta qué se vería afectado antes de bloquear: nunca se cancela en silencio. */
+  async function previewBlockDate(date: string) {
+    if (!date) {
+      setBlockDatePreview(null);
+      return;
+    }
+    try {
+      const preview = await clientApi<{
+        freeSlots: number;
+        bookedSlots: number;
+        activeAppointments: Array<{ id: string; startsAt: string; status: string; patientName: string | null }>;
+      }>(`/api/availability/blocked-dates?date=${encodeURIComponent(date)}`);
+      setBlockDatePreview({ date, ...preview });
+    } catch {
+      setBlockDatePreview(null);
+    }
+  }
+
+  async function blockDate() {
+    if (blockDateBusy || !blockDateInput) return;
+    setBlockDateBusy(true);
+    setFeedback(null);
+    try {
+      const result = await clientApi<{ date: string; deactivatedSlots: number }>("/api/availability/blocked-dates", {
+        method: "POST",
+        body: JSON.stringify({ date: blockDateInput, reason: blockDateReason.trim() || undefined })
+      });
+      setBlockDateInput("");
+      setBlockDateReason("");
+      setBlockDatePreview(null);
+      setFeedback({
+        tone: "success",
+        text: `Día marcado como no disponible. Se retiraron ${result.deactivatedSlots} horarios libres de esa fecha.`
+      });
+      await Promise.all([loadBlockedDates(), load()]);
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible bloquear esa fecha."
+      });
+    } finally {
+      setBlockDateBusy(false);
+    }
+  }
+
+  async function unblockDate(date: string) {
+    if (blockDateBusy) return;
+    setBlockDateBusy(true);
+    setFeedback(null);
+    try {
+      const result = await clientApi<{ reactivatedSlots: number }>("/api/availability/blocked-dates", {
+        method: "DELETE",
+        body: JSON.stringify({ date })
+      });
+      setFeedback({
+        tone: "success",
+        text: `Día habilitado de nuevo. Se reactivaron ${result.reactivatedSlots} horarios.`
+      });
+      await Promise.all([loadBlockedDates(), load()]);
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible habilitar esa fecha."
+      });
+    } finally {
+      setBlockDateBusy(false);
+    }
   }
 
   async function replyToReview(reviewId: string) {
@@ -2546,6 +2808,151 @@ export function DoctorDashboardClient() {
           )}
 
           {activeSection === "disponibilidad" && (
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Excepciones por fecha</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Días no disponibles</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Marca un día completo como cerrado (vacaciones, congreso, guardia). Los horarios libres de esa
+                    fecha dejan de mostrarse al paciente y tu horario habitual no volverá a generarlos.
+                  </p>
+                </div>
+                <CalendarOff className="h-8 w-8 shrink-0 text-medical" aria-hidden="true" />
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                {/* Selección de fecha */}
+                <div className="rounded-3xl bg-slate-50 p-5">
+                  <label className="grid gap-1.5 text-sm font-semibold text-deep">
+                    Fecha a cerrar
+                    <input
+                      type="date"
+                      value={blockDateInput}
+                      min={new Date().toISOString().slice(0, 10)}
+                      onChange={(event) => {
+                        setBlockDateInput(event.target.value);
+                        void previewBlockDate(event.target.value);
+                      }}
+                      className="rounded-2xl border border-silver/60 bg-white px-4 py-3 font-normal text-deep outline-none transition focus:border-medical/40 focus:ring-2 focus:ring-medical/10"
+                    />
+                  </label>
+                  <label className="mt-4 grid gap-1.5 text-sm font-semibold text-deep">
+                    Motivo (opcional)
+                    <input
+                      value={blockDateReason}
+                      onChange={(event) => setBlockDateReason(event.target.value)}
+                      placeholder="Vacaciones, congreso, guardia…"
+                      maxLength={240}
+                      className="rounded-2xl border border-silver/60 bg-white px-4 py-3 font-normal text-deep outline-none transition focus:border-medical/40 focus:ring-2 focus:ring-medical/10"
+                    />
+                  </label>
+
+                  {/* Advertencia previa: nunca se cancelan citas en silencio */}
+                  {blockDatePreview && blockDatePreview.date === blockDateInput && (
+                    <div
+                      className={`mt-4 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                        blockDatePreview.activeAppointments.length > 0
+                          ? "border-amber-200 bg-amber-50 text-amber-900"
+                          : "border-slate-200 bg-white text-slate-600"
+                      }`}
+                    >
+                      {blockDatePreview.activeAppointments.length > 0 ? (
+                        <>
+                          <p className="font-semibold">Esta fecha tiene citas programadas</p>
+                          <p className="mt-1">
+                            No puedes cerrar este día sin gestionar primero las citas existentes. Cancélalas o
+                            reagéndalas desde tu agenda.
+                          </p>
+                          <ul className="mt-2 grid gap-1">
+                            {blockDatePreview.activeAppointments.map((appointment) => (
+                              <li key={appointment.id} className="text-xs font-semibold">
+                                {new Date(appointment.startsAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                                {appointment.patientName ? ` · ${appointment.patientName}` : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : blockDatePreview.freeSlots > 0 ? (
+                        <p>Se retirarán <strong>{blockDatePreview.freeSlots}</strong> horarios libres. No hay citas reservadas ese día.</p>
+                      ) : (
+                        <p>Ese día no tiene horarios publicados. Se guardará como cerrado para que no se generen nuevos.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={blockDate}
+                    disabled={
+                      blockDateBusy ||
+                      !blockDateInput ||
+                      (blockDatePreview?.date === blockDateInput && blockDatePreview.activeAppointments.length > 0)
+                    }
+                    aria-busy={blockDateBusy}
+                    className="mt-4 w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0d2638] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {blockDateBusy ? "Guardando…" : "Marcar día como no disponible"}
+                  </button>
+                </div>
+
+                {/* Días ya cerrados */}
+                <div className="rounded-3xl border border-silver/60 bg-white p-5">
+                  <p className="text-sm font-semibold text-deep">Días cerrados</p>
+                  {blockedDates.length === 0 ? (
+                    <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-500">
+                      No tienes días cerrados. Tu horario habitual aplica en todas las fechas publicadas.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 grid gap-2">
+                      {blockedDates.map((entry) => (
+                        <li key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-deep">
+                              {new Date(`${entry.date}T12:00:00Z`).toLocaleDateString("es-MX", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric"
+                              })}
+                            </p>
+                            {entry.reason && <p className="text-xs text-slate-500">{entry.reason}</p>}
+                          </div>
+                          <button
+                            onClick={() => unblockDate(entry.date)}
+                            disabled={blockDateBusy}
+                            className="rounded-full border border-silver bg-white px-4 py-2 text-xs font-semibold text-deep transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Volver a habilitar
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {feedback && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                    feedback.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {feedback.tone === "success" ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{feedback.text}</span>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeSection === "disponibilidad" && (
             <SecretaryLinkSection medal={medal} />
           )}
 
@@ -2659,13 +3066,33 @@ export function DoctorDashboardClient() {
                     </button>
                     {profile?.stripeAccountId && (
                       <button
-                        onClick={() => refreshConnectStatus().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible actualizar el estado."))}
-                        className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep"
+                        onClick={() => void refreshConnectStatus()}
+                        disabled={connectStatusState === "checking"}
+                        aria-busy={connectStatusState === "checking"}
+                        className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Actualizar estado
+                        {connectStatusState === "checking" ? "Consultando…" : "Actualizar estado"}
                       </button>
                     )}
                   </div>
+
+                  {/* Resultado del intento automático o manual */}
+                  {connectStatusMessage && (
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      className={`mt-3 flex items-center gap-2 text-sm font-semibold ${
+                        connectStatusState === "error"
+                          ? "text-red-700"
+                          : connectStatusState === "checking"
+                            ? "text-slate-500"
+                            : "text-emerald-700"
+                      }`}
+                    >
+                      {connectStatusState === "checking" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                      {connectStatusMessage}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-3xl border border-silver bg-white p-5">
                   <ShieldCheck className="h-7 w-7 text-medical" />
@@ -2715,7 +3142,19 @@ export function DoctorDashboardClient() {
                 <input value={facebookUrl} onChange={(event) => setFacebookUrl(event.target.value)} placeholder="Facebook profesional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <input value={linkedinUrl} onChange={(event) => setLinkedinUrl(event.target.value)} placeholder="LinkedIn" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
                 <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="Sitio web" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
-                <input value={whatsappUrl} onChange={(event) => setWhatsappUrl(event.target.value)} placeholder="WhatsApp profesional" className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+                <div className="grid gap-1.5">
+                  <input
+                    value={whatsappUrl}
+                    onChange={(event) => setWhatsappUrl(event.target.value)}
+                    placeholder="WhatsApp: +52 477 123 4567"
+                    inputMode="tel"
+                    aria-describedby="whatsapp-hint"
+                    className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                  />
+                  <p id="whatsapp-hint" className="px-1 text-xs leading-5 text-slate-500">
+                    Acepta número con prefijo internacional o enlace. Ejemplos: <span className="font-semibold text-slate-600">+52 477 123 4567</span>, <span className="font-semibold text-slate-600">524771234567</span> o <span className="font-semibold text-slate-600">https://wa.me/524771234567</span>.
+                  </p>
+                </div>
                 <div className="rounded-3xl bg-slate-50 px-4 py-3 lg:col-span-2">
                   <label className="text-sm font-semibold text-slate-600">Código promocional del médico</label>
                   <input value={affiliateCode} onChange={(event) => setAffiliateCode(event.target.value)} placeholder="Código de afiliación autorizado" className="mt-2 w-full bg-transparent outline-none" />
@@ -2770,14 +3209,55 @@ export function DoctorDashboardClient() {
                   </span>
                 </label>
               </div>
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <button onClick={updateProfile} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">Guardar perfil</button>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <button
+                  onClick={updateProfile}
+                  disabled={savingProfile}
+                  aria-busy={savingProfile}
+                  className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 sm:w-auto"
+                >
+                  {savingProfile ? "Guardando…" : "Guardar perfil"}
+                </button>
                 <div className="flex w-full flex-col gap-1 sm:max-w-xs">
                   <p className="px-1 text-xs font-semibold text-slate-500">Link a tus documentos de verificación (cédula, título…)</p>
                   <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="https://drive.google.com/…" className="w-full rounded-full bg-slate-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-medical/20" />
+                  <p className="px-1 text-[0.7rem] leading-4 text-slate-400">Debe ser un enlace https con acceso para el equipo de VITAEON.</p>
                 </div>
-                <button onClick={submitVerification} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">Enviar verificación</button>
+                <button
+                  onClick={submitVerification}
+                  disabled={submittingVerification}
+                  aria-busy={submittingVerification}
+                  className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {submittingVerification ? "Enviando…" : "Enviar verificación"}
+                </button>
               </div>
+
+              {/* Confirmación explícita del resultado real del servidor */}
+              {feedback && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                    feedback.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {feedback.tone === "success" ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{feedback.text}</span>
+                </div>
+              )}
+
+              {profile?.verificationStatus && profile.verificationStatus !== "UNVERIFIED" && (
+                <p className="mt-3 text-xs font-semibold text-slate-500">
+                  Estado actual de tu verificación: <Badge value={profile.verificationStatus} />
+                </p>
+              )}
             </section>
 
             {/* Consultorios adicionales */}
@@ -3247,9 +3727,57 @@ export function AdminDashboardClient() {
                     <div>
                       <h3 className="font-semibold text-deep">{verification.doctor.fullName}</h3>
                       <p className="mt-1 text-slate-600">{verification.doctor.specialty.name} · {verification.professionalLicense}</p>
+                      {verification.doctor.user?.email && (
+                        <p className="mt-0.5 text-xs text-slate-500">{verification.doctor.user.email}</p>
+                      )}
                     </div>
                     <Badge value={verification.status} />
                   </div>
+
+                  {/* Documentos enviados por el médico — solo visibles para administración */}
+                  <div className="mt-4 rounded-2xl border border-silver/70 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Documentos de verificación
+                    </p>
+                    {verification.specialtyBoard && (
+                      <p className="mt-2 text-sm text-slate-600">
+                        <span className="font-semibold text-deep">Consejo de especialidad:</span> {verification.specialtyBoard}
+                      </p>
+                    )}
+                    {verification.documentUrls.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-500">No proporcionado</p>
+                    ) : (
+                      <ul className="mt-2 grid gap-2">
+                        {verification.documentUrls.map((reference, index) => {
+                          // Solo se renderiza como enlace lo que es https verificable.
+                          // Las referencias privadas se muestran como texto, nunca como href.
+                          const isSafeLink = /^https:\/\//i.test(reference);
+                          return (
+                            <li key={`${verification.id}-doc-${index}`}>
+                              {isSafeLink ? (
+                                <a
+                                  href={reference}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 break-all text-sm font-semibold text-medical underline underline-offset-2 hover:text-deep"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  Documento {index + 1}
+                                  <span className="font-normal text-slate-400">({new URL(reference).hostname})</span>
+                                </a>
+                              ) : (
+                                <span className="inline-flex items-center gap-2 break-all text-sm text-slate-500">
+                                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  Documento privado en storage — {reference}
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button onClick={() => review(verification.id, "VERIFIED")} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 font-semibold text-white"><CheckCircle2 className="h-4 w-4" /> Aprobar</button>
                     <button onClick={() => review(verification.id, "REJECTED")} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 font-semibold text-white"><XCircle className="h-4 w-4" /> Rechazar</button>

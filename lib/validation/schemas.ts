@@ -136,11 +136,35 @@ export const paymentIntentSchema = z.object({
   provider: z.enum(["STRIPE", "MERCADO_PAGO", "CASH"])
 });
 
+/**
+ * Documento de verificación médica: referencia privada de storage o enlace
+ * https compartido por el médico (Drive, OneDrive, etc.). Se rechaza http
+ * en claro para no exponer documentos sensibles en tránsito.
+ */
+export const verificationDocumentSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(500)
+  .refine((value) => {
+    if (value.startsWith("private://")) return true;
+    if (/^http:\/\//i.test(value)) return false;
+    if (/^https:\/\//i.test(value)) {
+      try {
+        return new URL(value).protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+    // Ruta relativa de storage privado (se normaliza a private:// en el servidor).
+    return !value.includes("://");
+  }, "Usa un enlace https válido o una referencia de documento privada.");
+
 export const doctorVerificationSchema = z.object({
   doctorId: z.string().min(1),
   professionalLicense: z.string().min(4).max(80),
   specialtyBoard: z.string().max(160).optional(),
-  documents: z.array(z.string().min(3).max(240)).max(8).default([])
+  documents: z.array(verificationDocumentSchema).max(8).default([])
 });
 
 export const verificationReviewSchema = z.object({
@@ -201,6 +225,87 @@ const externalUrlSchema = z
     }
   }, "La URL debe usar http o https.");
 
+/**
+ * Extrae los dígitos de un contacto de WhatsApp aceptando teléfono o URL.
+ *
+ * Formatos válidos:
+ *   +52 55 1234 5678 · 525512345678 · https://wa.me/525512345678
+ *   https://api.whatsapp.com/send?phone=525512345678
+ *
+ * Devuelve solo dígitos (sin `+`) o null si no es un contacto reconocible.
+ * Se usa en cliente y servidor para que ambas validaciones sean idénticas.
+ */
+export function extractWhatsappDigits(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+
+  if (/^https?:\/\//i.test(value)) {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return null;
+    }
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const isWhatsappHost = host === "wa.me" || host === "whatsapp.com" || host.endsWith(".whatsapp.com");
+    if (!isWhatsappHost) return null;
+
+    const fromQuery = url.searchParams.get("phone");
+    const fromPath = url.pathname.replace(/^\/+/, "").split("/")[0];
+    const candidate = (fromQuery ?? fromPath ?? "").replace(/\D/g, "");
+    return candidate.length >= 10 && candidate.length <= 15 ? candidate : null;
+  }
+
+  // Teléfono: se permiten espacios, guiones y paréntesis durante la captura.
+  if (!/^\+?[\d\s()\-.]+$/.test(value)) return null;
+  const digits = value.replace(/\D/g, "");
+
+  // 10 dígitos exactos = número nacional mexicano sin lada país. VITAEON opera
+  // solo en México, así que se antepone 52; sin esto el enlace wa.me quedaría
+  // incompleto y no abriría ninguna conversación.
+  if (digits.length === 10) return `52${digits}`;
+
+  return digits.length >= 11 && digits.length <= 15 ? digits : null;
+}
+
+/** Formato canónico único que se persiste en base de datos. */
+export function toCanonicalWhatsappUrl(digits: string): string {
+  return `https://wa.me/${digits}`;
+}
+
+const WHATSAPP_ERROR =
+  "Escribe un número con prefijo internacional (+52 55 1234 5678) o un enlace de WhatsApp (https://wa.me/525512345678).";
+
+/**
+ * Acepta número o URL y normaliza SIEMPRE al formato canónico https://wa.me/<dígitos>,
+ * para no guardar variantes inconsistentes del mismo contacto.
+ */
+export const whatsappContactSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .transform((value, ctx) => {
+    const digits = extractWhatsappDigits(value);
+    if (!digits) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: WHATSAPP_ERROR });
+      return z.NEVER;
+    }
+    return toCanonicalWhatsappUrl(digits);
+  });
+
+export const blockedDateCreateSchema = z.object({
+  date: z.coerce.date(),
+  reason: z.string().trim().max(240).optional()
+});
+
+export const blockedDateDeleteSchema = z.object({
+  date: z.coerce.date()
+});
+
+export const blockedDatePreviewQuerySchema = z.object({
+  date: z.coerce.date()
+});
+
 export const doctorProfileUpdateSchema = z.object({
   fullName: z.string().min(3).max(120).optional(),
   specialtyId: z.string().min(1).optional(),
@@ -219,7 +324,7 @@ export const doctorProfileUpdateSchema = z.object({
   facebookUrl: externalUrlSchema.optional(),
   linkedinUrl: externalUrlSchema.optional(),
   websiteUrl: externalUrlSchema.optional(),
-  whatsappUrl: externalUrlSchema.optional(),
+  whatsappUrl: whatsappContactSchema.optional(),
   affiliateCode: z.string().trim().min(4).max(80).optional(),
   hospitalId: z.string().min(1).optional(),
   yearsExperience: z.number().int().min(0).max(70).optional(),

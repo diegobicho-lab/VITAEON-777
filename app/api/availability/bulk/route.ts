@@ -3,25 +3,19 @@ import { MedicalMedal } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
+import {
+  buildSlotsForDay,
+  clinicDateKey,
+  getBlockedDateKeys,
+  rangesOverlap
+} from "@/lib/availability/availability";
 import { prisma } from "@/lib/db/prisma";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { availabilityBulkSchema } from "@/lib/validation/schemas";
 
-function combineDateAndTime(date: Date, time: string) {
-  return new Date(`${uniqueDateKey(date)}T${time}:00-06:00`);
-}
-
-function addMinutes(date: Date, minutes: number) {
-  return new Date(date.getTime() + minutes * 60_000);
-}
-
-function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-  return aStart < bEnd && aEnd > bStart;
-}
-
-function uniqueDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+// Generación de slots, zona horaria y detección de solapamientos viven en
+// lib/availability: wizard, agenda y reservas comparten exactamente esta lógica.
+const uniqueDateKey = clinicDateKey;
 
 export async function POST(request: Request) {
   const limit = await rateLimitByIp("availability:bulk", { limit: 12, windowMs: 60_000 });
@@ -58,39 +52,39 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const requestedRows = Array.from(dates.values()).flatMap((date) => {
-    const dayStart = combineDateAndTime(date, parsed.data.startTime);
-    const dayEnd = combineDateAndTime(date, parsed.data.endTime);
-    const slots: Array<{
-      doctorId: string;
-      startsAt: Date;
-      endsAt: Date;
-      isActive: boolean;
-      repeatBatchId?: string | null;
-      generatedByMonthlyRepeat?: boolean;
-      repeatLabel?: string | null;
-    }> = [];
 
-    for (let cursor = dayStart; addMinutes(cursor, parsed.data.durationMinutes) <= dayEnd; cursor = addMinutes(cursor, parsed.data.durationMinutes)) {
-      const endsAt = addMinutes(cursor, parsed.data.durationMinutes);
-      if (cursor > now && endsAt > cursor) {
-        slots.push({
-          doctorId: doctor.id,
-          startsAt: cursor,
-          endsAt,
-          isActive: true,
-          repeatBatchId,
-          generatedByMonthlyRepeat: isMonthlyRepeat,
-          repeatLabel
-        });
-      }
-    }
+  // Un día bloqueado no vuelve a generar disponibilidad: si no se filtrara aquí,
+  // la disponibilidad recurrente repoblaría fechas que el médico cerró a propósito.
+  const blockedKeys = await getBlockedDateKeys(prisma, doctor.id);
+  const requestedDates = Array.from(dates.values()).filter((date) => !blockedKeys.has(clinicDateKey(date)));
+  const blockedSkipped = dates.size - requestedDates.length;
 
-    return slots;
-  });
+  const requestedRows = requestedDates.flatMap((date) =>
+    buildSlotsForDay({
+      date,
+      startTime: parsed.data.startTime,
+      endTime: parsed.data.endTime,
+      durationMinutes: parsed.data.durationMinutes,
+      now
+    }).map((slot) => ({
+      doctorId: doctor.id,
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      isActive: true,
+      repeatBatchId,
+      generatedByMonthlyRepeat: isMonthlyRepeat,
+      repeatLabel
+    }))
+  );
 
   if (requestedRows.length === 0) {
-    return fail("NO_VALID_SLOTS", "No hay horarios futuros válidos para publicar.", 422);
+    return fail(
+      "NO_VALID_SLOTS",
+      blockedSkipped > 0
+        ? "Las fechas seleccionadas están marcadas como no disponibles. Habilítalas primero para publicar horarios."
+        : "No hay horarios futuros válidos para publicar.",
+      422
+    );
   }
 
   const minStart = requestedRows.reduce((min, slot) => (slot.startsAt < min ? slot.startsAt : min), requestedRows[0].startsAt);
@@ -110,9 +104,9 @@ export async function POST(request: Request) {
     }
   });
 
-  const rows = requestedRows.filter((slot) => {
-    return !existingSlots.some((existing) => overlaps(slot.startsAt, slot.endsAt, existing.startsAt, existing.endsAt));
-  });
+  const rows = requestedRows.filter(
+    (slot) => !existingSlots.some((existing) => rangesOverlap(slot, existing))
+  );
 
   if (rows.length === 0) {
     return fail("NO_AVAILABLE_SLOTS", "Todos los horarios generados chocan con disponibilidad o citas existentes.", 409);
@@ -143,6 +137,7 @@ export async function POST(request: Request) {
       created: result.count,
       requested: requestedRows.length,
       skipped: requestedRows.length - rows.length,
+      blockedDatesSkipped: blockedSkipped,
       durationMinutes: parsed.data.durationMinutes,
       repeatBatchId
     },

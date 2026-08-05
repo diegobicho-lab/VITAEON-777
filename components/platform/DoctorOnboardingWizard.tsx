@@ -4,12 +4,17 @@
  * DoctorOnboardingWizard — Guía paso a paso para que un médico recién registrado
  * complete su perfil en menos de 10 minutos.
  *
- * 5 pasos:
+ * 6 pasos:
  *  1. Información básica (nombre, especialidad, hospital)
  *  2. Datos profesionales (cédula, universidad, años de experiencia)
  *  3. Tu consulta (precio, duración, biografía)
  *  4. Contacto y ubicación (dirección, teléfono, redes sociales)
- *  5. Plan — elección de suscripción
+ *  5. Horario habitual — mismos bloques que la agenda clínica
+ *  6. Plan — elección de suscripción
+ *
+ * El paso de horarios publica disponibilidad a través del MISMO endpoint que usa
+ * "Agenda clínica → Configurar horarios" (/api/availability/bulk), por lo que
+ * ambos apartados leen y escriben una sola fuente de verdad.
  *
  * Se muestra automáticamente cuando el perfil médico está incompleto.
  */
@@ -18,6 +23,7 @@ import {
   BadgeCheck,
   Briefcase,
   Building2,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   CreditCard,
@@ -32,6 +38,7 @@ import {
   X
 } from "lucide-react";
 import { useState } from "react";
+import { extractWhatsappDigits } from "@/lib/validation/schemas";
 
 /* ── Tipos ──────────────────────────────────────────────────── */
 type Plan = "oro" | "diamante" | "amatista";
@@ -57,9 +64,23 @@ export interface WizardData {
   instagramUrl: string;
   linkedinUrl: string;
   whatsappUrl: string;
-  /* Paso 5 */
+  /* Paso 5 — horario habitual (se publica vía /api/availability/bulk) */
+  availabilityWeekdays: number[];
+  availabilityStartTime: string;
+  availabilityEndTime: string;
+  /* Paso 6 */
   plan: Plan;
 }
+
+const WEEKDAYS = [
+  { value: 1, label: "Lun" },
+  { value: 2, label: "Mar" },
+  { value: 3, label: "Mié" },
+  { value: 4, label: "Jue" },
+  { value: 5, label: "Vie" },
+  { value: 6, label: "Sáb" },
+  { value: 0, label: "Dom" }
+];
 
 interface Specialty { id: string; name: string }
 interface Hospital  { id: string; name: string }
@@ -78,8 +99,11 @@ const STEPS = [
   { number: 2, label: "Profesional", icon: <BadgeCheck className="h-3.5 w-3.5" /> },
   { number: 3, label: "Consulta",    icon: <Stethoscope className="h-3.5 w-3.5" /> },
   { number: 4, label: "Contacto",    icon: <MapPin className="h-3.5 w-3.5" /> },
-  { number: 5, label: "Plan",        icon: <Star className="h-3.5 w-3.5" /> }
+  { number: 5, label: "Horarios",    icon: <CalendarClock className="h-3.5 w-3.5" /> },
+  { number: 6, label: "Plan",        icon: <Star className="h-3.5 w-3.5" /> }
 ];
+
+const LAST_STEP = STEPS.length;
 
 const PLANS: Array<{
   id: Plan; name: string; price: string; period: string;
@@ -158,12 +182,25 @@ export default function DoctorOnboardingWizard({
     instagramUrl: "",
     linkedinUrl: "",
     whatsappUrl: "",
+    availabilityWeekdays: [1, 2, 3, 4, 5],
+    availabilityStartTime: "09:00",
+    availabilityEndTime: "14:00",
     plan: "oro",
     ...initialData
   });
 
   function set(key: keyof WizardData, value: string) {
     setData((prev) => ({ ...prev, [key]: value }));
+    setError("");
+  }
+
+  function toggleWeekday(day: number) {
+    setData((prev) => ({
+      ...prev,
+      availabilityWeekdays: prev.availabilityWeekdays.includes(day)
+        ? prev.availabilityWeekdays.filter((value) => value !== day)
+        : [...prev.availabilityWeekdays, day].sort()
+    }));
     setError("");
   }
 
@@ -190,6 +227,20 @@ export default function DoctorOnboardingWizard({
       if (!data.bio.trim() || data.bio.length < 100)
         return "Escribe una presentación de al menos 100 caracteres.";
     }
+    if (step === 4) {
+      // Misma función que usa el esquema del servidor: front y back no pueden divergir.
+      if (data.whatsappUrl.trim() && !extractWhatsappDigits(data.whatsappUrl)) {
+        return "Revisa tu WhatsApp: escribe un número con prefijo internacional (+52 477 123 4567) o un enlace https://wa.me/524771234567.";
+      }
+    }
+    if (step === 5) {
+      if (data.availabilityWeekdays.length === 0) {
+        return "Selecciona al menos un día de atención, o deja este paso para configurarlo después desde tu agenda.";
+      }
+      if (data.availabilityEndTime <= data.availabilityStartTime) {
+        return "La hora final debe ser posterior a la hora inicial.";
+      }
+    }
     return null;
   }
 
@@ -197,7 +248,7 @@ export default function DoctorOnboardingWizard({
   function goNext() {
     const err = validate();
     if (err) { setError(err); return; }
-    if (step < 5) {
+    if (step < LAST_STEP) {
       setAnimating(true);
       setTimeout(() => {
         setStep((s) => s + 1);
@@ -483,8 +534,66 @@ export default function DoctorOnboardingWizard({
               </div>
             )}
 
-            {/* ── Paso 5: Elección de plan ── */}
+            {/* ── Paso 5: Horario habitual ── */}
             {step === 5 && (
+              <div className="grid gap-4">
+                <p className="text-sm leading-6 text-slate-500">
+                  Define tu <strong className="font-semibold text-slate-700">horario habitual</strong>. Publicaremos
+                  estos bloques en tu agenda para el próximo mes. Después podrás editarlos, copiarlos o cerrar días
+                  concretos desde <strong className="font-semibold text-slate-700">Agenda clínica → Horarios</strong>.
+                </p>
+
+                <Label text="Días que atiendes">
+                  <div className="flex flex-wrap gap-2">
+                    {WEEKDAYS.map((day) => {
+                      const selected = data.availabilityWeekdays.includes(day.value);
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => toggleWeekday(day.value)}
+                          aria-pressed={selected}
+                          className={`min-w-[3.25rem] rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                            selected
+                              ? "border-[#1e9bd4] bg-[#1e9bd4] text-white"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-[#1e9bd4]/40"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Label text="Hora de inicio">
+                    <Input
+                      value={data.availabilityStartTime}
+                      onChange={(v) => set("availabilityStartTime", v)}
+                      type="time"
+                      icon={<CalendarClock className="h-4 w-4 text-slate-400" />}
+                    />
+                  </Label>
+                  <Label text="Hora de término">
+                    <Input
+                      value={data.availabilityEndTime}
+                      onChange={(v) => set("availabilityEndTime", v)}
+                      type="time"
+                      icon={<CalendarClock className="h-4 w-4 text-slate-400" />}
+                    />
+                  </Label>
+                </div>
+
+                <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+                  Se generarán consultas de {data.consultationDurationMinutes || "45"} minutos entre esas horas.
+                  Los horarios ya reservados nunca se sobrescriben.
+                </p>
+              </div>
+            )}
+
+            {/* ── Paso 6: Elección de plan ── */}
+            {step === 6 && (
               <div className="grid gap-3">
                 <p className="text-sm leading-6 text-slate-500">
                   Puedes empezar con el plan Oro gratuito y cambiar en cualquier momento desde tu panel.
@@ -564,13 +673,13 @@ export default function DoctorOnboardingWizard({
           {/* Botón principal — texto dinámico según plan en paso 5 */}
           <button
             type="button"
-            onClick={step === 5 ? finish : goNext}
+            onClick={step === LAST_STEP ? finish : goNext}
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-full bg-[#071726] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#0d2638] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : step === 5 ? (
+            ) : step === LAST_STEP ? (
               data.plan === "oro" ? (
                 <><CheckCircle2 className="h-4 w-4" /> Activar perfil</>
               ) : (

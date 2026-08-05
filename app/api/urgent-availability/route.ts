@@ -1,4 +1,5 @@
 import { ok, fail } from "@/lib/api-response";
+import { stripBlockedDateSlots } from "@/lib/availability/availability";
 import { prisma } from "@/lib/db/prisma";
 import { publicDoctorWhere } from "@/lib/doctors/public-doctor-filter";
 import { urgentAvailabilitySchema } from "@/lib/validation/schemas";
@@ -29,7 +30,12 @@ export async function GET(request: Request) {
     }
   });
 
-  const sorted = doctors.sort((a, b) => {
+  // Urgencias también respeta los días bloqueados por el médico.
+  const openDoctors = (await stripBlockedDateSlots(prisma, doctors)).filter(
+    (doctor) => doctor.availabilitySlots.length > 0
+  );
+
+  const sorted = openDoctors.sort((a, b) => {
     const aFirst = a.availabilitySlots[0]?.startsAt.getTime() ?? Number.MAX_SAFE_INTEGER;
     const bFirst = b.availabilitySlots[0]?.startsAt.getTime() ?? Number.MAX_SAFE_INTEGER;
     if (aFirst !== bFirst) return aFirst - bFirst;

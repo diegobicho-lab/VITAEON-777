@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { stripBlockedDateSlots } from "@/lib/availability/availability";
 import { publicDoctorWhere } from "@/lib/doctors/public-doctor-filter";
 import { ok, fail } from "@/lib/api-response";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
@@ -109,6 +110,11 @@ export async function GET(request: Request) {
     take: DOCTOR_SEARCH_LIMIT
   });
 
+  // Los días que el médico marcó como no disponibles se descartan ANTES de
+  // ordenar, para que la disponibilidad que ve el paciente y el criterio de
+  // ranking usen exactamente el mismo conjunto de horarios.
+  const doctorsWithOpenDays = await stripBlockedDateSlots(prisma, doctors);
+
   // Weighted review score: average × log₂(count + 1)
   // A doctor with 5★ × 1 review scores lower than one with 4.8★ × 20 reviews.
   function reviewScore(reviews: Array<{ rating: number }>) {
@@ -117,7 +123,7 @@ export async function GET(request: Request) {
     return avg * Math.log2(reviews.length + 1);
   }
 
-  const sortedDoctors = doctors.sort((a, b) => {
+  const sortedDoctors = doctorsWithOpenDays.sort((a, b) => {
     // 1. Plan tier (amatista > diamante > oro > obsidiana)
     const planDifference = medalPriority[b.medal] - medalPriority[a.medal];
     if (planDifference !== 0) return planDifference;

@@ -1,6 +1,7 @@
 import { AppointmentStatus, PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/api-response";
 import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
+import { isDateBlocked } from "@/lib/availability/availability";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { auditLog } from "@/lib/audit/audit";
@@ -82,8 +83,21 @@ export async function POST(request: Request) {
   const limit = await rateLimitByIp("appointments:create", { limit: 10, windowMs: 60_000 });
   if (!limit.allowed) return fail("RATE_LIMITED", "Demasiadas solicitudes de cita. Intenta de nuevo en un momento.", 429);
 
+  // Prioridad de errores fija y sin ambigüedad. Antes, `!user || role !== PATIENT`
+  // colapsaba "sesión expirada" y "rol incorrecto" en el mismo mensaje, así que un
+  // paciente con la sesión vencida leía "Solo pacientes pueden crear citas".
+  // 1) no autenticado → 2) rol incorrecto → 3) perfil faltante → 4) correo sin verificar
   const user = await getCurrentUser();
-  if (!user || user.role !== "PATIENT") return fail("FORBIDDEN", "Solo pacientes pueden crear citas.", 403);
+  if (!user) {
+    return fail("UNAUTHENTICATED", "Tu sesión expiró. Inicia sesión de nuevo para reservar tu cita.", 401);
+  }
+  if (user.role !== "PATIENT") {
+    return fail(
+      "PATIENT_ROLE_REQUIRED",
+      "Tu cuenta es de tipo médico o administrativo. Reserva desde una cuenta de paciente.",
+      403
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = appointmentCreateSchema.safeParse(body);
@@ -93,9 +107,19 @@ export async function POST(request: Request) {
     where: { userId: user.id },
     include: { user: { select: { emailVerifiedAt: true } } }
   });
-  if (!patient) return fail("PATIENT_PROFILE_REQUIRED", "El usuario no tiene perfil de paciente.", 409);
+  if (!patient) {
+    return fail(
+      "PATIENT_PROFILE_REQUIRED",
+      "Tu cuenta aún no tiene perfil de paciente. Recarga la página o contacta a soporte.",
+      409
+    );
+  }
   if (!patient.user.emailVerifiedAt) {
-    return fail("EMAIL_NOT_VERIFIED", "Verifica tu correo antes de reservar citas.", 403);
+    return fail(
+      "EMAIL_NOT_VERIFIED",
+      "Verifica tu correo antes de reservar. Te reenviamos el enlace desde tu panel de paciente.",
+      403
+    );
   }
 
   try {
@@ -110,6 +134,14 @@ export async function POST(request: Request) {
         include: { doctor: { include: { specialty: true } } }
       });
       if (!slot) throw new Error("SLOT_UNAVAILABLE");
+
+      // El horario no puede estar en el pasado ni caer en un día que el médico
+      // bloqueó después de que el paciente cargó la pantalla. Se revalida dentro
+      // de la transacción para cerrar la condición de carrera.
+      if (slot.startsAt <= new Date()) throw new Error("SLOT_IN_PAST");
+      if (await isDateBlocked(tx, parsed.data.doctorId, slot.startsAt)) {
+        throw new Error("DATE_BLOCKED");
+      }
 
       const discount = await getWelcomeDiscountQuote(tx, {
         patientId: patient.id,
@@ -228,6 +260,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "SLOT_UNAVAILABLE") {
       return fail("SLOT_UNAVAILABLE", "El horario ya no está disponible.", 409);
+    }
+    if (error instanceof Error && error.message === "SLOT_IN_PAST") {
+      return fail("SLOT_IN_PAST", "Ese horario ya pasó. Elige uno futuro.", 409);
+    }
+    if (error instanceof Error && error.message === "DATE_BLOCKED") {
+      return fail("DATE_BLOCKED", "El médico marcó ese día como no disponible. Elige otra fecha.", 409);
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return fail("SLOT_ALREADY_BOOKED", "Ese horario acaba de ser reservado. Selecciona otro disponible.", 409);
