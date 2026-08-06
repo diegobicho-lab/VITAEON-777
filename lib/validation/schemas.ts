@@ -77,6 +77,10 @@ export const appointmentUpdateSchema = z
         "MARK_NO_SHOW",
         "REQUEST_RESCHEDULE",
         "REQUEST_CANCELLATION",
+        // Cancelación definitiva iniciada por el médico: libera el horario y
+        // dispara la devolución. Distinta de REQUEST_CANCELLATION, que solo
+        // abre una solicitud del paciente.
+        "CANCEL_BY_DOCTOR",
         "MARK_REFUND_PENDING",
         "APPROVE_REFUND",
         "REJECT_REFUND",
@@ -293,6 +297,13 @@ export const whatsappContactSchema = z
     return toCanonicalWhatsappUrl(digits);
   });
 
+/** Elimina toda la disponibilidad futura de un día de la semana concreto. */
+export const weekdayClearSchema = z.object({
+  weekday: z.number().int().min(0).max(6),
+  /** Confirmación explícita: sin esto solo se devuelve la vista previa. */
+  confirm: z.boolean().default(false)
+});
+
 export const blockedDateCreateSchema = z.object({
   date: z.coerce.date(),
   reason: z.string().trim().max(240).optional()
@@ -333,7 +344,9 @@ export const doctorProfileUpdateSchema = z.object({
   professionalLicense: z.string().min(4).max(80).optional(),
   achievements: z.array(z.string().min(3).max(160)).max(8).optional(),
   certifications: z.array(z.string().min(3).max(160)).max(12).optional(),
-  legalDeclarationAccepted: z.boolean().optional()
+  legalDeclarationAccepted: z.boolean().optional(),
+  refundPolicy: z.enum(["ACCEPTS_REFUNDS", "NO_REFUNDS", "CASE_BY_CASE"]).optional(),
+  refundPolicyNotes: z.string().trim().max(600).optional().or(z.literal(""))
 });
 
 export const medicalConversationCreateSchema = z.object({

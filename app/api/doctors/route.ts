@@ -196,6 +196,10 @@ export async function GET(request: Request) {
         whatsappUrl: doctor.whatsappUrl,
         achievements: doctor.achievements,
         certifications: doctor.certifications,
+        // El paciente debe conocer la política de devoluciones ANTES de pagar,
+        // no enterrada en términos y condiciones.
+        refundPolicy: doctor.refundPolicy,
+        refundPolicyNotes: doctor.refundPolicyNotes,
         availability: doctor.availabilitySlots.map((slot) => ({
           id: slot.id,
           startsAt: slot.startsAt,

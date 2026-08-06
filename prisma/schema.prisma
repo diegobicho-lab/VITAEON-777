@@ -46,6 +46,14 @@ enum PaymentProvider {
   TRANSFER
 }
 
+/// Política de devoluciones que declara el médico. Se muestra al paciente
+/// ANTES de pagar y gobierna el flujo de cancelación.
+enum RefundPolicy {
+  ACCEPTS_REFUNDS
+  NO_REFUNDS
+  CASE_BY_CASE
+}
+
 enum VerificationStatus {
   UNVERIFIED
   IN_REVIEW
@@ -198,6 +206,11 @@ model Doctor {
   whatsappUrl                 String?
   affiliateCodeLast4          String?
   affiliateDiscountEnabled    Boolean               @default(false)
+  /// CASE_BY_CASE por defecto: es el comportamiento actual del sistema
+  /// (el médico revisa cada solicitud), así los perfiles existentes no
+  /// cambian de conducta al aplicar la migración.
+  refundPolicy                RefundPolicy          @default(CASE_BY_CASE)
+  refundPolicyNotes           String?
   stripeAccountId             String?               @unique
   stripeOnboardingCompleted   Boolean               @default(false)
   payoutsEnabled              Boolean               @default(false)

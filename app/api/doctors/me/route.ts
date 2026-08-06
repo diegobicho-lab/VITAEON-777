@@ -136,10 +136,15 @@ export async function PATCH(request: Request) {
   // parsed data.  Any admin-only field added to the schema (medal, subscriptionStatus,
   // etc.) must NOT appear here and therefore cannot be self-served by the doctor.
   const updateData: Record<string, unknown> = {};
-  for (const key of [...profileFields, "legalDeclarationAccepted"]) {
+  // refundPolicy/refundPolicyNotes son configuración comercial propia del médico
+  // (no exigen la declaración legal profesional), por eso van aparte del
+  // allowlist de campos de perfil.
+  for (const key of [...profileFields, "legalDeclarationAccepted", "refundPolicy", "refundPolicyNotes"]) {
     const val = (parsed.data as Record<string, unknown>)[key];
     if (val !== undefined) updateData[key] = val;
   }
+  // "" limpia la nota; el campo es opcional en base de datos.
+  if (updateData.refundPolicyNotes === "") updateData.refundPolicyNotes = null;
 
   if (affiliateCode) {
     // Each participating doctor receives a unique campaign code from the VITAEON

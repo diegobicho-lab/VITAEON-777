@@ -21,6 +21,8 @@ export type VerificationStatus = "UNVERIFIED" | "IN_REVIEW" | "VERIFIED" | "REJE
 
 export type MedicalMedal = "oro" | "obsidiana" | "diamante" | "amatista";
 
+export type RefundPolicy = "ACCEPTS_REFUNDS" | "NO_REFUNDS" | "CASE_BY_CASE";
+
 export interface ApiResponse<T> {
   ok: boolean;
   data?: T;
@@ -77,6 +79,8 @@ export interface DoctorListItem {
   whatsappUrl?: string | null;
   achievements: string[];
   certifications: string[];
+  refundPolicy?: RefundPolicy;
+  refundPolicyNotes?: string | null;
   availability: Array<{
     id: string;
     startsAt: string;

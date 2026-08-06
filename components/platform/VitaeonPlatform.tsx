@@ -45,6 +45,7 @@ import {
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
+import { EmailVerificationNotice, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
@@ -807,6 +808,12 @@ export default function VitaeonPlatform() {
     }
   }
 
+  /** Relee la sesión desde el servidor (p.ej. tras verificar el correo). */
+  async function refreshCurrentUser() {
+    const fresh = await clientApi<CurrentUser>("/api/auth/me").catch(() => null);
+    if (fresh) setUser(fresh);
+  }
+
   async function logout() {
     await clientApi<{ signedOut: boolean }>("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null);
     setUser(null);
@@ -1208,6 +1215,7 @@ export default function VitaeonPlatform() {
                 setReviewComment={setReviewComment}
                 reviewMessage={reviewMessage}
                 submitReview={submitReview}
+                onEmailVerified={refreshCurrentUser}
               />
             ) : (
               <EmptyCard title="Sin selección médica" text="Elige una especialidad para ver médicos verificados conforme se incorporen a la beta privada." />
@@ -1575,6 +1583,7 @@ export default function VitaeonPlatform() {
             setReviewComment={setReviewComment}
             reviewMessage={reviewMessage}
             submitReview={submitReview}
+            onEmailVerified={refreshCurrentUser}
           />
         </Modal>
       )}
@@ -2341,6 +2350,7 @@ function BookingFlow(props: {
   setReviewComment: (value: string) => void;
   reviewMessage: string;
   submitReview: () => void;
+  onEmailVerified?: () => void;
 }) {
   const selectedSpecialtyName = props.specialties.find((specialty) => specialty.id === props.specialtyId)?.name ?? "Todas las especialidades";
 
@@ -2420,6 +2430,7 @@ function BookingFlow(props: {
             setReviewComment={props.setReviewComment}
             reviewMessage={props.reviewMessage}
             submitReview={props.submitReview}
+            onEmailVerified={props.onEmailVerified}
           />
         ) : (
           <EmptyCard
@@ -2629,6 +2640,7 @@ function DoctorDetail(props: {
   setReviewComment: (value: string) => void;
   reviewMessage: string;
   submitReview: () => void;
+  onEmailVerified?: () => void;
 }) {
   const { doctor } = props;
   const finalPrice = props.welcomeDiscount?.eligible
@@ -2757,6 +2769,19 @@ function DoctorDetail(props: {
           <label className="text-sm font-semibold text-slate-700">Motivo de consulta</label>
           <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-2 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
         </div>
+
+        {/* Política de devolución del médico: visible ANTES de elegir cómo pagar. */}
+        <div className="mt-4">
+          <RefundPolicyNotice policy={doctor.refundPolicy} notes={doctor.refundPolicyNotes} compact />
+        </div>
+
+        {/* Correo sin verificar: se avisa aquí, no solo en el panel del paciente,
+            para que nadie llegue a "pagar" creyendo que puede completar la reserva. */}
+        {props.user && !props.user.emailVerifiedAt && (
+          <div className="mt-3">
+            <EmailVerificationNotice onVerified={props.onEmailVerified} />
+          </div>
+        )}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <button

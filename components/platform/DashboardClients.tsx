@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { NoRefundConfirmation, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
 import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
 import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
@@ -43,7 +44,13 @@ type Appointment = {
   discountCents?: number;
   discountLabel?: string | null;
   availabilitySlot: { startsAt: string; endsAt: string };
-  doctor: { fullName: string; specialty: { name: string }; hospital: { name: string } };
+  doctor: {
+    fullName: string;
+    specialty: { name: string };
+    hospital: { name: string };
+    refundPolicy?: "ACCEPTS_REFUNDS" | "NO_REFUNDS" | "CASE_BY_CASE";
+    refundPolicyNotes?: string | null;
+  };
   patient: { id: string; dateOfBirth?: string | null; user: { name: string; email: string } };
   payments: Array<{ status: string; provider: string; amountCents: number }>;
 };
@@ -70,6 +77,8 @@ type DoctorProfile = {
   linkedinUrl?: string | null;
   websiteUrl?: string | null;
   whatsappUrl?: string | null;
+  refundPolicy?: "ACCEPTS_REFUNDS" | "NO_REFUNDS" | "CASE_BY_CASE";
+  refundPolicyNotes?: string | null;
   affiliateCodeLast4?: string | null;
   affiliateDiscountEnabled: boolean;
   stripeAccountId?: string | null;
@@ -938,6 +947,9 @@ export function PatientDashboardClient() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  // Cancelar siempre pasa por un paso intermedio que ofrece reagendar primero.
+  const [cancelModal, setCancelModal] = useState<Appointment | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1038,14 +1050,27 @@ export function PatientDashboardClient() {
   }
 
   async function updatePatientAppointment(id: string, action: "REQUEST_CANCELLATION" | "REQUEST_RESCHEDULE") {
-    await clientApi(`/api/appointments/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        action,
-        cancellationReason: action === "REQUEST_CANCELLATION" ? "Cancelación solicitada por paciente desde panel." : undefined
-      })
-    });
-    await load();
+    setActionMessage("");
+    try {
+      await clientApi(`/api/appointments/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          action,
+          cancellationReason: action === "REQUEST_CANCELLATION" ? "Cancelación solicitada por paciente desde panel." : undefined
+        })
+      });
+      setActionMessage(
+        action === "REQUEST_RESCHEDULE"
+          ? "Pedimos al médico reagendar tu cita. Te avisaremos en cuanto confirme el nuevo horario."
+          : "Tu solicitud de cancelación fue enviada."
+      );
+      setCancelModal(null);
+      await load();
+    } catch (caught) {
+      setActionMessage(
+        caught instanceof Error ? caught.message : "No fue posible actualizar tu cita. Intenta de nuevo."
+      );
+    }
   }
 
   const totalCitas = appointments.length;
@@ -1242,11 +1267,11 @@ export function PatientDashboardClient() {
                 {appointment.status === "NO_SHOW" && (
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_RESCHEDULE")} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">Solicitar reagendar</button>
-                    <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="w-full rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700 sm:w-auto">Solicitar devolución/cancelación</button>
+                    <button onClick={() => setCancelModal(appointment)} className="w-full rounded-full border border-silver/70 bg-white px-5 py-3 text-sm font-semibold text-deep shadow-soft transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 hover:text-red-700 sm:w-auto">Cancelar cita</button>
                   </div>
                 )}
                 {!["CANCELLED", "COMPLETED", "REFUND_PENDING", "REFUNDED", "NO_SHOW"].includes(appointment.status) && (
-                  <button onClick={() => updatePatientAppointment(appointment.id, "REQUEST_CANCELLATION")} className="mt-5 w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700 sm:w-auto">Solicitar cancelación</button>
+                  <button onClick={() => setCancelModal(appointment)} className="mt-5 w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition hover:bg-red-50 hover:text-red-700 sm:w-auto">Cancelar cita</button>
                 )}
               </div>
             </article>
@@ -1259,6 +1284,65 @@ export function PatientDashboardClient() {
         </div>
       )}
     </Shell>
+
+    {/* Reagendar se presenta SIEMPRE como la alternativa recomendada antes de
+        cancelar. La advertencia depende de la política real del médico. */}
+    {cancelModal && (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#071726]/75 p-4 backdrop-blur-sm sm:items-center">
+        <div role="dialog" aria-modal="true" aria-labelledby="cancel-title" className="w-full max-w-lg rounded-[1.75rem] bg-white p-6 shadow-2xl">
+          <h2 id="cancel-title" className="text-xl font-bold text-deep">¿Prefieres reagendar?</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Cita con {cancelModal.doctor.fullName} · {dateTime(cancelModal.availabilitySlot.startsAt)}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Reagendar conserva tu cita y el pago original. Es la opción recomendada si solo necesitas otro horario.
+          </p>
+
+          <div className="mt-4">
+            <RefundPolicyNotice
+              policy={cancelModal.doctor.refundPolicy}
+              notes={cancelModal.doctor.refundPolicyNotes}
+            />
+          </div>
+
+          {cancelModal.doctor.refundPolicy === "NO_REFUNDS" && cancelModal.payments[0]?.status === "PAID" && (
+            <div className="mt-3">
+              <NoRefundConfirmation doctorName={cancelModal.doctor.fullName} />
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-2.5">
+            <button
+              onClick={() => updatePatientAppointment(cancelModal.id, "REQUEST_RESCHEDULE")}
+              className="w-full rounded-full bg-[#071726] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0d2638]"
+            >
+              Reagendar cita
+            </button>
+            <button
+              onClick={() => updatePatientAppointment(cancelModal.id, "REQUEST_CANCELLATION")}
+              className="w-full rounded-full border border-red-200 bg-white px-5 py-3.5 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+            >
+              {cancelModal.doctor.refundPolicy === "NO_REFUNDS" && cancelModal.payments[0]?.status === "PAID"
+                ? "Sí, cancelar sin devolución"
+                : "Continuar con la cancelación"}
+            </button>
+            <button
+              onClick={() => setCancelModal(null)}
+              className="w-full rounded-full px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:text-deep"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {actionMessage && (
+      <div role="status" aria-live="polite" className="fixed inset-x-4 bottom-24 z-40 mx-auto max-w-md rounded-2xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep shadow-xl sm:bottom-8">
+        {actionMessage}
+      </div>
+    )}
+
     <PatientMobileNav />
     </>
   );
@@ -1353,6 +1437,8 @@ export function DoctorDashboardClient() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [affiliateCode, setAffiliateCode] = useState("");
+  const [refundPolicy, setRefundPolicy] = useState<"ACCEPTS_REFUNDS" | "NO_REFUNDS" | "CASE_BY_CASE">("CASE_BY_CASE");
+  const [refundPolicyNotes, setRefundPolicyNotes] = useState("");
   const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
   const [reviewReply, setReviewReply] = useState("");
   const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas">("resumen");
@@ -1409,6 +1495,21 @@ export function DoctorDashboardClient() {
     activeAppointments: Array<{ id: string; startsAt: string; status: string; patientName: string | null }>;
   } | null>(null);
   const [blockDateBusy, setBlockDateBusy] = useState(false);
+  const [weekdaySchedule, setWeekdaySchedule] = useState<
+    Array<{
+      weekday: number;
+      label: string;
+      bookedCount: number;
+      slots: Array<{ id: string; startsAt: string; endsAt: string; isActive: boolean; hasAppointment: boolean }>;
+    }>
+  >([]);
+  const [weekdayBusy, setWeekdayBusy] = useState(false);
+  const [clearWeekdayPreview, setClearWeekdayPreview] = useState<{
+    weekday: number;
+    label: string;
+    deletableCount: number;
+    bookedCount: number;
+  } | null>(null);
   const [connectStatusState, setConnectStatusState] = useState<"idle" | "checking" | "done" | "error">("idle");
   const [connectStatusMessage, setConnectStatusMessage] = useState("");
   const assistantEnabled = medal === "amatista";
@@ -1456,6 +1557,8 @@ export function DoctorDashboardClient() {
     setLinkedinUrl(doctor.linkedinUrl ?? "");
     setWebsiteUrl(doctor.websiteUrl ?? "");
     setWhatsappUrl(doctor.whatsappUrl ?? "");
+    setRefundPolicy(doctor.refundPolicy ?? "CASE_BY_CASE");
+    setRefundPolicyNotes(doctor.refundPolicyNotes ?? "");
     setAffiliateCode("");
     setProfessionalLicense(doctor.professionalLicense ?? "");
     setAchievementsText(doctor.achievements.join("\n"));
@@ -1482,8 +1585,8 @@ export function DoctorDashboardClient() {
     const locationData = await clientApi<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>("/api/doctor-locations").catch(() => []);
     setAdditionalLocations(locationData);
 
-    /* Días marcados como no disponibles — misma fuente que usa el paciente */
-    await loadBlockedDates();
+    /* Días bloqueados y horario semanal — misma fuente que usa el paciente */
+    await Promise.all([loadBlockedDates(), loadWeekdaySchedule()]);
 
     /* Mostrar wizard si el perfil está incompleto (médico recién registrado) */
     const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
@@ -1795,25 +1898,39 @@ export function DoctorDashboardClient() {
     }
   }
 
-  async function updateAppointment(id: string, action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "REQUEST_CANCELLATION" | "APPROVE_REFUND" | "REJECT_REFUND", reason?: string) {
-    await clientApi(`/api/appointments/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        action,
-        cancellationReason: action === "REQUEST_CANCELLATION" ? reason || "Cancelación solicitada por médico desde agenda clínica." : undefined,
-        refundReason: action === "APPROVE_REFUND" || action === "REJECT_REFUND" ? reason : undefined
-      })
-    });
-    if (action === "REQUEST_CANCELLATION") {
-      setMessage("Solicitud de cancelación enviada correctamente.");
-    } else if (action === "APPROVE_REFUND") {
-      setMessage("Devolución aprobada correctamente.");
-    } else if (action === "REJECT_REFUND") {
-      setMessage("Solicitud de devolución marcada como no aprobada.");
-    } else if (action === "ACCEPT") {
-      setMessage("Cita aceptada o reagendada al horario disponible más cercano.");
+  async function updateAppointment(
+    id: string,
+    action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "CANCEL_BY_DOCTOR" | "APPROVE_REFUND" | "REJECT_REFUND",
+    reason?: string
+  ) {
+    setFeedback(null);
+    try {
+      await clientApi(`/api/appointments/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          action,
+          cancellationReason:
+            action === "CANCEL_BY_DOCTOR" ? reason || "Cancelación realizada por el médico." : undefined,
+          refundReason: action === "APPROVE_REFUND" || action === "REJECT_REFUND" ? reason : undefined
+        })
+      });
+
+      const messages: Record<typeof action, string> = {
+        ACCEPT: "La cita fue aceptada o reagendada correctamente.",
+        COMPLETE: "La cita fue marcada como completada.",
+        MARK_NO_SHOW: "La cita fue marcada como no asistida.",
+        CANCEL_BY_DOCTOR: "La cancelación fue procesada. Si había pago en línea, la devolución quedó registrada.",
+        APPROVE_REFUND: "La devolución fue aprobada.",
+        REJECT_REFUND: "La solicitud de devolución quedó marcada como no aprobada."
+      };
+      setFeedback({ tone: "success", text: messages[action] });
+      await load();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible actualizar la cita."
+      });
     }
-    await load();
   }
 
   function openCancellationRequest(appointment: Appointment) {
@@ -1829,7 +1946,7 @@ export function DoctorDashboardClient() {
       setMessage("Escribe un motivo de cancelación claro antes de enviar la solicitud.");
       return;
     }
-    await updateAppointment(cancellationModal.id, "REQUEST_CANCELLATION", reason);
+    await updateAppointment(cancellationModal.id, "CANCEL_BY_DOCTOR", reason);
     setCancellationModal(null);
     setCancellationReason("");
   }
@@ -1963,6 +2080,8 @@ export function DoctorDashboardClient() {
         professionalLicense: professionalLicense || undefined,
         legalDeclarationAccepted: legalAccepted,
         affiliateCode: affiliateCode || undefined,
+        refundPolicy,
+        refundPolicyNotes,
         consultationPriceCents: Math.round(priceValue * 100)
       })
       });
@@ -1979,6 +2098,88 @@ export function DoctorDashboardClient() {
       });
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  /* ── Horario por día de la semana ──────────────────────────────── */
+
+  type WeekdayRow = {
+    weekday: number;
+    label: string;
+    bookedCount: number;
+    slots: Array<{ id: string; startsAt: string; endsAt: string; isActive: boolean; hasAppointment: boolean }>;
+  };
+
+  async function loadWeekdaySchedule() {
+    const data = await clientApi<WeekdayRow[]>("/api/availability/weekday").catch(() => []);
+    setWeekdaySchedule(data);
+  }
+
+  /** Muestra el impacto antes de borrar: nunca se elimina sin confirmación. */
+  async function previewClearWeekday(weekday: number) {
+    setFeedback(null);
+    setWeekdayBusy(true);
+    try {
+      const preview = await clientApi<{
+        label: string;
+        deletableCount: number;
+        bookedCount: number;
+      }>("/api/availability/weekday", {
+        method: "DELETE",
+        body: JSON.stringify({ weekday, confirm: false })
+      });
+      setClearWeekdayPreview({ weekday, ...preview });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible consultar ese día."
+      });
+    } finally {
+      setWeekdayBusy(false);
+    }
+  }
+
+  async function confirmClearWeekday() {
+    if (!clearWeekdayPreview || weekdayBusy) return;
+    setWeekdayBusy(true);
+    setFeedback(null);
+    try {
+      const result = await clientApi<{ deleted: number; label: string }>("/api/availability/weekday", {
+        method: "DELETE",
+        body: JSON.stringify({ weekday: clearWeekdayPreview.weekday, confirm: true })
+      });
+      setClearWeekdayPreview(null);
+      setFeedback({
+        tone: "success",
+        text: `Los horarios del ${result.label} fueron eliminados correctamente (${result.deleted}).`
+      });
+      await Promise.all([loadWeekdaySchedule(), load()]);
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible eliminar esos horarios."
+      });
+    } finally {
+      setWeekdayBusy(false);
+    }
+  }
+
+  /** Elimina un bloque suelto sin tocar el resto del día. */
+  async function deleteSingleSlot(slotId: string) {
+    if (weekdayBusy) return;
+    setWeekdayBusy(true);
+    setFeedback(null);
+    try {
+      await clientApi("/api/availability", { method: "DELETE", body: JSON.stringify({ slotId }) });
+      setFeedback({ tone: "success", text: "El horario fue eliminado correctamente." });
+      await Promise.all([loadWeekdaySchedule(), load()]);
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: error instanceof Error ? error.message : "No fue posible eliminar ese horario."
+      });
+    } finally {
+      setWeekdayBusy(false);
     }
   }
 
@@ -2807,6 +3008,153 @@ export function DoctorDashboardClient() {
             />
           )}
 
+          {/* ── Horario habitual, día por día ── */}
+          {activeSection === "disponibilidad" && (
+            <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Horario habitual</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-deep">Tus horarios por día</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Cada día se gestiona por separado. Editar o eliminar un día no afecta a los demás.
+                  </p>
+                </div>
+                <button
+                  onClick={() => void loadWeekdaySchedule()}
+                  disabled={weekdayBusy}
+                  className="rounded-full border border-silver bg-white px-4 py-2 text-sm font-semibold text-deep transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Actualizar
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {weekdaySchedule.length === 0 && (
+                  <p className="rounded-2xl bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-500">
+                    Aún no cargamos tu horario. Pulsa «Actualizar» o publica disponibilidad más abajo.
+                  </p>
+                )}
+                {weekdaySchedule.map((day) => {
+                  const active = day.slots.filter((slot) => slot.isActive);
+                  return (
+                    <div key={day.weekday} className="rounded-3xl border border-silver/60 bg-white p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold capitalize text-deep">{day.label}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {active.length === 0
+                              ? "No disponible"
+                              : `${active.length} horario${active.length !== 1 ? "s" : ""} · ${day.bookedCount} reservado${day.bookedCount !== 1 ? "s" : ""}`}
+                          </p>
+                        </div>
+                        {day.slots.length > 0 && (
+                          <button
+                            onClick={() => void previewClearWeekday(day.weekday)}
+                            disabled={weekdayBusy}
+                            className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Eliminar todos los horarios del {day.label}
+                          </button>
+                        )}
+                      </div>
+
+                      {day.slots.length > 0 && (
+                        <ul className="mt-3 flex flex-wrap gap-2">
+                          {day.slots.map((slot) => (
+                            <li
+                              key={slot.id}
+                              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                slot.hasAppointment
+                                  ? "bg-sky-50 text-sky-800"
+                                  : slot.isActive
+                                    ? "bg-slate-100 text-slate-700"
+                                    : "bg-slate-50 text-slate-400 line-through"
+                              }`}
+                            >
+                              {new Date(slot.startsAt).toLocaleString("es-MX", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
+                              {slot.hasAppointment && <span className="text-[0.6rem] uppercase">reservado</span>}
+                              {!slot.hasAppointment && (
+                                <button
+                                  onClick={() => void deleteSingleSlot(slot.id)}
+                                  disabled={weekdayBusy}
+                                  aria-label={`Eliminar horario ${new Date(slot.startsAt).toLocaleString("es-MX")}`}
+                                  className="text-slate-400 transition hover:text-red-600 disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Confirmación explícita antes de una acción destructiva */}
+              {clearWeekdayPreview && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Vas a eliminar los horarios del {clearWeekdayPreview.label}
+                  </p>
+                  {clearWeekdayPreview.bookedCount > 0 ? (
+                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                      Este día tiene {clearWeekdayPreview.bookedCount} cita(s) reservada(s). No puedes eliminar estos
+                      horarios sin gestionar primero las citas existentes: reagéndalas o cancélalas desde tu agenda.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                      Se eliminarán {clearWeekdayPreview.deletableCount} horario(s) futuro(s) de los{" "}
+                      {clearWeekdayPreview.label}. Los demás días no se modifican. Esta acción no se puede deshacer.
+                    </p>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {clearWeekdayPreview.bookedCount === 0 && clearWeekdayPreview.deletableCount > 0 && (
+                      <button
+                        onClick={() => void confirmClearWeekday()}
+                        disabled={weekdayBusy}
+                        className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {weekdayBusy ? "Eliminando…" : "Sí, eliminar"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setClearWeekdayPreview(null)}
+                      className="rounded-full border border-silver bg-white px-4 py-2 text-sm font-semibold text-deep"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {feedback && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                    feedback.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {feedback.tone === "success" ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{feedback.text}</span>
+                </div>
+              )}
+            </section>
+          )}
+
           {activeSection === "disponibilidad" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -3200,6 +3548,53 @@ export function DoctorDashboardClient() {
                     )}
                   </div>
                 </div>
+                {/* Política de devoluciones — se muestra al paciente antes de pagar
+                    y gobierna qué ocurre cuando pide cancelar. */}
+                <div className="rounded-3xl border border-silver bg-white p-4 lg:col-span-2">
+                  <p className="text-sm font-semibold text-deep">Política de devoluciones</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    El paciente verá esta condición antes de pagar. También determina qué sucede cuando solicita cancelar.
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    {([
+                      { value: "ACCEPTS_REFUNDS", label: "Acepto devoluciones", hint: "El paciente puede solicitar reembolso y tú lo apruebas." },
+                      { value: "CASE_BY_CASE", label: "Caso por caso", hint: "Revisas cada solicitud antes de decidir." },
+                      { value: "NO_REFUNDS", label: "No acepto devoluciones", hint: "La cancelación no genera reembolso." }
+                    ] as const).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setRefundPolicy(option.value)}
+                        aria-pressed={refundPolicy === option.value}
+                        className={`rounded-2xl border p-3 text-left transition ${
+                          refundPolicy === option.value
+                            ? "border-medical bg-slate-50 ring-2 ring-medical/15"
+                            : "border-silver/70 bg-white hover:border-medical/40"
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold text-deep">{option.label}</span>
+                        <span className="mt-1 block text-xs leading-4 text-slate-500">{option.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <label className="mt-3 grid gap-1.5 text-sm font-semibold text-deep">
+                    Nota adicional (opcional)
+                    <input
+                      value={refundPolicyNotes}
+                      onChange={(event) => setRefundPolicyNotes(event.target.value)}
+                      maxLength={600}
+                      placeholder="Ej. Devolución completa si cancelas con más de 24 horas de anticipación."
+                      className="rounded-2xl border border-silver/60 bg-slate-50 px-4 py-3 font-normal text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
+                    />
+                  </label>
+                  {refundPolicy === "NO_REFUNDS" && (
+                    <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                      Con esta política, cuando un paciente cancele su cita se cancelará de inmediato y el pago no se
+                      reembolsará. El paciente verá esta advertencia antes de pagar y tendrá que confirmarla al cancelar.
+                    </p>
+                  )}
+                </div>
+
                 <label className="rounded-3xl border border-silver bg-slate-50 p-4 text-sm leading-6 text-slate-700 lg:col-span-2">
                   <span className="block font-semibold text-deep">Declaración profesional obligatoria</span>
                   <span className="mt-2 block">Declaro bajo protesta de decir verdad que la información profesional proporcionada es real, comprobable y me pertenece.</span>
@@ -5374,11 +5769,24 @@ function AppointmentList({
                 </div>
               </div>
             )}
+            {appointment.status === "CANCELLATION_REQUESTED" && (
+              <p className="mt-3 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">
+                El paciente pidió cancelar. Reagendar al horario más cercano conserva la cita y el pago original; es la
+                alternativa recomendada antes de cancelar.
+              </p>
+            )}
             {!["COMPLETED", "CANCELLED", "REFUNDED"].includes(appointment.status) && (
               <div className="mt-4 flex flex-wrap gap-3">
-                {["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "RESCHEDULE_REQUESTED"].includes(appointment.status) && (
+                {["PENDING", "PENDING_DOCTOR_ACCEPTANCE"].includes(appointment.status) && (
                   <button onClick={() => onAccept(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">
-                    {appointment.status === "RESCHEDULE_REQUESTED" ? "Aceptar y asignar horario cercano" : "Aceptar cita"}
+                    Aceptar cita
+                  </button>
+                )}
+                {/* Una cita reagendada — o una que el paciente pidió cancelar —
+                    vuelve a entrar al flujo de aceptación con horario cercano. */}
+                {["RESCHEDULE_REQUESTED", "CANCELLATION_REQUESTED"].includes(appointment.status) && (
+                  <button onClick={() => onAccept(appointment.id)} className="rounded-full bg-black px-4 py-2 font-semibold text-white">
+                    Reagendar al horario más cercano
                   </button>
                 )}
                 {["ACCEPTED", "CONFIRMED", "RESCHEDULED"].includes(appointment.status) && (
@@ -5387,7 +5795,9 @@ function AppointmentList({
                     <button onClick={() => onNoShow(appointment.id)} className="rounded-full border border-amber-100 bg-amber-50 px-4 py-2 font-semibold text-amber-700">Paciente no llegó</button>
                   </>
                 )}
-                <button onClick={() => onCancel(appointment)} className="rounded-full border border-silver px-4 py-2 font-semibold text-deep">Solicitar cancelación</button>
+                <button onClick={() => onCancel(appointment)} className="rounded-full border border-red-200 bg-white px-4 py-2 font-semibold text-red-700 transition hover:bg-red-50">
+                  Cancelar cita
+                </button>
               </div>
             )}
           </article>
