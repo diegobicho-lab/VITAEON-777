@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   addMinutes,
   buildSlotsForDay,
+  civilDateKey,
   clinicDateKey,
+  clinicDateOnly,
   combineClinicDateAndTime,
   hasInternalOverlap,
   rangesOverlap
@@ -18,6 +20,56 @@ describe("fuente de verdad de disponibilidad", () => {
   it("combina fecha y hora usando el offset de la zona clínica", () => {
     const instant = combineClinicDateAndTime(new Date("2026-08-10T12:00:00.000Z"), "09:00");
     expect(instant.toISOString()).toBe("2026-08-10T15:00:00.000Z"); // 09:00 -06:00
+  });
+
+  // Regresión: una fecha del calendario ("2026-08-10") se parsea como medianoche
+  // UTC. Leerla con la clave de zona clínica la retrocedía al día 9 y publicaba
+  // disponibilidad en fechas que el médico nunca seleccionó.
+  it("no desplaza el día de una fecha solo-fecha del calendario", () => {
+    const selected = new Date("2026-08-10"); // medianoche UTC
+    expect(civilDateKey(selected)).toBe("2026-08-10");
+    expect(clinicDateKey(selected)).toBe("2026-08-09"); // por eso NO se usa aquí
+  });
+
+  it("genera los slots en el día exacto seleccionado", () => {
+    const selected = new Date("2027-03-15");
+    const slots = buildSlotsForDay({
+      date: selected,
+      startTime: "09:00",
+      endTime: "14:00",
+      durationMinutes: 60,
+      now: new Date("2027-01-01T00:00:00.000Z")
+    });
+    expect(slots).toHaveLength(5); // 09,10,11,12,13
+    for (const slot of slots) {
+      expect(clinicDateKey(slot.startsAt)).toBe("2027-03-15");
+    }
+    // El primer bloque empieza exactamente a las 09:00 hora de México.
+    expect(slots[0].startsAt.toISOString()).toBe("2027-03-15T15:00:00.000Z");
+    // El último termina a las 14:00, sin excederse.
+    expect(slots[slots.length - 1].endsAt.toISOString()).toBe("2027-03-15T20:00:00.000Z");
+  });
+
+  it("trata igual todas las fechas seleccionadas, no solo la primera", () => {
+    const selection = ["2027-03-15", "2027-03-16", "2027-03-17"].map((value) => new Date(value));
+    const generated = selection.flatMap((date) =>
+      buildSlotsForDay({
+        date,
+        startTime: "09:00",
+        endTime: "14:00",
+        durationMinutes: 60,
+        now: new Date("2027-01-01T00:00:00.000Z")
+      })
+    );
+    expect(generated).toHaveLength(15); // 5 bloques × 3 días
+
+    const producedDays = [...new Set(generated.map((slot) => clinicDateKey(slot.startsAt)))].sort();
+    // Exactamente los días pedidos: ni uno menos (Error A) ni uno extra (Error C).
+    expect(producedDays).toEqual(["2027-03-15", "2027-03-16", "2027-03-17"]);
+  });
+
+  it("clinicDateOnly conserva el día civil elegido", () => {
+    expect(clinicDateOnly(new Date("2026-08-10")).toISOString()).toBe("2026-08-10T00:00:00.000Z");
   });
 
   it("divide una franja en slots consecutivos de la duración indicada", () => {

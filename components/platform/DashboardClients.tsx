@@ -1348,6 +1348,17 @@ export function PatientDashboardClient() {
   );
 }
 
+/**
+ * Día natural (YYYY-MM-DD) de una fecha local, sin pasar por UTC.
+ * El calendario construye sus celdas con `new Date(año, mes, día)` (medianoche
+ * local); `toISOString()` las desplazaría al día anterior en zonas UTC+.
+ */
+function localDayKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /* ── Mobile bottom nav — doctor dashboard ─────────────────────── */
 type DoctorSection = "resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas";
 
@@ -1504,6 +1515,11 @@ export function DoctorDashboardClient() {
     }>
   >([]);
   const [weekdayBusy, setWeekdayBusy] = useState(false);
+  // Qué acción de agenda está en curso: bloquea reenvíos y alimenta el
+  // indicador visual del botón correspondiente.
+  const [agendaBusy, setAgendaBusy] = useState<
+    "apply" | "repeat" | "revert" | "markUnavailable" | "slot" | null
+  >(null);
   const [clearWeekdayPreview, setClearWeekdayPreview] = useState<{
     weekday: number;
     label: string;
@@ -1772,20 +1788,37 @@ export function DoctorDashboardClient() {
   }
 
   async function toggleAvailability(slotId: string, isActive: boolean) {
+    if (agendaBusy) return;
+    setAgendaBusy("slot");
     setMessage("");
-    await clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId, isActive }) });
-    setMessage(isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible.");
-    await load();
+    try {
+      await clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId, isActive }) });
+      setMessage(isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible.");
+      await Promise.all([load(), loadWeekdaySchedule()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible actualizar ese horario.");
+    } finally {
+      setAgendaBusy(null);
+    }
   }
 
   async function deleteAvailability(slotId: string) {
+    if (agendaBusy) return;
+    setAgendaBusy("slot");
     setMessage("");
-    await clientApi("/api/availability", { method: "DELETE", body: JSON.stringify({ slotId }) });
-    setMessage("Horario eliminado del calendario.");
-    await load();
+    try {
+      await clientApi("/api/availability", { method: "DELETE", body: JSON.stringify({ slotId }) });
+      setMessage("Horario eliminado del calendario.");
+      await Promise.all([load(), loadWeekdaySchedule()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible eliminar ese horario.");
+    } finally {
+      setAgendaBusy(null);
+    }
   }
 
   async function markSelectedDayUnavailable() {
+    if (agendaBusy) return;
     setMessage("");
     const selectedDay = agenda?.days.find((day) => day.date === selectedCalendarDate);
     const activeFreeSlots = selectedDay?.slots.filter((slot) => slot.isActive && !slot.appointment) ?? [];
@@ -1793,12 +1826,20 @@ export function DoctorDashboardClient() {
       setMessage("El día seleccionado no tiene horarios libres activos para ocultar.");
       return;
     }
-    await Promise.all(activeFreeSlots.map((slot) => clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId: slot.id, isActive: false }) })));
-    setMessage("Día marcado como no disponible para pacientes.");
-    await load();
+    setAgendaBusy("markUnavailable");
+    try {
+      await Promise.all(activeFreeSlots.map((slot) => clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId: slot.id, isActive: false }) })));
+      setMessage("Día marcado como no disponible para pacientes.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible ocultar los horarios de ese día.");
+    } finally {
+      setAgendaBusy(null);
+    }
   }
 
   async function createCalendarBlocks(repeat = false) {
+    if (agendaBusy) return;
     setMessage("");
     if (!repeat && selectedCalendarDates.length === 0) {
       setMessage("Selecciona uno o varios días del calendario para publicar horarios.");
@@ -1807,34 +1848,65 @@ export function DoctorDashboardClient() {
     if (repeat && !window.confirm("Se repetirá esta disponibilidad semanal durante el próximo mes. ¿Deseas continuar?")) {
       return;
     }
-    const response = await clientApi<{ created: number; requested: number; repeatBatchId?: string | null }>("/api/availability/bulk", {
-      method: "POST",
-      body: JSON.stringify({
-        dates: repeat ? undefined : selectedCalendarDates,
-        startTime: blockStartTime,
-        endTime: blockEndTime,
-        durationMinutes: slotDurationMinutes,
-        repeatWeekdays: repeat ? repeatWeekdays : undefined
-      })
-    });
-    if (repeat && response.repeatBatchId) setLastRepeatBatchId(response.repeatBatchId);
-    setMessage(`Calendario actualizado: ${response.created} de ${response.requested} horarios publicados en bloques de ${slotDurationMinutes} minutos.`);
-    await load();
+
+    setAgendaBusy(repeat ? "repeat" : "apply");
+    try {
+      const response = await clientApi<{
+        created: number;
+        requested: number;
+        skipped: number;
+        blockedDatesSkipped?: number;
+        repeatBatchId?: string | null;
+      }>("/api/availability/bulk", {
+        method: "POST",
+        body: JSON.stringify({
+          // Copia del array de selección: el body se serializa en este punto y
+          // no puede verse afectado por cambios de estado posteriores.
+          dates: repeat ? undefined : [...selectedCalendarDates],
+          startTime: blockStartTime,
+          endTime: blockEndTime,
+          durationMinutes: slotDurationMinutes,
+          repeatWeekdays: repeat ? [...repeatWeekdays] : undefined
+        })
+      });
+      if (repeat && response.repeatBatchId) setLastRepeatBatchId(response.repeatBatchId);
+
+      const notes: string[] = [];
+      if (response.skipped > 0) notes.push(`${response.skipped} se omitieron por chocar con horarios o citas existentes`);
+      if (response.blockedDatesSkipped) notes.push(`${response.blockedDatesSkipped} fecha(s) están marcadas como no disponibles`);
+      setMessage(
+        `Calendario actualizado: ${response.created} de ${response.requested} horarios publicados en bloques de ${slotDurationMinutes} minutos${notes.length ? ` (${notes.join("; ")})` : ""}.`
+      );
+      if (!repeat) setSelectedCalendarDates([]);
+      await Promise.all([load(), loadWeekdaySchedule()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible publicar los horarios.");
+    } finally {
+      setAgendaBusy(null);
+    }
   }
 
   async function revertMonthlyRepeat(repeatBatchId = lastRepeatBatchId) {
+    if (agendaBusy) return;
     setMessage("");
     if (!repeatBatchId) {
       setMessage("No hay una repetición mensual reciente para revertir.");
       return;
     }
+    setAgendaBusy("revert");
+    try {
     const response = await clientApi<{ deleted: number }>("/api/availability", {
       method: "DELETE",
       body: JSON.stringify({ repeatBatchId })
     });
-    setLastRepeatBatchId("");
-    setMessage(`Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).`);
-    await load();
+      setLastRepeatBatchId("");
+      setMessage(`Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).`);
+      await Promise.all([load(), loadWeekdaySchedule()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible revertir la repetición.");
+    } finally {
+      setAgendaBusy(null);
+    }
   }
 
   async function uploadDoctorImage(kind: "profile" | "office" | "license", file?: File) {
@@ -2994,6 +3066,7 @@ export function DoctorDashboardClient() {
               onDurationChange={setSlotDurationMinutes}
               onRepeatWeekdaysChange={setRepeatWeekdays}
               onCreateBlocks={createCalendarBlocks}
+              busyAction={agendaBusy}
               onRevertMonthlyRepeat={revertMonthlyRepeat}
               onToggleSlot={toggleAvailability}
               onDeleteSlot={deleteAvailability}
@@ -4726,6 +4799,7 @@ function DoctorAgendaPanel({
   onDurationChange,
   onRepeatWeekdaysChange,
   onCreateBlocks,
+  busyAction,
   onRevertMonthlyRepeat,
   onToggleSlot,
   onDeleteSlot,
@@ -4753,6 +4827,8 @@ function DoctorAgendaPanel({
   onDurationChange: (value: 45 | 60) => void;
   onRepeatWeekdaysChange: (value: number[]) => void;
   onCreateBlocks: (repeat?: boolean) => void;
+  /** Acción de agenda en curso: deshabilita el resto y muestra el progreso. */
+  busyAction: "apply" | "repeat" | "revert" | "markUnavailable" | "slot" | null;
   onRevertMonthlyRepeat: (repeatBatchId?: string) => void;
   onToggleSlot: (slotId: string, isActive: boolean) => void;
   onDeleteSlot: (slotId: string) => void;
@@ -4774,7 +4850,7 @@ function DoctorAgendaPanel({
   const monthLabel = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(month);
   const selectedDay = selectedDate ? dayMap.get(selectedDate) : null;
   const preview = buildTimePreview(startTime, endTime, durationMinutes);
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = localDayKey(new Date());
 
   function shiftMonth(direction: number) {
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + direction, 1));
@@ -4818,7 +4894,10 @@ function DoctorAgendaPanel({
         </div>
         <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((date) => {
-            const key = date.toISOString().slice(0, 10);
+            // Las celdas son fechas locales (medianoche local). `toISOString()`
+            // las convierte a UTC y, en zonas al este de Greenwich, devolvería
+            // el día anterior. Se leen los componentes locales directamente.
+            const key = localDayKey(date);
             const day = dayMap.get(key);
             const outside = date.getMonth() !== month.getMonth();
             const selected = selectedDates.includes(key);
@@ -4894,8 +4973,24 @@ function DoctorAgendaPanel({
             )}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
-            <button disabled={selectedDates.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(false)} className="rounded-full bg-black px-5 py-3 font-semibold text-white disabled:opacity-50">Guardar en días seleccionados</button>
-            <button disabled={!selectedDate || !selectedDay} onClick={onMarkDayUnavailable} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Marcar día no disponible</button>
+            <button
+              disabled={selectedDates.length === 0 || preview.length === 0 || busyAction !== null}
+              aria-busy={busyAction === "apply"}
+              onClick={() => onCreateBlocks(false)}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-black px-5 py-3 font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busyAction === "apply" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {busyAction === "apply" ? "Aplicando cambios…" : "Guardar en días seleccionados"}
+            </button>
+            <button
+              disabled={!selectedDate || !selectedDay || busyAction !== null}
+              aria-busy={busyAction === "markUnavailable"}
+              onClick={onMarkDayUnavailable}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busyAction === "markUnavailable" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {busyAction === "markUnavailable" ? "Actualizando…" : "Marcar día no disponible"}
+            </button>
           </div>
           <div className="mt-5 border-t border-silver pt-5">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Repetir por semana</p>
@@ -4908,8 +5003,24 @@ function DoctorAgendaPanel({
               Se repetirá esta disponibilidad semanal durante el próximo mes. Puedes revertir solo los horarios generados, sin tocar horarios manuales ni citas ya agendadas.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button disabled={repeatWeekdays.length === 0 || preview.length === 0} onClick={() => onCreateBlocks(true)} className="rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep disabled:opacity-50">Publicar repetición mensual</button>
-              <button disabled={!lastRepeatBatchId} onClick={() => onRevertMonthlyRepeat(lastRepeatBatchId)} className="rounded-full border border-red-100 bg-red-50 px-5 py-3 font-semibold text-red-700 disabled:opacity-50">Revertir repetición</button>
+              <button
+                disabled={repeatWeekdays.length === 0 || preview.length === 0 || busyAction !== null}
+                aria-busy={busyAction === "repeat"}
+                onClick={() => onCreateBlocks(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busyAction === "repeat" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {busyAction === "repeat" ? "Publicando…" : "Publicar repetición mensual"}
+              </button>
+              <button
+                disabled={!lastRepeatBatchId || busyAction !== null}
+                aria-busy={busyAction === "revert"}
+                onClick={() => onRevertMonthlyRepeat(lastRepeatBatchId)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-red-100 bg-red-50 px-5 py-3 font-semibold text-red-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busyAction === "revert" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {busyAction === "revert" ? "Revirtiendo…" : "Revertir repetición"}
+              </button>
             </div>
           </div>
         </div>

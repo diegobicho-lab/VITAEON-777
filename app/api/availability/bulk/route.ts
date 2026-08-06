@@ -5,7 +5,8 @@ import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   buildSlotsForDay,
-  clinicDateKey,
+  civilDateKey,
+  clinicTodayCivil,
   getBlockedDateKeys,
   rangesOverlap
 } from "@/lib/availability/availability";
@@ -15,7 +16,11 @@ import { availabilityBulkSchema } from "@/lib/validation/schemas";
 
 // Generación de slots, zona horaria y detección de solapamientos viven en
 // lib/availability: wizard, agenda y reservas comparten exactamente esta lógica.
-const uniqueDateKey = clinicDateKey;
+//
+// Las fechas que llegan aquí son SOLO FECHA ("2026-08-10"), no instantes, por lo
+// que su día natural se lee con `civilDateKey`. Usar la clave en zona clínica
+// las retrocedía un día y publicaba horarios en fechas nunca seleccionadas.
+const uniqueDateKey = civilDateKey;
 
 export async function POST(request: Request) {
   const limit = await rateLimitByIp("availability:bulk", { limit: 12, windowMs: 60_000 });
@@ -41,13 +46,19 @@ export async function POST(request: Request) {
   const repeatLabel = isMonthlyRepeat ? "Disponibilidad repetida del próximo mes" : null;
 
   if (parsed.data.repeatWeekdays?.length) {
-    const today = new Date();
-    const end = new Date(today);
-    end.setMonth(end.getMonth() + 1);
-    for (let current = new Date(today); current <= end; current.setDate(current.getDate() + 1)) {
-      if (parsed.data.repeatWeekdays.includes(current.getDay())) {
-        dates.set(uniqueDateKey(current), new Date(current));
+    // Se recorre en días civiles anclados a medianoche UTC y se lee el día de
+    // la semana con getUTCDay(). Con getDay() sobre `new Date()` el servidor
+    // (UTC en Vercel) podía adelantarse un día respecto a México entre las
+    // 00:00 y las 06:00 UTC y repetir el weekday equivocado.
+    const cursor = clinicTodayCivil();
+    const end = new Date(cursor);
+    end.setUTCMonth(end.getUTCMonth() + 1);
+
+    while (cursor <= end) {
+      if (parsed.data.repeatWeekdays.includes(cursor.getUTCDay())) {
+        dates.set(uniqueDateKey(cursor), new Date(cursor));
       }
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
   }
 
@@ -56,7 +67,8 @@ export async function POST(request: Request) {
   // Un día bloqueado no vuelve a generar disponibilidad: si no se filtrara aquí,
   // la disponibilidad recurrente repoblaría fechas que el médico cerró a propósito.
   const blockedKeys = await getBlockedDateKeys(prisma, doctor.id);
-  const requestedDates = Array.from(dates.values()).filter((date) => !blockedKeys.has(clinicDateKey(date)));
+  // `blockedKeys` guarda días civiles, así que se compara con la clave civil.
+  const requestedDates = Array.from(dates.values()).filter((date) => !blockedKeys.has(civilDateKey(date)));
   const blockedSkipped = dates.size - requestedDates.length;
 
   const requestedRows = requestedDates.flatMap((date) =>

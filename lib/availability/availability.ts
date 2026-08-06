@@ -20,7 +20,12 @@ export type PrismaLike = PrismaClient | Prisma.TransactionClient;
 
 export type TimeRange = { startsAt: Date; endsAt: Date };
 
-/** Clave de día natural (YYYY-MM-DD) en zona clínica, no en UTC del servidor. */
+/**
+ * Clave de día natural (YYYY-MM-DD) de un INSTANTE, leído en zona clínica.
+ *
+ * Úsala solo con momentos reales (`slot.startsAt`, `new Date()`), nunca con
+ * fechas "solo día": ver `civilDateKey`.
+ */
 export function clinicDateKey(date: Date): string {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: CLINIC_TIME_ZONE,
@@ -32,17 +37,41 @@ export function clinicDateKey(date: Date): string {
 }
 
 /**
- * Medianoche UTC del día natural clínico. Es el valor que se persiste en
+ * Clave de día natural de un valor "SOLO FECHA" (selección de calendario,
+ * `<input type="date">`, "2026-08-10").
+ *
+ * `z.coerce.date()` parsea "2026-08-10" como medianoche UTC, así que el día
+ * civil son sus componentes UTC. Pasar ese valor por `clinicDateKey` lo
+ * retrocedería un día (2026-08-10T00:00Z son las 18:00 del 9 en México) y la
+ * disponibilidad se publicaría en fechas que el médico nunca seleccionó.
+ */
+export function civilDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Medianoche UTC del día civil. Es el valor que se persiste en
  * `DoctorBlockedDate.date` (columna DATE) para que la comparación por día sea
  * exacta y no dependa de la hora del servidor.
  */
 export function clinicDateOnly(date: Date): Date {
-  return new Date(`${clinicDateKey(date)}T00:00:00.000Z`);
+  return new Date(`${civilDateKey(date)}T00:00:00.000Z`);
 }
 
-/** Combina un día natural clínico con una hora "HH:mm" en un instante absoluto. */
+/** Combina un día civil con una hora "HH:mm" en un instante absoluto clínico. */
 export function combineClinicDateAndTime(date: Date, time: string): Date {
-  return new Date(`${clinicDateKey(date)}T${time}:00${CLINIC_UTC_OFFSET}`);
+  return new Date(`${civilDateKey(date)}T${time}:00${CLINIC_UTC_OFFSET}`);
+}
+
+/**
+ * Día civil de hoy en zona clínica, anclado a medianoche UTC.
+ *
+ * Sirve de punto de partida para recorrer fechas: entre las 00:00 y las 06:00
+ * UTC el servidor ya está en el día siguiente mientras en México sigue siendo
+ * el día anterior.
+ */
+export function clinicTodayCivil(now = new Date()): Date {
+  return new Date(`${clinicDateKey(now)}T00:00:00.000Z`);
 }
 
 export function addMinutes(date: Date, minutes: number): Date {
