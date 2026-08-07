@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NoRefundConfirmation, RefundPolicyNotice } from "@/components/platform/BookingNotices";
+import { CLINIC_TIME_ZONE, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
 import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
 import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
@@ -502,7 +503,7 @@ type PrescriptionTemplateFormState = typeof emptyPrescriptionTemplateForm;
 type PrescriptionFormState = typeof emptyPrescriptionForm;
 
 function dateTime(value: string) {
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return formatClinicDateTime(value);
 }
 
 function money(cents: number) {
@@ -559,7 +560,7 @@ function ProfileCompletionCard({ profile }: { profile: DoctorProfile }) {
 }
 
 function shortTime(value: string | Date) {
-  return new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(value));
+  return formatClinicTime(value);
 }
 
 function durationLabel(startsAt: string, endsAt: string) {
@@ -630,7 +631,7 @@ function buildTimePreview(startTime: string, endTime: string, durationMinutes: 4
   const end = new Date(2026, 0, 1, endHour, endMinute, 0, 0);
   const values: string[] = [];
   for (let cursor = base; new Date(cursor.getTime() + durationMinutes * 60_000) <= end; cursor = new Date(cursor.getTime() + durationMinutes * 60_000)) {
-    values.push(new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(cursor));
+    values.push(formatClinicTime(cursor));
   }
   return values;
 }
@@ -1817,22 +1818,69 @@ export function DoctorDashboardClient() {
     }
   }
 
+  /**
+   * Oculta los horarios libres de TODOS los días seleccionados.
+   *
+   * Antes leía `selectedCalendarDate` (singular), que solo guarda el último día
+   * pulsado, así que con varios días marcados únicamente se actualizaba uno.
+   * Ahora recorre `selectedCalendarDates`, que es la selección real.
+   */
   async function markSelectedDayUnavailable() {
     if (agendaBusy) return;
     setMessage("");
-    const selectedDay = agenda?.days.find((day) => day.date === selectedCalendarDate);
-    const activeFreeSlots = selectedDay?.slots.filter((slot) => slot.isActive && !slot.appointment) ?? [];
-    if (activeFreeSlots.length === 0) {
-      setMessage("El día seleccionado no tiene horarios libres activos para ocultar.");
+
+    // Copia estable: la selección puede cambiar mientras corre la petición.
+    const targetDates = selectedCalendarDates.length > 0
+      ? [...selectedCalendarDates]
+      : selectedCalendarDate
+        ? [selectedCalendarDate]
+        : [];
+
+    if (targetDates.length === 0) {
+      setMessage("Selecciona uno o varios días del calendario para marcarlos como no disponibles.");
       return;
     }
+
+    const slotsToHide = targetDates.flatMap((date) => {
+      const day = agenda?.days.find((item) => item.date === date);
+      return (day?.slots ?? []).filter((slot) => slot.isActive && !slot.appointment);
+    });
+
+    // Los días con cita reservada no se tocan; se informa para que el médico
+    // sepa por qué no cambiaron.
+    const daysWithAppointments = targetDates.filter((date) =>
+      (agenda?.days.find((item) => item.date === date)?.slots ?? []).some((slot) => slot.appointment)
+    );
+
+    if (slotsToHide.length === 0) {
+      setMessage(
+        daysWithAppointments.length > 0
+          ? "Los días seleccionados solo tienen horarios con cita reservada. Reagenda o cancela esas citas primero."
+          : "Los días seleccionados no tienen horarios libres activos para ocultar."
+      );
+      return;
+    }
+
     setAgendaBusy("markUnavailable");
     try {
-      await Promise.all(activeFreeSlots.map((slot) => clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId: slot.id, isActive: false }) })));
-      setMessage("Día marcado como no disponible para pacientes.");
-      await load();
+      await Promise.all(
+        slotsToHide.map((slot) =>
+          clientApi("/api/availability", {
+            method: "PATCH",
+            body: JSON.stringify({ slotId: slot.id, isActive: false })
+          })
+        )
+      );
+      const dayLabel = targetDates.length === 1 ? "1 día" : `${targetDates.length} días`;
+      setMessage(
+        `${dayLabel} marcado(s) como no disponible(s): ${slotsToHide.length} horario(s) ocultado(s) para pacientes.` +
+          (daysWithAppointments.length > 0
+            ? ` Los horarios con cita reservada se conservaron.`
+            : "")
+      );
+      await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible ocultar los horarios de ese día.");
+      setMessage(error instanceof Error ? error.message : "No fue posible ocultar los horarios de esos días.");
     } finally {
       setAgendaBusy(null);
     }
@@ -3148,14 +3196,15 @@ export function DoctorDashboardClient() {
                                 day: "2-digit",
                                 month: "short",
                                 hour: "2-digit",
-                                minute: "2-digit"
+                                minute: "2-digit",
+                                timeZone: CLINIC_TIME_ZONE
                               })}
                               {slot.hasAppointment && <span className="text-[0.6rem] uppercase">reservado</span>}
                               {!slot.hasAppointment && (
                                 <button
                                   onClick={() => void deleteSingleSlot(slot.id)}
                                   disabled={weekdayBusy}
-                                  aria-label={`Eliminar horario ${new Date(slot.startsAt).toLocaleString("es-MX")}`}
+                                  aria-label={`Eliminar horario ${formatClinicDateTime(slot.startsAt)}`}
                                   className="text-slate-400 transition hover:text-red-600 disabled:opacity-50"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -3288,7 +3337,7 @@ export function DoctorDashboardClient() {
                           <ul className="mt-2 grid gap-1">
                             {blockDatePreview.activeAppointments.map((appointment) => (
                               <li key={appointment.id} className="text-xs font-semibold">
-                                {new Date(appointment.startsAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                                {formatClinicTime(appointment.startsAt)}
                                 {appointment.patientName ? ` · ${appointment.patientName}` : ""}
                               </li>
                             ))}
@@ -4983,13 +5032,17 @@ function DoctorAgendaPanel({
               {busyAction === "apply" ? "Aplicando cambios…" : "Guardar en días seleccionados"}
             </button>
             <button
-              disabled={!selectedDate || !selectedDay || busyAction !== null}
+              disabled={selectedDates.length === 0 || busyAction !== null}
               aria-busy={busyAction === "markUnavailable"}
               onClick={onMarkDayUnavailable}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busyAction === "markUnavailable" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {busyAction === "markUnavailable" ? "Actualizando…" : "Marcar día no disponible"}
+              {busyAction === "markUnavailable"
+                ? "Actualizando…"
+                : selectedDates.length > 1
+                  ? `Marcar ${selectedDates.length} días no disponibles`
+                  : "Marcar día no disponible"}
             </button>
           </div>
           <div className="mt-5 border-t border-silver pt-5">
@@ -5038,7 +5091,7 @@ function DoctorAgendaPanel({
                   slot.isActive ? "border-l-emerald-300" : "border-l-slate-200"
                 }`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-semibold text-deep">{new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date(slot.startsAt))}</p>
+                    <p className="font-semibold text-deep">{formatClinicTime(slot.startsAt)}</p>
                     <Badge value={slot.appointment?.status ?? (slot.isActive ? "DISPONIBLE" : "NO DISPONIBLE")} />
                   </div>
                   {slot.appointment ? (

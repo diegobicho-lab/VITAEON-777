@@ -2,11 +2,20 @@ import { MedicalMedal } from "@prisma/client";
 import { fail, ok } from "@/lib/api-response";
 import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
 import { getCurrentUser } from "@/lib/auth/session";
+import { clinicDayKey } from "@/lib/clinic-time";
 import { prisma } from "@/lib/db/prisma";
 import { openSensitiveText } from "@/lib/security/crypto";
 
+/**
+ * Día del calendario al que pertenece un horario, leído en zona del consultorio.
+ *
+ * Con `toISOString()` la agrupación se hacía en UTC: un horario de las 18:00 en
+ * México son las 00:00 UTC del día siguiente, así que los bloques de la tarde
+ * aparecían en el día equivocado del calendario y el médico veía "días extra"
+ * con horarios que en realidad pertenecían al día anterior.
+ */
 function dayKey(value: Date) {
-  return value.toISOString().slice(0, 10);
+  return clinicDayKey(value);
 }
 
 export async function GET(request: Request) {

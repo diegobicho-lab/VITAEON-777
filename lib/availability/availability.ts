@@ -12,8 +12,11 @@ import type { Prisma, PrismaClient } from "@prisma/client";
  * America/Mexico_City es UTC-06:00 todo el año. El offset se declara una sola
  * vez aquí para que wizard, agenda y reservas interpreten las horas igual.
  */
-export const CLINIC_TIME_ZONE = "America/Mexico_City";
-export const CLINIC_UTC_OFFSET = "-06:00";
+// Fuente única compartida con el frontend: si el backend y la interfaz usaran
+// zonas distintas, el médico vería su agenda desplazada respecto a lo que
+// realmente configuró.
+export { CLINIC_TIME_ZONE, CLINIC_UTC_OFFSET } from "@/lib/clinic-time";
+import { CLINIC_TIME_ZONE, CLINIC_UTC_OFFSET } from "@/lib/clinic-time";
 
 /** Cliente Prisma o cliente transaccional — permite reutilizar dentro de $transaction. */
 export type PrismaLike = PrismaClient | Prisma.TransactionClient;
