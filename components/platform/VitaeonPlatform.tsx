@@ -55,7 +55,7 @@ const DashboardMockup = dynamic(
   { ssr: false, loading: () => null },
 );
 import { track } from "@vercel/analytics";
-import { clientApi } from "@/services/client/api";
+import { ApiError, clientApi } from "@/services/client/api";
 import type { CurrentUser, DoctorListItem } from "@/types/domain";
 
 type Specialty = { id: string; name: string; description?: string | null; doctorsCount: number };
@@ -480,6 +480,9 @@ export default function VitaeonPlatform() {
   const [urgentResults, setUrgentResults] = useState<DoctorListItem[]>([]);
   const [urgentLoading, setUrgentLoading] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<"idle" | "creating" | "success" | "error">("idle");
+  // Error de reserva mostrado junto al botón de confirmar, no en el banner
+  // superior: ahí el paciente no relaciona el mensaje con la acción que falló.
+  const [bookingError, setBookingError] = useState<{ message: string; hint?: string } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [reason, setReason] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -634,6 +637,9 @@ export default function VitaeonPlatform() {
   function selectDoctor(doctor: DoctorListItem) {
     setSelectedDoctor(doctor);
     setSelectedSlotId(doctor.availability[0]?.id ?? "");
+    // Un error de la reserva anterior no debe seguir visible en otro médico.
+    setBookingError(null);
+    setBookingStatus("idle");
     setSpecialtyId(doctor.specialtyId);
     setHospitalId(doctor.hospitalId);
     track("doctor_viewed", { specialty: doctor.specialty, medal: doctor.medal, hasSlots: doctor.availability.length > 0 });
@@ -808,6 +814,25 @@ export default function VitaeonPlatform() {
     }
   }
 
+  /**
+   * Recarga médicos conservando el que el paciente tiene abierto.
+   * Se usa cuando un horario deja de estar libre: la lista en pantalla quedó
+   * desactualizada y hay que reflejar los huecos reales.
+   */
+  async function refreshDoctors() {
+    try {
+      const params = new URLSearchParams();
+      if (specialtyId) params.set("specialtyId", specialtyId);
+      if (hospitalId) params.set("hospitalId", hospitalId);
+      if (query.trim()) params.set("query", query.trim());
+      const data = await clientApi<DoctorListItem[]>(`/api/doctors?${params.toString()}`);
+      setDoctors(data);
+      setSelectedDoctor((current) => (current ? data.find((item) => item.id === current.id) ?? current : current));
+    } catch {
+      // El motivo real ya se muestra junto al botón de reserva.
+    }
+  }
+
   /** Relee la sesión desde el servidor (p.ej. tras verificar el correo). */
   async function refreshCurrentUser() {
     const fresh = await clientApi<CurrentUser>("/api/auth/me").catch(() => null);
@@ -851,7 +876,7 @@ export default function VitaeonPlatform() {
 
   async function createAppointment() {
     if (!selectedDoctor || !selectedSlot) {
-      setError("Selecciona un médico y un horario disponible antes de confirmar la cita.");
+      setBookingError({ message: "Selecciona un médico y un horario disponible antes de confirmar la cita." });
       return;
     }
     if (!user) {
@@ -861,6 +886,7 @@ export default function VitaeonPlatform() {
     const selectedPaymentMethod = paymentMethod;
     track("booking_started", { specialty: selectedDoctor.specialty, paymentMethod: selectedPaymentMethod });
     setBookingStatus("creating");
+    setBookingError(null);
     setError("");
     setClientSecret("");
     setPaymentError("");
@@ -921,7 +947,29 @@ export default function VitaeonPlatform() {
       setSelectedSlotId("");
     } catch (caught) {
       setBookingStatus("error");
-      setError(caught instanceof Error ? caught.message : "No fue posible crear la cita.");
+
+      const code = caught instanceof ApiError ? caught.code : "";
+      const message = caught instanceof Error ? caught.message : "No fue posible crear la cita.";
+
+      // Cuando el motivo es que el horario dejó de estar libre, la lista que ve
+      // el paciente está desactualizada: se recarga para que el hueco ocupado
+      // desaparezca y pueda elegir otro sin recargar la página a mano.
+      const availabilityCodes = ["SLOT_UNAVAILABLE", "SLOT_ALREADY_BOOKED", "SLOT_IN_PAST", "DATE_BLOCKED"];
+      if (availabilityCodes.includes(code)) {
+        setSelectedSlotId("");
+        void refreshDoctors();
+      }
+
+      setBookingError({
+        message,
+        hint: availabilityCodes.includes(code)
+          ? "Actualizamos los horarios disponibles de este médico. Elige otro de la lista."
+          : code === "EMAIL_NOT_VERIFIED"
+            ? "Usa el botón de arriba para reenviarte el enlace de verificación."
+            : code === "UNAUTHENTICATED"
+              ? "Vuelve a iniciar sesión para continuar con tu reserva."
+              : undefined
+      });
     }
   }
 
@@ -1216,6 +1264,8 @@ export default function VitaeonPlatform() {
                 reviewMessage={reviewMessage}
                 submitReview={submitReview}
                 onEmailVerified={refreshCurrentUser}
+                bookingError={bookingError}
+                onSlotChange={() => setBookingError(null)}
               />
             ) : (
               <EmptyCard title="Sin selección médica" text="Elige una especialidad para ver médicos verificados conforme se incorporen a la beta privada." />
@@ -1584,6 +1634,8 @@ export default function VitaeonPlatform() {
             reviewMessage={reviewMessage}
             submitReview={submitReview}
             onEmailVerified={refreshCurrentUser}
+            bookingError={bookingError}
+            onSlotChange={() => setBookingError(null)}
           />
         </Modal>
       )}
@@ -2351,6 +2403,8 @@ function BookingFlow(props: {
   reviewMessage: string;
   submitReview: () => void;
   onEmailVerified?: () => void;
+  bookingError?: { message: string; hint?: string } | null;
+  onSlotChange?: () => void;
 }) {
   const selectedSpecialtyName = props.specialties.find((specialty) => specialty.id === props.specialtyId)?.name ?? "Todas las especialidades";
 
@@ -2431,6 +2485,8 @@ function BookingFlow(props: {
             reviewMessage={props.reviewMessage}
             submitReview={props.submitReview}
             onEmailVerified={props.onEmailVerified}
+            bookingError={props.bookingError}
+            onSlotChange={props.onSlotChange}
           />
         ) : (
           <EmptyCard
@@ -2641,6 +2697,8 @@ function DoctorDetail(props: {
   reviewMessage: string;
   submitReview: () => void;
   onEmailVerified?: () => void;
+  bookingError?: { message: string; hint?: string } | null;
+  onSlotChange?: () => void;
 }) {
   const { doctor } = props;
   const finalPrice = props.welcomeDiscount?.eligible
@@ -2759,7 +2817,7 @@ function DoctorDetail(props: {
 
         <div>
           <label className="text-sm font-semibold text-slate-700">Disponibilidad real</label>
-          <select value={props.slotId} onChange={(event) => props.setSlotId(event.target.value)} className="mt-2 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
+          <select value={props.slotId} onChange={(event) => { props.setSlotId(event.target.value); props.onSlotChange?.(); }} className="mt-2 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
             {doctor.availability.length === 0 && <option value="">Sin horarios publicados</option>}
             {doctor.availability.map((slot) => <option key={slot.id} value={slot.id}>{dateTime(slot.startsAt)}</option>)}
           </select>
@@ -2823,6 +2881,24 @@ function DoctorDetail(props: {
           <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
             Cita creada correctamente. Puedes visualizar tu ticket y detalles de la cita en el panel del paciente.
           </p>
+        )}
+
+        {/* Motivo del fallo junto a la acción que lo provocó: en el banner
+            superior el paciente no lo relacionaba con el botón de reservar. */}
+        {props.bookingError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mt-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4"
+          >
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold leading-6 text-red-800">{props.bookingError.message}</p>
+              {props.bookingError.hint && (
+                <p className="mt-1 text-sm leading-6 text-red-700">{props.bookingError.hint}</p>
+              )}
+            </div>
+          </div>
         )}
 
         <p className="mt-4 text-xs leading-5 text-slate-400">
