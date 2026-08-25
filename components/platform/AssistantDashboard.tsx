@@ -2,6 +2,7 @@
 
 import { Calendar, CheckCircle2, Clock, Loader2, MessageSquare, Search, UserPlus, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CLINIC_TIME_ZONE, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
 import { clientApi } from "@/services/client/api";
 
 /* ── Tipos ──────────────────────────────────────────────────── */
@@ -57,9 +58,7 @@ type PatientResult = {
 /* ── Helpers ────────────────────────────────────────────────── */
 
 function dateTime(value: string) {
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value)
-  );
+  return formatClinicDateTime(value);
 }
 
 function money(cents: number) {
@@ -216,8 +215,8 @@ function ScheduleSection({
     grouped.set(key, arr);
   }
 
-  const dayFmt = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" });
-  const timeFmt = new Intl.DateTimeFormat("es-MX", { timeStyle: "short" });
+  const dayFmt = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: CLINIC_TIME_ZONE });
+  const timeFmt = new Intl.DateTimeFormat("es-MX", { timeStyle: "short", timeZone: CLINIC_TIME_ZONE });
 
   return (
     <section className="mb-8 rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
@@ -363,7 +362,7 @@ function NewAppointmentModal({
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
     .slice(0, 40);
 
-  const timeFmt = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" });
+  const timeFmt = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: CLINIC_TIME_ZONE });
 
   async function searchPatient() {
     if (query.trim().length < 3) return;
@@ -771,9 +770,7 @@ export function AssistantDashboardClient() {
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-[#071726]">{appt.patient.user.name}</p>
                         <p className="mt-0.5 text-sm text-slate-500">
-                          {new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(
-                            new Date(appt.availabilitySlot.startsAt)
-                          )}
+                          {formatClinicTime(appt.availabilitySlot.startsAt)}
                           {payment ? ` · ${payment.provider === "CASH" ? "Efectivo" : payment.provider === "TRANSFER" ? "Transferencia" : "En línea"}` : ""}
                           {appt.patient.phone ? ` · ${appt.patient.phone}` : ""}
                         </p>
