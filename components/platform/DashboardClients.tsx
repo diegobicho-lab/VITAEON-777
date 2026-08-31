@@ -1519,7 +1519,7 @@ export function DoctorDashboardClient() {
   // Qué acción de agenda está en curso: bloquea reenvíos y alimenta el
   // indicador visual del botón correspondiente.
   const [agendaBusy, setAgendaBusy] = useState<
-    "apply" | "repeat" | "revert" | "markUnavailable" | "slot" | null
+    "apply" | "repeat" | "revert" | "markUnavailable" | "markAvailable" | "slot" | null
   >(null);
   const [clearWeekdayPreview, setClearWeekdayPreview] = useState<{
     weekday: number;
@@ -1825,6 +1825,62 @@ export function DoctorDashboardClient() {
    * pulsado, así que con varios días marcados únicamente se actualizaba uno.
    * Ahora recorre `selectedCalendarDates`, que es la selección real.
    */
+  /**
+   * Vuelve a mostrar los horarios ocultos de los días seleccionados.
+   *
+   * Contrapartida de `markSelectedDayUnavailable`: se podía apagar un día
+   * entero con un clic, pero encenderlo obligaba a activar horario por horario
+   * desde el detalle del día. La asimetría hacía tedioso deshacer un error.
+   */
+  async function markSelectedDayAvailable() {
+    if (agendaBusy) return;
+    setMessage("");
+
+    const targetDates = selectedCalendarDates.length > 0
+      ? [...selectedCalendarDates]
+      : selectedCalendarDate
+        ? [selectedCalendarDate]
+        : [];
+
+    if (targetDates.length === 0) {
+      setMessage("Selecciona uno o varios días del calendario para volver a mostrarlos.");
+      return;
+    }
+
+    // Solo horarios futuros: reactivar los que ya pasaron no aporta nada.
+    const now = Date.now();
+    const slotsToShow = targetDates.flatMap((date) => {
+      const day = agenda?.days.find((item) => item.date === date);
+      return (day?.slots ?? []).filter(
+        (slot) => !slot.isActive && !slot.appointment && new Date(slot.startsAt).getTime() > now
+      );
+    });
+
+    if (slotsToShow.length === 0) {
+      setMessage("Los días seleccionados no tienen horarios ocultos que reactivar.");
+      return;
+    }
+
+    setAgendaBusy("markAvailable");
+    try {
+      await Promise.all(
+        slotsToShow.map((slot) =>
+          clientApi("/api/availability", {
+            method: "PATCH",
+            body: JSON.stringify({ slotId: slot.id, isActive: true })
+          })
+        )
+      );
+      const dayLabel = targetDates.length === 1 ? "1 día" : `${targetDates.length} días`;
+      setMessage(`${dayLabel} habilitado(s) de nuevo: ${slotsToShow.length} horario(s) visibles para pacientes.`);
+      await Promise.all([load(), loadWeekdaySchedule()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No fue posible reactivar esos horarios.");
+    } finally {
+      setAgendaBusy(null);
+    }
+  }
+
   async function markSelectedDayUnavailable() {
     if (agendaBusy) return;
     setMessage("");
@@ -3123,6 +3179,7 @@ export function DoctorDashboardClient() {
               onToggleSlot={toggleAvailability}
               onDeleteSlot={deleteAvailability}
               onMarkDayUnavailable={markSelectedDayUnavailable}
+              onMarkDayAvailable={markSelectedDayAvailable}
               onAcceptAppointment={(id) => updateAppointment(id, "ACCEPT")}
               onCompleteAppointment={(id) => updateAppointment(id, "COMPLETE")}
               onNoShowAppointment={(id) => updateAppointment(id, "MARK_NO_SHOW")}
@@ -4857,6 +4914,7 @@ function DoctorAgendaPanel({
   onToggleSlot,
   onDeleteSlot,
   onMarkDayUnavailable,
+  onMarkDayAvailable,
   onAcceptAppointment,
   onCompleteAppointment,
   onNoShowAppointment,
@@ -4881,11 +4939,12 @@ function DoctorAgendaPanel({
   onRepeatWeekdaysChange: (value: number[]) => void;
   onCreateBlocks: (repeat?: boolean) => void;
   /** Acción de agenda en curso: deshabilita el resto y muestra el progreso. */
-  busyAction: "apply" | "repeat" | "revert" | "markUnavailable" | "slot" | null;
+  busyAction: "apply" | "repeat" | "revert" | "markUnavailable" | "markAvailable" | "slot" | null;
   onRevertMonthlyRepeat: (repeatBatchId?: string) => void;
   onToggleSlot: (slotId: string, isActive: boolean) => void;
   onDeleteSlot: (slotId: string) => void;
   onMarkDayUnavailable: () => void;
+  onMarkDayAvailable: () => void;
   onAcceptAppointment: (appointmentId: string) => void;
   onCompleteAppointment: (appointmentId: string) => void;
   onNoShowAppointment: (appointmentId: string) => void;
@@ -5087,6 +5146,21 @@ function DoctorAgendaPanel({
                 : selectedDates.length > 1
                   ? `Marcar ${selectedDates.length} días no disponibles`
                   : "Marcar día no disponible"}
+            </button>
+            {/* Contrapartida del botón anterior: sin esto, deshacer un día
+                oculto obligaba a activar horario por horario. */}
+            <button
+              disabled={selectedDates.length === 0 || busyAction !== null}
+              aria-busy={busyAction === "markAvailable"}
+              onClick={onMarkDayAvailable}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busyAction === "markAvailable" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {busyAction === "markAvailable"
+                ? "Actualizando…"
+                : selectedDates.length > 1
+                  ? `Volver a mostrar ${selectedDates.length} días`
+                  : "Volver a mostrar día"}
             </button>
           </div>
           <div className="mt-5 border-t border-silver pt-5">
