@@ -120,14 +120,42 @@ export async function POST(request: Request) {
     (slot) => !existingSlots.some((existing) => rangesOverlap(slot, existing))
   );
 
-  if (rows.length === 0) {
+  /**
+   * Horarios que ya existen en esas mismas horas pero están desactivados.
+   *
+   * Publicar disponibilidad sobre una fecha que el médico había ocultado no
+   * hacía nada: la comprobación de solapamiento ignora los inactivos, así que
+   * se intentaban crear de nuevo y la restricción única `(doctorId, startsAt)`
+   * los descartaba en silencio con `skipDuplicates`. El médico veía "0 de N
+   * publicados" sin saber por qué. Publicar una franja significa ponerla a
+   * disposición del paciente, así que se reactivan.
+   *
+   * Solo se tocan los que no tienen cita: una cita reservada nunca se altera.
+   */
+  const reactivatable = await prisma.availabilitySlot.findMany({
+    where: {
+      doctorId: doctor.id,
+      isActive: false,
+      appointment: { is: null },
+      startsAt: { in: requestedRows.map((slot) => slot.startsAt) }
+    },
+    select: { id: true }
+  });
+
+  const reactivated = reactivatable.length
+    ? await prisma.availabilitySlot.updateMany({
+        where: { id: { in: reactivatable.map((slot) => slot.id) } },
+        data: { isActive: true }
+      })
+    : { count: 0 };
+
+  if (rows.length === 0 && reactivated.count === 0) {
     return fail("NO_AVAILABLE_SLOTS", "Todos los horarios generados chocan con disponibilidad o citas existentes.", 409);
   }
 
-  const result = await prisma.availabilitySlot.createMany({
-    data: rows,
-    skipDuplicates: true
-  });
+  const result = rows.length
+    ? await prisma.availabilitySlot.createMany({ data: rows, skipDuplicates: true })
+    : { count: 0 };
 
   await auditLog({
     actorUserId: user.id,
@@ -136,6 +164,7 @@ export async function POST(request: Request) {
     metadata: {
       requested: requestedRows.length,
       created: result.count,
+      reactivated: reactivated.count,
       skipped: requestedRows.length - rows.length,
       startTime: parsed.data.startTime,
       endTime: parsed.data.endTime,
@@ -147,6 +176,7 @@ export async function POST(request: Request) {
   return ok(
     {
       created: result.count,
+      reactivated: reactivated.count,
       requested: requestedRows.length,
       skipped: requestedRows.length - rows.length,
       blockedDatesSkipped: blockedSkipped,

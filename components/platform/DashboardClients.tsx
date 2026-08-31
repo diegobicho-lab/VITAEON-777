@@ -1901,6 +1901,7 @@ export function DoctorDashboardClient() {
     try {
       const response = await clientApi<{
         created: number;
+        reactivated: number;
         requested: number;
         skipped: number;
         blockedDatesSkipped?: number;
@@ -1920,10 +1921,13 @@ export function DoctorDashboardClient() {
       if (repeat && response.repeatBatchId) setLastRepeatBatchId(response.repeatBatchId);
 
       const notes: string[] = [];
+      if (response.reactivated > 0) notes.push(`${response.reactivated} horario(s) que estaban ocultos se volvieron a mostrar`);
       if (response.skipped > 0) notes.push(`${response.skipped} se omitieron por chocar con horarios o citas existentes`);
       if (response.blockedDatesSkipped) notes.push(`${response.blockedDatesSkipped} fecha(s) están marcadas como no disponibles`);
+
+      const total = response.created + response.reactivated;
       setMessage(
-        `Calendario actualizado: ${response.created} de ${response.requested} horarios publicados en bloques de ${slotDurationMinutes} minutos${notes.length ? ` (${notes.join("; ")})` : ""}.`
+        `Calendario actualizado: ${total} de ${response.requested} horarios disponibles en bloques de ${slotDurationMinutes} minutos${notes.length ? ` (${notes.join("; ")})` : ""}.`
       );
       if (!repeat) setSelectedCalendarDates([]);
       await Promise.all([load(), loadWeekdaySchedule()]);
@@ -4901,6 +4905,25 @@ function DoctorAgendaPanel({
   const preview = buildTimePreview(startTime, endTime, durationMinutes);
   const todayKey = localDayKey(new Date());
 
+  /**
+   * Aspecto de la celda según el estado del día.
+   *
+   * Antes todas las celdas eran blancas y el estado solo se distinguía por un
+   * punto de 6 px y un texto que se oculta en móvil, así que un día cerrado
+   * pasaba desapercibido. Ahora el color llena la celda:
+   * verde = con hueco · ámbar = parcial · azul = lleno · rojo = cerrado.
+   *
+   * "Ocupado" pasa de rojo a azul: una agenda llena es una buena noticia para
+   * el médico, y el rojo queda reservado para lo que sí exige su atención.
+   */
+  const dayStatusStyles: Record<string, { cell: string; text: string; dot: string }> = {
+    Disponible: { cell: "border-emerald-200 bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+    Parcial: { cell: "border-amber-200 bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+    Ocupado: { cell: "border-sky-200 bg-sky-50", text: "text-sky-700", dot: "bg-sky-500" },
+    "No disp.": { cell: "border-red-300 bg-red-100", text: "text-red-700", dot: "bg-red-500" },
+    "Sin horarios": { cell: "border-silver bg-white", text: "text-slate-400", dot: "bg-slate-300" }
+  };
+
   function shiftMonth(direction: number) {
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + direction, 1));
   }
@@ -4941,6 +4964,22 @@ function DoctorAgendaPanel({
             </span>
           ))}
         </div>
+
+        <ul className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] font-semibold text-slate-500 sm:text-[11px]">
+          {[
+            { label: "Con hueco", dot: "bg-emerald-500" },
+            { label: "Parcial", dot: "bg-amber-500" },
+            { label: "Lleno", dot: "bg-sky-500" },
+            { label: "Cerrado", dot: "bg-red-500" },
+            { label: "Sin horarios", dot: "bg-slate-300" }
+          ].map((item) => (
+            <li key={item.label} className="flex items-center gap-1.5">
+              <span className={`inline-block h-2 w-2 rounded-full ${item.dot}`} aria-hidden="true" />
+              {item.label}
+            </li>
+          ))}
+        </ul>
+
         <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((date) => {
             // Las celdas son fechas locales (medianoche local). `toISOString()`
@@ -4952,17 +4991,22 @@ function DoctorAgendaPanel({
             const selected = selectedDates.includes(key);
             const past = key < todayKey;
             const status = day ? day.booked > 0 && day.available > 0 ? "Parcial" : day.booked > 0 ? "Ocupado" : day.available > 0 ? "Disponible" : "No disp." : "Sin horarios";
+            const style = dayStatusStyles[status] ?? dayStatusStyles["Sin horarios"];
             return (
               <button
                 key={key}
                 onClick={() => !past && onSelectDate(key)}
                 disabled={past}
-                className={`min-h-[3.5rem] rounded-xl border p-1.5 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 sm:min-h-24 sm:rounded-2xl sm:p-3 ${selected ? "border-medical bg-white ring-2 ring-medical/10 sm:ring-4" : "border-silver bg-white"} ${outside ? "opacity-45" : ""}`}
+                className={`min-h-[3.5rem] rounded-xl border p-1.5 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35 sm:min-h-24 sm:rounded-2xl sm:p-3 ${selected ? "border-medical ring-2 ring-medical/25 sm:ring-4" : ""} ${style.cell} ${outside ? "opacity-45" : ""}`}
               >
-                <span className="text-xs font-semibold text-deep sm:text-sm">{date.getDate()}</span>
-                <span className={`mt-1 flex items-center gap-0.5 text-[9px] font-semibold sm:mt-3 sm:gap-1 sm:text-[11px] ${status === "Disponible" ? "text-emerald-600" : status === "Ocupado" ? "text-red-500" : status === "Parcial" ? "text-amber-600" : "text-slate-400"}`}>
-                  <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${status === "Disponible" ? "bg-emerald-400" : status === "Ocupado" ? "bg-red-400" : status === "Parcial" ? "bg-amber-400" : "bg-slate-300"}`} />
-                  <span className="hidden sm:inline">{status}</span>
+                <span className={`text-xs font-semibold sm:text-sm ${status === "No disp." ? "text-red-800" : "text-deep"}`}>{date.getDate()}</span>
+                <span className={`mt-1 flex items-center gap-0.5 text-[9px] font-semibold sm:mt-3 sm:gap-1 sm:text-[11px] ${style.text}`}>
+                  <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
+                  {/* En móvil la celda mide ~45 px y cualquier etiqueta se desborda;
+                      ahí el color de fondo es la señal. El texto se muestra desde sm,
+                      y queda siempre disponible para lectores de pantalla. */}
+                  <span className="hidden sm:inline">{status === "No disp." ? "Cerrado" : status}</span>
+                  <span className="sr-only sm:hidden">{status === "No disp." ? "Cerrado" : status}</span>
                 </span>
                 {day?.booked ? <span className="mt-0.5 hidden text-[11px] text-medical sm:block">{day.booked} cita(s)</span> : null}
               </button>
