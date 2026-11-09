@@ -9,6 +9,54 @@ import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mai
 
 const AUTH_TOKEN_RETENTION_DAYS = 30;
 
+/**
+ * Meses que se conservan los registros de auditoría.
+ *
+ * 24 meses por trazabilidad clínica: quién consultó o modificó un expediente
+ * debe poder reconstruirse mucho después de la consulta. Ajustable con
+ * AUDIT_LOG_RETENTION_MONTHS, pero nunca por debajo de 12.
+ */
+const AUDIT_LOG_RETENTION_MONTHS = (() => {
+  const parsed = Number(process.env.AUDIT_LOG_RETENTION_MONTHS ?? "24");
+  if (!Number.isFinite(parsed) || parsed < 12) return 24;
+  return Math.floor(parsed);
+})();
+
+/**
+ * Acciones de solo lectura que no aportan valor forense pasado poco tiempo.
+ *
+ * Son las que disparan el crecimiento: se registran en cada carga de pantalla
+ * del panel administrativo y en cada inicio de sesión. Las acciones que
+ * MODIFICAN datos o tocan un expediente concreto (crear cita, aprobar
+ * verificación, resolver una devolución, consultar una historia clínica) no
+ * están aquí y se conservan el periodo completo.
+ */
+const LOW_VALUE_AUDIT_ACTIONS = [
+  "VIEW_ADMIN_DOCTORS",
+  "VIEW_PATIENTS",
+  "VIEW_PAYMENTS",
+  "VIEW_SUBSCRIPTION_PAYMENTS",
+  "VIEW_AUDIT_LOGS",
+  "VIEW_REVIEWS",
+  "LOGIN_SUCCESS",
+  "LOGOUT"
+];
+
+/** Meses que se conservan las acciones de solo lectura del listado anterior. */
+const LOW_VALUE_AUDIT_RETENTION_MONTHS = 3;
+
+/**
+ * Tope de filas por ejecución. El cron corre a diario, así que un histórico
+ * grande se drena en varios días en lugar de agotar el tiempo de la función.
+ */
+const AUDIT_PURGE_BATCH_LIMIT = 5000;
+
+function monthsAgo(now: Date, months: number) {
+  const cutoff = new Date(now);
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return cutoff;
+}
+
 export function verifyCronRequest(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -115,6 +163,64 @@ export async function purgeExpiredAuthTokens(now = new Date()) {
     action: "CRON_PURGE_AUTH_TOKENS",
     metadata: result
   });
+
+  return result;
+}
+
+/**
+ * Elimina registros de auditoría vencidos.
+ *
+ * Sin esta purga la tabla crece indefinidamente y es la que más pesa de la base
+ * (~666 bytes por fila). Como se escribe en cada login y en cada carga del
+ * panel administrativo, llenaría el plan de almacenamiento mucho antes que los
+ * datos clínicos.
+ *
+ * Dos periodos distintos:
+ * - Acciones de solo lectura (listados, login/logout): 3 meses. No aportan
+ *   valor forense pasado ese punto y son el 90% del volumen.
+ * - Todo lo demás, incluido cualquier acceso a un expediente concreto:
+ *   24 meses, por trazabilidad clínica.
+ *
+ * El borrado va por lotes para no exceder el tiempo de ejecución de la función;
+ * si quedan filas pendientes se indica en el resultado y el cron del día
+ * siguiente continúa.
+ */
+export async function purgeExpiredAuditLogs(now = new Date()) {
+  const fullCutoff = monthsAgo(now, AUDIT_LOG_RETENTION_MONTHS);
+  const lowValueCutoff = monthsAgo(now, LOW_VALUE_AUDIT_RETENTION_MONTHS);
+
+  // Se seleccionan los ids primero para poder aplicar el tope por lote:
+  // deleteMany no admite `take`.
+  const expired = await prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { createdAt: { lt: fullCutoff } },
+        { action: { in: LOW_VALUE_AUDIT_ACTIONS }, createdAt: { lt: lowValueCutoff } }
+      ]
+    },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+    take: AUDIT_PURGE_BATCH_LIMIT
+  });
+
+  const deleted = expired.length
+    ? await prisma.auditLog.deleteMany({ where: { id: { in: expired.map((row) => row.id) } } })
+    : { count: 0 };
+
+  const result = {
+    deleted: deleted.count,
+    // Si se alcanzó el tope es probable que queden más para el día siguiente.
+    reachedBatchLimit: expired.length === AUDIT_PURGE_BATCH_LIMIT,
+    retentionMonths: AUDIT_LOG_RETENTION_MONTHS,
+    lowValueRetentionMonths: LOW_VALUE_AUDIT_RETENTION_MONTHS,
+    ranAt: now.toISOString()
+  };
+
+  // Solo se audita la purga cuando borró algo: registrar un "borré 0 filas"
+  // cada día haría crecer justo la tabla que intentamos contener.
+  if (deleted.count > 0) {
+    await auditLog({ action: "CRON_PURGE_AUDIT_LOGS", metadata: result });
+  }
 
   return result;
 }
