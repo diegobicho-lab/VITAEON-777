@@ -3,6 +3,7 @@ import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { CLINIC_TIME_ZONE } from "@/lib/clinic-time";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { doctorAssistantSchema } from "@/lib/validation/schemas";
 
@@ -12,6 +13,19 @@ function getAnthropic() {
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY no está configurado.");
   return new Anthropic({ apiKey });
 }
+
+/**
+ * Modelos en orden de preferencia.
+ *
+ * El primero es el de mayor capacidad (plan Amatista). Si la cuenta no tiene
+ * acceso a él o la API rechaza algún parámetro, se reintenta con el segundo
+ * antes de recurrir a la respuesta de emergencia: una degradación de calidad
+ * es aceptable, perder el asistente por completo no.
+ */
+const ASSISTANT_MODELS = [
+  { model: "claude-opus-4-8", effort: "medium" as const },
+  { model: "claude-haiku-4-5", effort: undefined }
+];
 
 /* ── Respuesta de emergencia si no hay API key ──────────────── */
 function fallbackResponse(prompt: string, context?: string) {
@@ -29,7 +43,7 @@ function fallbackResponse(prompt: string, context?: string) {
       "Ordenar horarios libres por cercanía.",
       "Registrar cambios de agenda antes de notificar al paciente.",
     ],
-    note: "Configura ANTHROPIC_API_KEY en Vercel para activar el asistente con IA real."
+    note: "El asistente con IA no está disponible en este momento; esta es una guía general."
   };
 }
 
@@ -145,69 +159,174 @@ export async function POST(request: Request) {
       appointments: {
         where: {
           availabilitySlot: { startsAt: { gte: now, lte: week } },
-          status: { in: ["PENDING", "PENDING_DOCTOR_ACCEPTANCE", "ACCEPTED"] }
+          status: { notIn: ["CANCELLED", "AUTO_CANCELLED", "REFUNDED", "COMPLETED"] }
         },
-        include: { availabilitySlot: true },
+        include: {
+          availabilitySlot: true,
+          patient: { include: { user: { select: { name: true } } } },
+          payments: { select: { status: true, provider: true } }
+        },
         orderBy: { availabilitySlot: { startsAt: "asc" } },
-        take: 5
+        take: 12
+      },
+      availabilitySlots: {
+        where: { startsAt: { gte: now, lte: week }, isActive: true, appointment: { is: null } },
+        orderBy: { startsAt: "asc" },
+        take: 8
       }
     }
   });
 
+  /**
+   * Contexto de agenda para el asistente.
+   *
+   * Antes se formateaban las fechas sin `timeZone`, así que el modelo recibía
+   * horas en UTC del servidor: una consulta de las 16:00 en México llegaba
+   * como "22:00" y el asistente razonaba sobre un horario inexistente.
+   *
+   * Se incluye además el momento actual del consultorio y el detalle real de
+   * cada cita (paciente, estado en español, pago), porque sin eso el modelo
+   * solo puede devolver recomendaciones genéricas.
+   */
+  const fechaHora = (d: Date) =>
+    new Intl.DateTimeFormat("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: CLINIC_TIME_ZONE
+    }).format(d);
+
+  const estadoEsLegible: Record<string, string> = {
+    PENDING: "pendiente",
+    PENDING_DOCTOR_ACCEPTANCE: "pendiente de que la aceptes",
+    ACCEPTED: "aceptada",
+    CONFIRMED: "confirmada",
+    RESCHEDULED: "reagendada",
+    RESCHEDULE_REQUESTED: "el paciente pidió reagendar",
+    CANCELLATION_REQUESTED: "el paciente pidió cancelar",
+    REFUND_PENDING: "devolución pendiente",
+    NO_SHOW: "el paciente no asistió"
+  };
+
+  const pagoLegible: Record<string, string> = {
+    PAID: "pagada",
+    PENDING: "pago pendiente",
+    FAILED: "pago fallido",
+    REFUNDED: "devuelta"
+  };
+
   const agendaContext = doctor
-    ? `Médico: ${doctor.fullName}, Especialidad: ${doctor.specialty?.name ?? "Especialista"}.
-Citas próximas esta semana: ${doctor.appointments.length}.
-${doctor.appointments.map((a) => `- ${new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short" }).format(a.availabilitySlot.startsAt)} (${a.status})`).join("\n")}`
+    ? [
+        `Momento actual en el consultorio: ${fechaHora(now)} (zona ${CLINIC_TIME_ZONE}).`,
+        `Médico: ${doctor.fullName}. Especialidad: ${doctor.specialty?.name ?? "Especialista"}.`,
+        "",
+        doctor.appointments.length === 0
+          ? "No tiene ninguna cita agendada en los próximos 7 días."
+          : [
+              `Citas en los próximos 7 días (${doctor.appointments.length}):`,
+              ...doctor.appointments.map((a) => {
+                const paciente = a.patient?.user?.name ?? a.guestPatientName ?? "Paciente sin nombre";
+                const estado = estadoEsLegible[a.status] ?? a.status.toLowerCase();
+                const pago = a.payments[0] ? pagoLegible[a.payments[0].status] ?? "" : "sin pago registrado";
+                return `- ${fechaHora(a.availabilitySlot.startsAt)} · ${paciente} · ${estado} · ${pago}`;
+              })
+            ].join("\n"),
+        "",
+        doctor.availabilitySlots.length === 0
+          ? "No tiene horarios libres publicados esta semana."
+          : `Horarios libres esta semana (${doctor.availabilitySlots.length}): ${doctor.availabilitySlots
+              .slice(0, 5)
+              .map((slot) => fechaHora(slot.startsAt))
+              .join(" · ")}`
+      ].join("\n")
     : "";
 
   /* ── Llamada real a Claude ─── */
   let aiResponse: { title: string; specialty: string; priority: string; checklist: string[]; note: string };
+  /** Modelo que realmente respondió, o "fallback" si ninguno lo hizo. */
+  let usedModel = "fallback";
 
   try {
     const anthropic = getAnthropic();
-    const systemPrompt = `Eres la secretaria médica virtual de VITAEON, una plataforma médica privada en León, Guanajuato.
-Ayudas a médicos especialistas a organizar su agenda, gestionar citas y priorizar su día.
-Responde siempre en español, de forma profesional, concisa y útil.
-Tu respuesta debe ser un JSON válido con esta estructura exacta:
+    const systemPrompt = `Eres la secretaria médica virtual de VITAEON, plataforma médica privada en León, Guanajuato.
+Trabajas para un médico especialista del plan Amatista: espera el criterio de una secretaria con años de experiencia, no respuestas genéricas.
+
+CÓMO TRABAJAS
+- Razona SOBRE LOS DATOS del contexto de agenda. Cita nombres de pacientes, días y horas concretas que aparezcan ahí.
+- Usa siempre la hora del consultorio que te doy en el contexto. Nunca la recalcules ni la conviertas.
+- Prioriza por riesgo operativo en este orden: (1) citas pendientes de que el médico las acepte, porque el paciente está esperando; (2) solicitudes de cancelar o reagendar, que tienen plazo; (3) pagos pendientes o fallidos; (4) huecos libres que se pueden llenar; (5) el resto.
+- Si el médico pregunta algo que los datos no responden, dilo con claridad y propón cómo averiguarlo. Es mejor que inventarlo.
+- Cada acción del checklist debe ser ejecutable hoy y referirse a algo real: "Acepta la cita de Laura Méndez del jueves 14:00" sirve; "Revisa tu agenda" no sirve.
+- Si la agenda está vacía, no finjas trabajo: enfoca el checklist en publicar horarios, completar el perfil y captar pacientes.
+
+LÍMITES
+- No das diagnósticos, tratamientos ni dosis. Si te lo piden, redirige al criterio clínico del médico.
+- No prometes acciones que tú no puedes ejecutar: tú sugieres, el médico confirma en la plataforma.
+- No menciones datos de un paciente al hablar de otro.
+
+FORMATO
+Responde SOLO con un JSON válido, sin markdown ni texto alrededor:
 {
-  "title": "Título corto de la respuesta (máx 6 palabras)",
+  "title": "Título corto (máx 6 palabras)",
   "specialty": "Área de la agenda que atiendes",
-  "priority": "Una prioridad clara para hoy (1-2 oraciones)",
-  "checklist": ["Acción 1", "Acción 2", "Acción 3", "Acción 4"],
-  "note": "Nota opcional sobre canales externos o limitaciones"
-}
-No incluyas markdown ni texto fuera del JSON.`;
+  "priority": "La prioridad más urgente, con el dato concreto que la justifica (1-2 oraciones)",
+  "checklist": ["Acción concreta 1", "Acción concreta 2", "Acción concreta 3", "Acción concreta 4"],
+  "note": "Advertencia, límite o dato que el médico debe saber. Cadena vacía si no hay nada que añadir."
+}`;
 
     const userMessage = `${agendaContext ? `Contexto de agenda:\n${agendaContext}\n\n` : ""}${context ? `Contexto adicional: ${context}\n\n` : ""}Pregunta del médico: ${prompt}`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }]
-    });
+    let lastError: unknown = null;
+    let parsed: typeof aiResponse | null = null;
 
-    const rawText = message.content[0].type === "text" ? message.content[0].text.trim() : "";
-    const jsonStart = rawText.indexOf("{");
-    const jsonEnd = rawText.lastIndexOf("}");
-    const jsonText = jsonStart >= 0 && jsonEnd > jsonStart ? rawText.slice(jsonStart, jsonEnd + 1) : rawText;
-    aiResponse = JSON.parse(jsonText);
+    for (const candidate of ASSISTANT_MODELS) {
+      try {
+        const message = await anthropic.messages.create({
+          model: candidate.model,
+          max_tokens: 1024,
+          ...(candidate.effort ? { output_config: { effort: candidate.effort } } : {}),
+          system: systemPrompt,
+          messages: [{ role: "user", content: userMessage }]
+        });
 
-    /* Asegurar estructura mínima */
-    if (!aiResponse.title || !aiResponse.checklist || !Array.isArray(aiResponse.checklist)) {
-      throw new Error("Respuesta de IA con estructura incompleta");
+        const rawText = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+        const jsonStart = rawText.indexOf("{");
+        const jsonEnd = rawText.lastIndexOf("}");
+        const jsonText = jsonStart >= 0 && jsonEnd > jsonStart ? rawText.slice(jsonStart, jsonEnd + 1) : rawText;
+        const result = JSON.parse(jsonText);
+
+        /* Asegurar estructura mínima antes de aceptar la respuesta. */
+        if (!result.title || !Array.isArray(result.checklist) || result.checklist.length === 0) {
+          throw new Error("Respuesta de IA con estructura incompleta");
+        }
+
+        parsed = result;
+        usedModel = candidate.model;
+        break;
+      } catch (error) {
+        lastError = error;
+        // Se registra el modelo y el tipo de fallo, nunca la llave ni el
+        // contenido clínico del contexto.
+        console.error(`[Doctor assistant] fallo con ${candidate.model}`, error);
+      }
     }
+
+    if (!parsed) throw lastError ?? new Error("Sin respuesta de IA");
+    aiResponse = parsed;
   } catch (error) {
     console.error("[Doctor assistant AI error]", error);
     aiResponse = fallbackResponse(prompt, context);
+    usedModel = "fallback";
   }
 
   await auditLog({
     actorUserId: user.id,
     action: "USE_DOCTOR_ASSISTANT",
     entityType: "DoctorAssistant",
-    metadata: { assistantMode: "claude-haiku-4-5", prompt: prompt.slice(0, 80) }
+    metadata: { assistantMode: usedModel, prompt: prompt.slice(0, 80) }
   });
 
-  return ok(aiResponse);
+  return ok({ ...aiResponse, aiDegraded: usedModel === "fallback" });
 }

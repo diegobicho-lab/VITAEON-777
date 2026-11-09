@@ -37,8 +37,12 @@ type TodayAppointment = {
   guestPatientName: string | null;
   guestPatientPhone: string | null;
   availabilitySlot: { startsAt: string; endsAt: string };
-  patient: { user: { name: string; email: string } };
+  patient: { user: { name: string; email: string } } | null;
   payments: Array<{ provider: string; status: string }>;
+  /** Día natural de la cita en zona del consultorio (YYYY-MM-DD). */
+  dia: string;
+  grupo: "hoy" | "manana" | "proximos";
+  horaLocal: string;
 };
 
 type PatientResult = {
@@ -70,14 +74,18 @@ function money(cents: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cents / 100);
 }
 
+/** Día natural en zona del consultorio; no depende de la zona del navegador. */
+function clinicDay(value: string | Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "America/Mexico_City"
+  }).format(new Date(value));
+}
+
 function isToday(iso: string) {
-  const d = new Date(iso);
-  const n = new Date();
-  return (
-    d.getFullYear() === n.getFullYear() &&
-    d.getMonth() === n.getMonth() &&
-    d.getDate() === n.getDate()
-  );
+  return clinicDay(iso) === clinicDay(new Date());
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -581,6 +589,30 @@ export function SecretaryPortalClient({
 
   const freeToday = slots.filter((s) => isToday(s.startsAt)).length;
 
+  // La API ya devuelve las citas de los próximos 7 días ordenadas y etiquetadas
+  // con su día del consultorio. Aquí solo se agrupan para mostrarlas.
+  const citasDeHoy = todayAppts.filter((a) => a.grupo === "hoy");
+  const diasAgenda = todayAppts.reduce<Array<{ dia: string; grupo: string; citas: TodayAppointment[] }>>(
+    (acc, appt) => {
+      const ultimo = acc[acc.length - 1];
+      if (ultimo && ultimo.dia === appt.dia) ultimo.citas.push(appt);
+      else acc.push({ dia: appt.dia, grupo: appt.grupo, citas: [appt] });
+      return acc;
+    },
+    []
+  );
+
+  const etiquetaDia = (dia: string, grupo: string) => {
+    if (grupo === "hoy") return "Hoy";
+    if (grupo === "manana") return "Mañana";
+    return new Intl.DateTimeFormat("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "America/Mexico_City"
+    }).format(new Date(`${dia}T12:00:00-06:00`));
+  };
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#faf9f7_0%,#ffffff_50%,#eef5f8_100%)] px-4 pb-24 pt-10 sm:px-6 sm:pt-12">
       <div className="mx-auto max-w-4xl">
@@ -628,7 +660,7 @@ export function SecretaryPortalClient({
                 <Calendar className="h-5 w-5 text-[#071726]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#071726]">{todayAppts.length}</p>
+                <p className="text-2xl font-bold text-[#071726]">{citasDeHoy.length}</p>
                 <p className="text-xs text-slate-500">Citas hoy</p>
               </div>
             </div>
@@ -657,10 +689,13 @@ export function SecretaryPortalClient({
           </div>
         </div>
 
-        {/* Agenda de hoy */}
+        {/* Próximas citas (hoy + 7 días) */}
         <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-[#071726]">Agenda de hoy</h2>
+            <div>
+              <h2 className="text-xl font-bold text-[#071726]">Próximas citas</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Hoy y los próximos 7 días</p>
+            </div>
             <button
               onClick={loadData}
               disabled={dataLoading}
@@ -674,18 +709,34 @@ export function SecretaryPortalClient({
           {todayAppts.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
               <Calendar className="mx-auto h-8 w-8 text-slate-300" />
-              <p className="mt-3 text-sm text-slate-400">Sin citas programadas para hoy.</p>
+              <p className="mt-3 text-sm text-slate-400">Sin citas programadas en los próximos 7 días.</p>
               <button
                 onClick={() => setShowModal(true)}
                 className="mt-4 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
               >
-                Agendar primera cita del día
+                Agendar una cita
               </button>
             </div>
           ) : (
-            <div className="mt-5 grid gap-3">
-              {todayAppts.map((appt) => {
-                const displayName = appt.guestPatientName ?? appt.patient.user.name;
+            <div className="mt-5 grid gap-6">
+              {diasAgenda.map((bloque) => (
+                <div key={bloque.dia}>
+                  <div className="mb-2 flex items-center gap-3">
+                    <h3
+                      className={`text-sm font-bold capitalize ${
+                        bloque.grupo === "hoy" ? "text-[#1e9bd4]" : "text-slate-600"
+                      }`}
+                    >
+                      {etiquetaDia(bloque.dia, bloque.grupo)}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {bloque.citas.length} {bloque.citas.length === 1 ? "cita" : "citas"}
+                    </span>
+                    <div className="h-px flex-1 bg-slate-100" />
+                  </div>
+                  <div className="grid gap-3">
+              {bloque.citas.map((appt) => {
+                const displayName = appt.guestPatientName ?? appt.patient?.user.name ?? "Paciente";
                 const payment = appt.payments[0];
                 return (
                   <div
@@ -703,7 +754,7 @@ export function SecretaryPortalClient({
                         )}
                       </div>
                       <p className="mt-0.5 text-sm text-slate-500">
-                        {fmt(appt.availabilitySlot.startsAt)}
+                        {appt.horaLocal || fmt(appt.availabilitySlot.startsAt)}
                         {appt.guestPatientPhone ? ` · ${appt.guestPatientPhone}` : ""}
                         {payment ? ` · ${payment.provider === "CASH" ? "Efectivo" : "Transferencia"}` : ""}
                       </p>
@@ -712,6 +763,9 @@ export function SecretaryPortalClient({
                   </div>
                 );
               })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

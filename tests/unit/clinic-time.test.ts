@@ -41,3 +41,50 @@ describe("hora del consultorio", () => {
     }
   });
 });
+
+describe("ventana de agenda de la secretaría", () => {
+  // Réplica de la lógica de app/api/secretaria/[token]/appointments/route.ts.
+  const clinicDayStart = (instant: Date) => new Date(`${clinicDayKey(instant)}T00:00:00-06:00`);
+  const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
+
+  // El bug original: `new Date().setHours(0,0,0,0)` usa la hora local del
+  // proceso, que en Vercel es UTC. "Hoy" iba de las 18:00 de ayer a las 17:59
+  // de hoy en México, así que las citas de la tarde salían de la ventana.
+  it("incluye las citas de la tarde que la medianoche UTC dejaba fuera", () => {
+    // 9 de noviembre de 2026, 20:00 en México (= 10 de noviembre 02:00 UTC).
+    const citaDeNoche = new Date("2026-11-10T02:00:00.000Z");
+    // El servidor corre a las 10:00 de México de ese mismo 9 de noviembre.
+    const ahora = new Date("2026-11-09T16:00:00.000Z");
+
+    const inicio = clinicDayStart(ahora);
+    const fin = addDays(inicio, 7);
+
+    expect(clinicDayKey(citaDeNoche)).toBe("2026-11-09");
+    expect(citaDeNoche >= inicio && citaDeNoche <= fin).toBe(true);
+
+    // Cómo se comportaba antes: fin del día según UTC.
+    const finUtc = new Date("2026-11-09T23:59:59.999Z");
+    expect(citaDeNoche <= finUtc).toBe(false);
+  });
+
+  it("abarca los próximos 7 días, no solo hoy", () => {
+    const ahora = new Date("2026-11-09T16:00:00.000Z");
+    const inicio = clinicDayStart(ahora);
+    const fin = addDays(inicio, 7);
+
+    const enSeisDias = new Date("2026-11-15T20:00:00.000Z");
+    const enNueveDias = new Date("2026-11-18T20:00:00.000Z");
+
+    expect(enSeisDias <= fin).toBe(true);
+    expect(enNueveDias <= fin).toBe(false);
+  });
+
+  it("agrupa por día del consultorio, no por día UTC", () => {
+    // Dos citas del mismo 9 de noviembre en México, pero una cae en el 10 UTC.
+    const tarde = new Date("2026-11-09T22:00:00.000Z"); // 16:00 México
+    const noche = new Date("2026-11-10T02:00:00.000Z"); // 20:00 México
+
+    expect(clinicDayKey(tarde)).toBe(clinicDayKey(noche));
+    expect(tarde.toISOString().slice(0, 10)).not.toBe(noche.toISOString().slice(0, 10));
+  });
+});

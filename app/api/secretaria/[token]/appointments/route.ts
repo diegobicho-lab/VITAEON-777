@@ -10,11 +10,24 @@ import {
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getSecretarySession } from "@/lib/auth/secretary";
+import { CLINIC_TIME_ZONE, CLINIC_UTC_OFFSET, clinicDayKey } from "@/lib/clinic-time";
 import { prisma } from "@/lib/db/prisma";
 import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createNotification } from "@/lib/notifications/notifications";
 import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { sealSensitiveText } from "@/lib/security/crypto";
+
+/** Días hacia adelante que ve la secretaría, además de hoy. */
+const UPCOMING_DAYS = 7;
+
+/** Medianoche del día civil del consultorio, como instante absoluto. */
+function clinicDayStart(instant: Date): Date {
+  return new Date(`${clinicDayKey(instant)}T00:00:00${CLINIC_UTC_OFFSET}`);
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
 
 const appointmentSchema = z.discriminatedUnion("patientType", [
   // Paciente que ya tiene cuenta VITAEON
@@ -52,10 +65,18 @@ export async function GET(
   });
   if (!link?.isActive) return fail("LINK_INACTIVE", "El enlace fue desactivado por el médico.", 403);
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  /**
+   * Ventana de la agenda en zona del consultorio, no del servidor.
+   *
+   * `setHours` usaba la hora local del proceso, que en Vercel es UTC: "hoy"
+   * iba de las 18:00 de ayer a las 17:59 de hoy en México, así que las citas
+   * de la tarde desaparecían del panel.
+   *
+   * Además se amplía a los próximos días: la secretaria necesita avisar al
+   * médico de sus PRÓXIMAS citas, no solo de las de hoy.
+   */
+  const todayStart = clinicDayStart(new Date());
+  const todayEnd = addDays(todayStart, UPCOMING_DAYS);
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -82,7 +103,25 @@ export async function GET(
     }
   });
 
-  return ok(appointments);
+  // Se etiqueta cada cita con su día del consultorio para que el panel pueda
+  // agrupar en "Hoy", "Mañana" y fechas siguientes sin recalcular zonas.
+  const hoy = clinicDayKey(new Date());
+  const manana = clinicDayKey(addDays(new Date(), 1));
+
+  return ok(
+    appointments.map((appointment) => {
+      const dia = clinicDayKey(appointment.availabilitySlot.startsAt);
+      return {
+        ...appointment,
+        dia,
+        grupo: dia === hoy ? "hoy" : dia === manana ? "manana" : "proximos",
+        horaLocal: new Intl.DateTimeFormat("es-MX", {
+          timeStyle: "short",
+          timeZone: CLINIC_TIME_ZONE
+        }).format(appointment.availabilitySlot.startsAt)
+      };
+    })
+  );
 }
 
 /* ── POST — crear cita desde el panel de secretaría ─── */
