@@ -12,7 +12,7 @@ import {
   Users,
   X
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */
 
@@ -128,7 +128,7 @@ function NewAppointmentModal({
   slots: Slot[];
   doctor: DoctorInfo;
   onClose: () => void;
-  onCreated: (name: string) => void;
+  onCreated: (recibo: { nombre: string; detalle: string }) => void;
 }) {
   const [patientType, setPatientType] = useState<"vitaeon" | "guest">("guest");
 
@@ -148,21 +148,75 @@ function NewAppointmentModal({
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  /** Campo que impide confirmar, para marcarlo en vez de apagar el botón sin decir por qué. */
+  const [invalidField, setInvalidField] = useState<"slot" | "guestName" | "patient" | null>(null);
 
-  const freeSlots = slots.slice(0, 40);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLButtonElement>(null);
+
+  // El modal se cerraba solo con la X: ni Escape, ni clic fuera. Con un paciente
+  // esperando al teléfono, quedarse atrapado en un formulario es caro.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !saving) onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    firstFieldRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose, saving]);
+
+  const freeSlots = slots;
+
+  /** Resumen de lo que está por confirmarse, para poder leerlo en voz alta. */
+  const selectedSlot = freeSlots.find((s) => s.id === slotId) ?? null;
+  const resumen = selectedSlot
+    ? `${fmtFull(selectedSlot.startsAt)} · ${doctor.consultationDurationMinutes} min · ${money(doctor.consultationPriceCents)} en ${paymentMethod === "CASH" ? "efectivo" : "transferencia"} al llegar`
+    : null;
 
   async function searchVitaeonPatient() {
     if (query.trim().length < 3) return;
     setSearching(true);
     setError("");
     try {
-      const res = await fetch(`/api/assistants/patients?q=${encodeURIComponent(query)}`);
+      // Este buscador apuntaba a /api/assistants/patients, que exige una cuenta
+      // con rol ASSISTANT. La secretaría entra por PIN y nunca la tiene, así que
+      // la respuesta era siempre 403 y el catch lo mostraba como "no se encontró
+      // ningún paciente": el mensaje culpaba al paciente de un fallo de sesión.
+      const res = await fetch(`/api/secretaria/${token}/patients?q=${encodeURIComponent(query)}`);
+
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as
+          | { error?: { code?: string; message?: string } }
+          | null;
+        setPatients([]);
+        if (res.status === 401) {
+          setError("Tu sesión expiró. Cierra esta ventana y vuelve a ingresar el PIN.");
+        } else if (res.status === 403) {
+          setError("El médico desactivó este enlace de secretaría.");
+        } else {
+          setError(json?.error?.message ?? "No se pudo buscar en este momento. Intenta de nuevo.");
+        }
+        return;
+      }
+
       const json = (await res.json()) as { data?: PatientResult[] };
       const results = json.data ?? [];
       setPatients(results);
-      if (results.length === 0) setError("No se encontró ningún paciente con ese dato.");
+      if (results.length === 0) {
+        const buscoPorCorreo = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(query.trim());
+        setError(
+          buscoPorCorreo
+            ? `No hay ninguna cuenta de VITAEON con el correo "${query.trim()}". Regístralo como paciente nuevo.`
+            : `Ningún paciente de este consultorio coincide con "${query.trim()}". Si es su primera vez aquí, pídele su correo completo para buscarlo, o regístralo como paciente nuevo.`
+        );
+      }
     } catch {
-      setError("Error al buscar paciente.");
+      setError("No hay conexión. Revisa tu internet e intenta de nuevo.");
     } finally {
       setSearching(false);
     }
@@ -170,13 +224,25 @@ function NewAppointmentModal({
 
   async function submit() {
     setError("");
-    if (!slotId) { setError("Selecciona un horario disponible."); return; }
+    setInvalidField(null);
+
+    // El botón se deshabilitaba justo en estos tres casos, así que los mensajes
+    // nunca se alcanzaban: la secretaria veía un botón gris sin explicación y
+    // cinco campos donde buscar la culpa. Ahora el botón siempre responde y la
+    // validación señala el campo concreto.
     if (patientType === "guest" && guestName.trim().length < 2) {
-      setError("Ingresa el nombre del paciente (mínimo 2 caracteres).");
+      setError("Escribe el nombre del paciente para poder agendar.");
+      setInvalidField("guestName");
       return;
     }
     if (patientType === "vitaeon" && !selectedPatient?.patientId) {
-      setError("El paciente no tiene perfil activo en VITAEON.");
+      setError("Busca y selecciona al paciente, o regístralo como paciente nuevo.");
+      setInvalidField("patient");
+      return;
+    }
+    if (!slotId) {
+      setError("Elige el horario de la cita.");
+      setInvalidField("slot");
       return;
     }
 
@@ -209,7 +275,7 @@ function NewAppointmentModal({
       const json = (await res.json()) as { data?: { patientName?: string }; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Error al crear cita.");
       const name = json.data?.patientName ?? (patientType === "guest" ? guestName : selectedPatient?.name ?? "");
-      onCreated(name);
+      onCreated({ nombre: name, detalle: resumen ?? "" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No fue posible crear la cita.");
     } finally {
@@ -218,17 +284,33 @@ function NewAppointmentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4 backdrop-blur-sm">
-      <div className="max-h-[95dvh] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nueva-cita-titulo"
+        className="max-h-[95dvh] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl"
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#1e9bd4]">Recepción</p>
-            <h2 className="mt-1 text-2xl font-bold text-[#071726]">Nueva cita</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              {doctor.fullName} · {money(doctor.consultationPriceCents)}
+            <h2 id="nueva-cita-titulo" className="text-2xl font-bold text-[#071726]">
+              Nueva cita
+            </h2>
+            <p className="mt-0.5 text-sm text-slate-600">
+              {doctor.fullName} · {money(doctor.consultationPriceCents)} · {doctor.consultationDurationMinutes} min
             </p>
           </div>
-          <button onClick={onClose} className="rounded-full bg-slate-100 p-2 transition hover:bg-slate-200">
+          <button
+            onClick={onClose}
+            aria-label="Cerrar sin agendar"
+            className="rounded-full bg-slate-100 p-3 transition hover:bg-slate-200"
+          >
             <X className="h-5 w-5 text-slate-600" />
           </button>
         </div>
@@ -237,15 +319,22 @@ function NewAppointmentModal({
 
           {/* Toggle tipo de paciente */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#071726]">Tipo de paciente</label>
-            <div className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1 gap-1">
+            <p id="tipo-paciente-label" className="mb-2 block text-sm font-semibold text-[#071726]">
+              Tipo de paciente
+            </p>
+            <div role="radiogroup" aria-labelledby="tipo-paciente-label" className="flex rounded-2xl border border-slate-200 bg-slate-50 p-1 gap-1">
               <button
+                ref={firstFieldRef}
+                role="radio"
+                aria-checked={patientType === "guest"}
                 onClick={() => { setPatientType("guest"); setSelectedPatient(null); setPatients([]); }}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${patientType === "guest" ? "bg-[#071726] text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
                 Presencial / nuevo
               </button>
               <button
+                role="radio"
+                aria-checked={patientType === "vitaeon"}
                 onClick={() => setPatientType("vitaeon")}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${patientType === "vitaeon" ? "bg-[#071726] text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
@@ -258,21 +347,28 @@ function NewAppointmentModal({
           {patientType === "guest" ? (
             <div className="space-y-3">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#071726]">
-                  Nombre del paciente <span className="font-normal text-red-500">*</span>
+                <label htmlFor="guest-name" className="mb-2 block text-sm font-semibold text-[#071726]">
+                  Nombre del paciente <span className="font-normal text-red-600">*</span>
                 </label>
                 <input
+                  id="guest-name"
                   value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
+                  onChange={(e) => { setGuestName(e.target.value); setInvalidField(null); }}
+                  aria-invalid={invalidField === "guestName"}
                   placeholder="Ej. Juan Pérez García"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10 ${
+                    invalidField === "guestName"
+                      ? "border-red-400 bg-red-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#071726]">
-                  Teléfono <span className="font-normal text-slate-400">(opcional)</span>
+                <label htmlFor="guest-phone" className="mb-2 block text-sm font-semibold text-[#071726]">
+                  Teléfono <span className="font-normal text-slate-600">(opcional)</span>
                 </label>
                 <input
+                  id="guest-phone"
                   value={guestPhone}
                   onChange={(e) => setGuestPhone(e.target.value)}
                   placeholder="477 123 4567"
@@ -283,21 +379,28 @@ function NewAppointmentModal({
             </div>
           ) : (
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[#071726]">
+              <label htmlFor="buscar-paciente" className="mb-2 block text-sm font-semibold text-[#071726]">
                 Buscar paciente por nombre o correo
               </label>
               <div className="flex gap-2">
                 <input
+                  id="buscar-paciente"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); setInvalidField(null); }}
                   onKeyDown={(e) => e.key === "Enter" && searchVitaeonPatient()}
+                  aria-invalid={invalidField === "patient"}
                   placeholder="Nombre o correo electrónico…"
-                  className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  className={`flex-1 rounded-2xl border px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10 ${
+                    invalidField === "patient"
+                      ? "border-red-400 bg-red-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
                 />
                 <button
                   onClick={searchVitaeonPatient}
                   disabled={searching || query.trim().length < 3}
-                  className="flex shrink-0 items-center gap-2 rounded-full bg-[#071726] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  aria-label="Buscar paciente"
+                  className="flex shrink-0 items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </button>
@@ -339,16 +442,20 @@ function NewAppointmentModal({
 
           {/* Horario */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#071726]">Horario disponible</label>
+            <label htmlFor="horario" className="mb-2 block text-sm font-semibold text-[#071726]">Horario disponible</label>
             {freeSlots.length === 0 ? (
               <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 No hay horarios libres próximos. El médico debe publicar disponibilidad desde su panel.
               </p>
             ) : (
               <select
+                id="horario"
                 value={slotId}
-                onChange={(e) => setSlotId(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                onChange={(e) => { setSlotId(e.target.value); setInvalidField(null); }}
+                aria-invalid={invalidField === "slot"}
+                className={`w-full rounded-2xl border px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10 ${
+                  invalidField === "slot" ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"
+                }`}
               >
                 <option value="">— Selecciona un horario —</option>
                 {freeSlots.map((s) => (
@@ -362,11 +469,15 @@ function NewAppointmentModal({
 
           {/* Forma de pago */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#071726]">Forma de pago</label>
-            <div className="flex gap-2">
+            <p id="forma-pago-label" className="mb-2 block text-sm font-semibold text-[#071726]">
+              Forma de pago <span className="font-normal text-slate-600">· se cobra al llegar</span>
+            </p>
+            <div role="radiogroup" aria-labelledby="forma-pago-label" className="flex gap-2">
               {(["CASH", "TRANSFER"] as const).map((m) => (
                 <button
                   key={m}
+                  role="radio"
+                  aria-checked={paymentMethod === m}
                   onClick={() => setPaymentMethod(m)}
                   className={`flex-1 rounded-2xl border py-2.5 text-sm font-semibold transition ${
                     paymentMethod === m
@@ -382,10 +493,11 @@ function NewAppointmentModal({
 
           {/* Motivo */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#071726]">
-              Motivo de consulta <span className="font-normal text-slate-400">(opcional)</span>
+            <label htmlFor="motivo" className="mb-2 block text-sm font-semibold text-[#071726]">
+              Motivo de consulta <span className="font-normal text-slate-600">(opcional)</span>
             </label>
             <textarea
+              id="motivo"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ej. Seguimiento, dolor de cabeza, revisión anual…"
@@ -394,14 +506,30 @@ function NewAppointmentModal({
             />
           </div>
 
+          {/*
+            Lo que va a quedar agendado, junto y en una sola frase. Su trabajo es
+            decirlo en voz alta por teléfono; antes la hora vivía dentro del
+            select cerrado y el precio en gris en el encabezado.
+          */}
+          {resumen && (
+            <div className="rounded-2xl border border-[#1e9bd4]/30 bg-[#1e9bd4]/5 px-4 py-3">
+              <p className="text-sm font-semibold text-[#071726]">{resumen}</p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                con {doctor.fullName} · {doctor.hospital.name}
+              </p>
+            </div>
+          )}
+
           {error && (
-            <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+            <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {error}
+            </p>
           )}
 
           <div className="flex gap-3">
             <button
               onClick={submit}
-              disabled={saving || !slotId || (patientType === "guest" && guestName.trim().length < 2) || (patientType === "vitaeon" && !selectedPatient?.patientId)}
+              disabled={saving}
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#071726] py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-50"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -531,7 +659,13 @@ export function SecretaryPortalClient({
   const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [message, setMessage] = useState("");
+  /** Comprobante de la última cita creada; persiste hasta que ella lo cierra. */
+  const [recibo, setRecibo] = useState<{ nombre: string; detalle: string } | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+  /** Motivo por el que la agenda no se pudo cargar, o null si los datos son buenos. */
+  const [loadError, setLoadError] = useState<"expired" | "inactive" | "failed" | "offline" | null>(null);
+  /** Hora de la última carga correcta, para que no se confunda con datos frescos. */
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Verificar si ya hay sesión activa
   useEffect(() => {
@@ -544,6 +678,15 @@ export function SecretaryPortalClient({
     })();
   }, [token]);
 
+  /**
+   * Carga la agenda.
+   *
+   * Antes, un `catch` silencioso y dos `if (res.ok)` hacían que una sesión
+   * caducada (401) o un enlace desactivado por el médico (403) se renderizaran
+   * como "sin citas programadas". La secretaria le decía al médico que no tenía
+   * nada agendado y era falso. El estado vacío ahora solo aparece cuando el
+   * servidor respondió 200 con una lista vacía de verdad.
+   */
   const loadData = useCallback(async () => {
     setDataLoading(true);
     try {
@@ -551,23 +694,49 @@ export function SecretaryPortalClient({
         fetch(`/api/secretaria/${token}/slots`),
         fetch(`/api/secretaria/${token}/appointments`)
       ]);
-      if (slotsRes.ok) {
-        const slotsJson = (await slotsRes.json()) as { data?: { doctor: DoctorInfo; slots: Slot[] } };
-        if (slotsJson.data) {
-          setDoctor(slotsJson.data.doctor);
-          setSlots(slotsJson.data.slots);
-        }
+
+      // La sesión dura 24 h: al vencer hay que volver a pedir el PIN, no fingir
+      // que la agenda está vacía.
+      if (slotsRes.status === 401 || apptsRes.status === 401) {
+        setAuthenticated(false);
+        setLoadError("expired");
+        return;
       }
-      if (apptsRes.ok) {
-        const apptsJson = (await apptsRes.json()) as { data?: TodayAppointment[] };
-        setTodayAppts(apptsJson.data ?? []);
+      if (slotsRes.status === 403 || apptsRes.status === 403) {
+        setLoadError("inactive");
+        return;
       }
-    } catch { /* silencioso */ }
-    setDataLoading(false);
+      if (!slotsRes.ok || !apptsRes.ok) {
+        setLoadError("failed");
+        return;
+      }
+
+      const slotsJson = (await slotsRes.json()) as { data?: { doctor: DoctorInfo; slots: Slot[] } };
+      if (slotsJson.data) {
+        setDoctor(slotsJson.data.doctor);
+        setSlots(slotsJson.data.slots);
+      }
+      const apptsJson = (await apptsRes.json()) as { data?: TodayAppointment[] };
+      setTodayAppts(apptsJson.data ?? []);
+      setLoadError(null);
+      setLastSyncedAt(new Date());
+    } catch {
+      setLoadError("offline");
+    } finally {
+      setDataLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {
     if (authenticated) void loadData();
+  }, [authenticated, loadData]);
+
+  // La secretaria deja el panel abierto toda la jornada. Sin refresco, lo que ve
+  // a las 16:00 puede ser lo que cargó a las 9:05, con cara de dato fresco.
+  useEffect(() => {
+    if (!authenticated) return;
+    const id = setInterval(() => void loadData(), 60_000);
+    return () => clearInterval(id);
   }, [authenticated, loadData]);
 
   async function logout() {
@@ -652,6 +821,74 @@ export function SecretaryPortalClient({
           </div>
         )}
 
+        {/* Comprobante: se queda hasta que ella lo cierra, porque lo tiene que leer. */}
+        {recibo && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4"
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-emerald-900">Cita agendada para {recibo.nombre}</p>
+                {recibo.detalle && <p className="mt-1 text-sm text-emerald-800">{recibo.detalle}</p>}
+                <p className="mt-1 text-xs text-emerald-700">
+                  Se notificó a {doctor?.fullName ?? "el médico"}.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { setRecibo(null); setShowModal(true); }}
+                    className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-800"
+                  >
+                    Agendar otra
+                  </button>
+                  <button
+                    onClick={() => setRecibo(null)}
+                    className="rounded-full border border-emerald-300 px-4 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fallo de carga: nunca se debe confundir con "no hay citas". */}
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-8 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4"
+          >
+            <p className="font-semibold text-amber-900">
+              {loadError === "expired" && "Tu sesión expiró"}
+              {loadError === "inactive" && "El médico desactivó este enlace"}
+              {loadError === "offline" && "Sin conexión"}
+              {loadError === "failed" && "No se pudo cargar la agenda"}
+            </p>
+            <p className="mt-1 text-sm text-amber-800">
+              {loadError === "expired" &&
+                "Vuelve a ingresar el PIN para seguir viendo la agenda. No se perdió ninguna cita."}
+              {loadError === "inactive" &&
+                "Pídele al médico que vuelva a activarlo desde su panel."}
+              {loadError === "offline" &&
+                "Revisa tu internet. Lo que ves abajo puede estar desactualizado."}
+              {loadError === "failed" &&
+                "Lo que ves abajo puede estar desactualizado. Intenta actualizar."}
+            </p>
+            {loadError !== "expired" && (
+              <button
+                onClick={loadData}
+                disabled={dataLoading}
+                className="mt-3 rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-800 disabled:opacity-50"
+              >
+                {dataLoading ? "Actualizando…" : "Reintentar"}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -694,7 +931,10 @@ export function SecretaryPortalClient({
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-[#071726]">Próximas citas</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Hoy y los próximos 7 días</p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                Hoy y los próximos 7 días
+                {lastSyncedAt && ` · actualizado ${fmt(lastSyncedAt.toISOString())}`}
+              </p>
             </div>
             <button
               onClick={loadData}
@@ -706,10 +946,11 @@ export function SecretaryPortalClient({
             </button>
           </div>
 
-          {todayAppts.length === 0 ? (
+          {/* El vacío solo es real si el servidor respondió bien. */}
+          {todayAppts.length === 0 && !loadError ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
-              <Calendar className="mx-auto h-8 w-8 text-slate-300" />
-              <p className="mt-3 text-sm text-slate-400">Sin citas programadas en los próximos 7 días.</p>
+              <Calendar className="mx-auto h-8 w-8 text-slate-400" />
+              <p className="mt-3 text-sm text-slate-600">Sin citas programadas en los próximos 7 días.</p>
               <button
                 onClick={() => setShowModal(true)}
                 className="mt-4 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
@@ -781,11 +1022,13 @@ export function SecretaryPortalClient({
           slots={slots}
           doctor={doctor}
           onClose={() => setShowModal(false)}
-          onCreated={(name) => {
+          onCreated={(recibo) => {
             setShowModal(false);
-            setMessage(`✓ Cita de ${name} registrada correctamente.`);
+            // El banner anterior se borraba a los 6 segundos y no traía lo único
+            // que ella necesita repetirle al paciente que sigue en la línea.
+            setRecibo(recibo);
+            setMessage("");
             void loadData();
-            setTimeout(() => setMessage(""), 6000);
           }}
         />
       )}

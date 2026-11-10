@@ -53,6 +53,10 @@ aparezca. No es alta libre.
   devolución sujeta a la política de reembolso de cada médico.
 - La secretaria entra por enlace con PIN, ve las próximas citas del médico y
   puede agendar pacientes que llaman por teléfono.
+- **El cobro en consultorio lo registra quien tenga el contexto:** la secretaria
+  cuando hay recepción, el médico cuando atiende sin ella. No es rol fijo. Las
+  citas agendadas por teléfono nacen con el pago pendiente y se liquidan en
+  efectivo o transferencia al llegar, fuera de Stripe.
 - Todo ocurre en horario del consultorio: **America/Mexico_City**. Las fechas
   civiles y los instantes son cosas distintas en este producto y confundirlas ha
   causado errores reales en producción.
