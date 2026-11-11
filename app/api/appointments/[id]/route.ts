@@ -261,6 +261,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (action === "CANCEL_BY_DOCTOR" && user.role !== "DOCTOR" && !isAdmin) {
     return fail("FORBIDDEN", "Solo el médico de la cita o administración pueden cancelarla directamente.", 403);
   }
+  // El cobro en consultorio lo registra quien tenga el contexto: el médico
+  // cuando atiende sin recepción, la asistente cuando la hay. El paciente nunca:
+  // nadie declara su propio pago.
+  if (
+    action === "MARK_PAID" &&
+    user.role !== "DOCTOR" &&
+    user.role !== "ASSISTANT" &&
+    !isAdmin
+  ) {
+    return fail("FORBIDDEN", "Solo el médico o su asistente pueden registrar el cobro.", 403);
+  }
   if (action === "MARK_REFUND_PENDING" && !isAdmin) {
     return fail("FORBIDDEN", "Solo administración puede marcar reembolso pendiente manualmente.", 403);
   }
@@ -280,6 +291,58 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   let updated;
   try {
     updated = await prisma.$transaction(async (tx) => {
+    /**
+     * Registrar el cobro hecho en el consultorio.
+     *
+     * Las citas agendadas por teléfono nacen con el pago pendiente y se
+     * liquidan en efectivo o transferencia al llegar. Hasta ahora nadie tenía
+     * dónde marcarlo, así que la pastilla de "pendiente" seguía ahí para
+     * siempre y ni el médico ni la secretaria sabían quién ya había pagado.
+     *
+     * Los pagos de Stripe quedan fuera a propósito: los confirma el webhook
+     * contra el dinero real. Permitir marcarlos a mano dejaría a la plataforma
+     * afirmando un cobro que Stripe no respalda.
+     */
+    if (action === "MARK_PAID") {
+      const cobrableEnConsultorio = appointment.payments.filter(
+        (p) =>
+          (p.provider === PaymentProvider.CASH || p.provider === PaymentProvider.TRANSFER) &&
+          p.status === PaymentStatus.PENDING
+      );
+
+      if (cobrableEnConsultorio.length === 0) {
+        const yaPagada = appointment.payments.some(
+          (p) =>
+            (p.provider === PaymentProvider.CASH || p.provider === PaymentProvider.TRANSFER) &&
+            p.status === PaymentStatus.PAID
+        );
+        throw new Error(yaPagada ? "PAYMENT_ALREADY_PAID" : "NO_OFFLINE_PAYMENT");
+      }
+
+      await tx.payment.updateMany({
+        where: { id: { in: cobrableEnConsultorio.map((p) => p.id) } },
+        data: { status: PaymentStatus.PAID }
+      });
+
+      const metodo = cobrableEnConsultorio[0].provider === PaymentProvider.CASH
+        ? "efectivo"
+        : "transferencia";
+
+      title = "Pago registrado";
+      patientMessage = `Se registró tu pago en ${metodo} de la cita con ${appointment.doctor.fullName}.`;
+      doctorMessage = `Se registró el pago en ${metodo} de ${appointment.patient.user.name}.`;
+
+      return tx.appointment.findUniqueOrThrow({
+        where: { id: appointment.id },
+        include: {
+          patient: { include: { user: true } },
+          doctor: { include: { user: { select: { id: true, email: true } }, specialty: true, hospital: true } },
+          availabilitySlot: true,
+          payments: true
+        }
+      });
+    }
+
     if (action === "ACCEPT") {
       if (appointment.status === AppointmentStatus.CANCELLED || appointment.status === AppointmentStatus.COMPLETED) {
         throw new Error("APPOINTMENT_CLOSED");
@@ -784,6 +847,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return fail("STRIPE_REFUND_FAILED", "No pudimos procesar la devolución en Stripe. Revisa la configuración o inténtalo de nuevo.", 502);
       }
       if (error.message === "APPOINTMENT_CLOSED") return fail("APPOINTMENT_CLOSED", "Esta cita ya está cerrada.", 409);
+      if (error.message === "PAYMENT_ALREADY_PAID") {
+        return fail("PAYMENT_ALREADY_PAID", "Esta cita ya está marcada como pagada.", 409);
+      }
+      if (error.message === "NO_OFFLINE_PAYMENT") {
+        return fail(
+          "NO_OFFLINE_PAYMENT",
+          "Esta cita no tiene un cobro pendiente en consultorio. Los pagos en línea los confirma Stripe.",
+          409
+        );
+      }
       if (error.message === "RESCHEDULE_NOT_ALLOWED") {
         return fail("RESCHEDULE_NOT_ALLOWED", "Esta cita aún no permite solicitar reagendamiento.", 409);
       }

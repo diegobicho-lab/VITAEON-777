@@ -81,6 +81,10 @@ export const appointmentUpdateSchema = z
         // dispara la devolución. Distinta de REQUEST_CANCELLATION, que solo
         // abre una solicitud del paciente.
         "CANCEL_BY_DOCTOR",
+        // Registrar que el paciente pagó en el consultorio. Solo aplica a
+        // efectivo o transferencia: los pagos de Stripe los confirma el webhook
+        // y marcarlos a mano desincronizaría la plataforma del dinero real.
+        "MARK_PAID",
         "MARK_REFUND_PENDING",
         "APPROVE_REFUND",
         "REJECT_REFUND",

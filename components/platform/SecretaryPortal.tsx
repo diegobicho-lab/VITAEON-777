@@ -88,6 +88,22 @@ function isToday(iso: string) {
   return clinicDay(iso) === clinicDay(new Date());
 }
 
+function metodoPago(provider: string) {
+  if (provider === "CASH") return "Efectivo";
+  if (provider === "TRANSFER") return "Transferencia";
+  return "En línea";
+}
+
+/**
+ * Solo se cobra en mostrador lo que se paga en efectivo o transferencia. Los
+ * pagos de Stripe los confirma el webhook contra el dinero real, así que la
+ * secretaria no debe poder declararlos pagados desde aquí.
+ */
+function cobrableEnMostrador(payment?: { provider: string; status: string }) {
+  if (!payment) return false;
+  return (payment.provider === "CASH" || payment.provider === "TRANSFER") && payment.status === "PENDING";
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     ACCEPTED: "Aceptada",
@@ -685,6 +701,8 @@ export function SecretaryPortalClient({
   const [loadError, setLoadError] = useState<"expired" | "inactive" | "failed" | "offline" | null>(null);
   /** Hora de la última carga correcta, para que no se confunda con datos frescos. */
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  /** Id de la cita cuyo cobro se está registrando, para desactivar solo ese botón. */
+  const [cobrando, setCobrando] = useState<string | null>(null);
 
   // Verificar si ya hay sesión activa
   useEffect(() => {
@@ -745,6 +763,33 @@ export function SecretaryPortalClient({
       setDataLoading(false);
     }
   }, [token]);
+
+  /** Registra el cobro hecho en el mostrador y refresca la agenda. */
+  const marcarPagada = useCallback(
+    async (appointmentId: string, nombre: string) => {
+      setCobrando(appointmentId);
+      setMessage("");
+      try {
+        const res = await fetch(`/api/secretaria/${token}/appointments/${appointmentId}/pago`, {
+          method: "POST"
+        });
+        const json = (await res.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        if (!res.ok) {
+          setMessage(json?.error?.message ?? "No se pudo registrar el cobro.");
+          return;
+        }
+        setMessage(`Cobro de ${nombre} registrado. Se notificó al médico.`);
+        await loadData();
+      } catch {
+        setMessage("No hay conexión. El cobro no se registró.");
+      } finally {
+        setCobrando(null);
+      }
+    },
+    [token, loadData]
+  );
 
   useEffect(() => {
     if (authenticated) void loadData();
@@ -1013,13 +1058,36 @@ export function SecretaryPortalClient({
                           </span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-sm text-slate-500">
+                      <p className="mt-0.5 text-sm text-slate-600">
                         {appt.horaLocal || fmt(appt.availabilitySlot.startsAt)}
                         {appt.guestPatientPhone ? ` · ${appt.guestPatientPhone}` : ""}
-                        {payment ? ` · ${payment.provider === "CASH" ? "Efectivo" : "Transferencia"}` : ""}
+                        {payment ? ` · ${metodoPago(payment.provider)}` : ""}
+                        {payment?.status === "PAID" && " · pagado"}
                       </p>
                     </div>
-                    <StatusBadge status={appt.status} />
+                    <div className="flex items-center gap-2">
+                      {/*
+                        El cobro en consultorio no tenía dónde registrarse: la
+                        cita nacía con el pago pendiente y la pastilla ámbar
+                        seguía ahí para siempre, aunque el paciente ya hubiera
+                        pagado en el mostrador.
+                      */}
+                      {cobrableEnMostrador(payment) && (
+                        <button
+                          onClick={() => marcarPagada(appt.id, displayName)}
+                          disabled={cobrando === appt.id}
+                          className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          {cobrando === appt.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3 w-3" />
+                          )}
+                          Ya pagó
+                        </button>
+                      )}
+                      <StatusBadge status={appt.status} />
+                    </div>
                   </div>
                 );
               })}
