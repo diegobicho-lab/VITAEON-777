@@ -3,13 +3,11 @@
 import {
   Calendar,
   CheckCircle2,
-  Clock,
   Loader2,
   LogOut,
   Plus,
   Search,
   UserPlus,
-  Users,
   X
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -835,6 +833,32 @@ export function SecretaryPortalClient({
     []
   );
 
+  /**
+   * La siguiente cita que todavía no ocurre.
+   *
+   * Es el único dato que la secretaria necesita en todo momento: es lo que
+   * responde cuando el médico asoma la cabeza y pregunta "¿qué sigue?", y lo
+   * que mira cuando suena el timbre. Hasta ahora vivía enterrada en una lista
+   * donde la cita de las 9:00 se veía igual que la de las 17:30.
+   */
+  const ahora = Date.now();
+  const siguienteCita =
+    todayAppts.find((a) => new Date(a.availabilitySlot.startsAt).getTime() >= ahora) ?? null;
+
+  /** Minutos que faltan, para la cuenta regresiva de recepción. */
+  const minutosParaSiguiente = siguienteCita
+    ? Math.round((new Date(siguienteCita.availabilitySlot.startsAt).getTime() - ahora) / 60000)
+    : null;
+
+  const faltaTexto = (min: number) => {
+    if (min <= 0) return "ahora";
+    if (min < 60) return `en ${min} min`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h < 24) return m === 0 ? `en ${h} h` : `en ${h} h ${m} min`;
+    return "más tarde";
+  };
+
   const etiquetaDia = (dia: string, grupo: string) => {
     if (grupo === "hoy") return "Hoy";
     if (grupo === "manana") return "Mañana";
@@ -959,42 +983,73 @@ export function SecretaryPortalClient({
           </div>
         )}
 
-        {/* Stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#071726]/5">
-                <Calendar className="h-5 w-5 text-[#071726]" />
+        {/*
+          Aquí vivían tres tarjetas iguales con un número cada una. Ocupaban el
+          mejor espacio de la pantalla para decir cosas que no cambian la
+          siguiente acción de nadie, y a 360px empujaban la agenda fuera del
+          primer vistazo: ella abría el panel y veía cifras, no pacientes.
+
+          La superficie de marca del producto (el gradiente navy) estaba gastada
+          en la pantalla de PIN, donde pasa tres segundos. Se trae aquí, al único
+          dato que mira todo el día.
+        */}
+        <section className="mb-8 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#071726] via-[#0a2d47] to-[#0d3d60] px-6 py-6 shadow-lg shadow-[#071726]/20 sm:px-8 sm:py-7">
+          {siguienteCita ? (
+            <>
+              <div className="flex items-baseline justify-between gap-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1e9bd4]">
+                  Siguiente
+                </p>
+                {minutosParaSiguiente !== null && (
+                  <p className="shrink-0 text-sm font-semibold tabular-nums text-white/70">
+                    {faltaTexto(minutosParaSiguiente)}
+                  </p>
+                )}
               </div>
-              <div>
-                <p className="text-2xl font-bold tabular-nums text-[#071726]">{citasDeHoy.length}</p>
-                <p className="text-xs text-slate-500">Citas hoy</p>
-              </div>
-            </div>
+
+              <p className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                {siguienteCita.guestPatientName ?? siguienteCita.patient?.user.name ?? "Paciente"}
+              </p>
+
+              <p className="mt-2 text-base text-white/80">
+                <span className="tabular-nums">{siguienteCita.horaLocal || fmt(siguienteCita.availabilitySlot.startsAt)}</span>
+                {siguienteCita.grupo !== "hoy" && ` · ${etiquetaDia(siguienteCita.dia, siguienteCita.grupo)}`}
+                {doctor ? ` · ${doctor.consultationDurationMinutes} min` : ""}
+                {siguienteCita.payments[0] ? ` · ${metodoPago(siguienteCita.payments[0].provider)}` : ""}
+              </p>
+
+              {siguienteCita.guestPatientPhone && (
+                <a
+                  href={`tel:${siguienteCita.guestPatientPhone.replace(/\s/g, "")}`}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold tabular-nums text-white transition hover:bg-white/20"
+                >
+                  {siguienteCita.guestPatientPhone}
+                </a>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1e9bd4]">
+                Siguiente
+              </p>
+              <p className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                No queda ninguna cita por delante
+              </p>
+              <p className="mt-2 text-base text-white/70">
+                {citasDeHoy.length > 0
+                  ? "Las de hoy ya pasaron."
+                  : "Nadie agendado todavía."}
+              </p>
+            </>
+          )}
+
+          {/* Los números se quedan, pero en voz baja: son contexto, no la tarea. */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-white/10 pt-4 text-sm text-white/60">
+            <span className="tabular-nums">{citasDeHoy.length} hoy</span>
+            <span className="tabular-nums">{freeToday} libres hoy</span>
+            <span className="tabular-nums">{slots.length} horarios publicados</span>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-                <Clock className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold tabular-nums text-[#071726]">{freeToday}</p>
-                <p className="text-xs text-slate-500">Huecos libres hoy</p>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50">
-                <Users className="h-5 w-5 text-sky-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold tabular-nums text-[#071726]">{slots.length}</p>
-                <p className="text-xs text-slate-500">Slots disponibles</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
 
         {/* Próximas citas (hoy + 7 días) */}
         <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
