@@ -149,7 +149,7 @@ function NewAppointmentModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   /** Campo que impide confirmar, para marcarlo en vez de apagar el botón sin decir por qué. */
-  const [invalidField, setInvalidField] = useState<"slot" | "guestName" | "patient" | null>(null);
+  const [invalidField, setInvalidField] = useState<"slot" | "guestName" | "guestPhone" | "patient" | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLButtonElement>(null);
@@ -240,6 +240,13 @@ function NewAppointmentModal({
       setInvalidField("patient");
       return;
     }
+    // El servidor exige mínimo 7 dígitos y responde "Datos de cita inválidos",
+    // sin decir cuál campo. Mejor atraparlo aquí y señalar el teléfono.
+    if (patientType === "guest" && guestPhone.trim() && guestPhone.trim().length < 7) {
+      setError("El teléfono está incompleto. Escríbelo con lada, o déjalo vacío.");
+      setInvalidField("guestPhone");
+      return;
+    }
     if (!slotId) {
       setError("Elige el horario de la cita.");
       setInvalidField("slot");
@@ -272,8 +279,15 @@ function NewAppointmentModal({
         body: JSON.stringify(body)
       });
 
-      const json = (await res.json()) as { data?: { patientName?: string }; error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Error al crear cita.");
+      // `fail()` responde { ok:false, error:{ code, message } }: el error es un
+      // objeto, no una cadena. Al tiparlo como string, pasárselo a `new Error`
+      // lo convertía en "[object Object]" y la secretaria no podía saber qué
+      // estaba mal — por ejemplo, que el teléfono es demasiado corto.
+      const json = (await res.json()) as {
+        data?: { patientName?: string };
+        error?: { code?: string; message?: string };
+      };
+      if (!res.ok) throw new Error(json.error?.message ?? "No se pudo crear la cita. Intenta de nuevo.");
       const name = json.data?.patientName ?? (patientType === "guest" ? guestName : selectedPatient?.name ?? "");
       onCreated({ nombre: name, detalle: resumen ?? "" });
     } catch (err) {
@@ -370,10 +384,15 @@ function NewAppointmentModal({
                 <input
                   id="guest-phone"
                   value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
+                  onChange={(e) => { setGuestPhone(e.target.value); setInvalidField(null); }}
+                  aria-invalid={invalidField === "guestPhone"}
                   placeholder="477 123 4567"
                   type="tel"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
+                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10 ${
+                    invalidField === "guestPhone"
+                      ? "border-red-400 bg-red-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
                 />
               </div>
             </div>
@@ -573,8 +592,8 @@ function PinEntry({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin })
       });
-      const json = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "PIN incorrecto.");
+      const json = (await res.json()) as { error?: { code?: string; message?: string } };
+      if (!res.ok) throw new Error(json.error?.message ?? "PIN incorrecto.");
       onAuthenticated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "PIN incorrecto.");
