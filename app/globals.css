@@ -80,6 +80,15 @@ select {
   border-radius: 0.5rem;
 }
 
+/* ─── Selección de texto ──────────────────────────────────────────
+   La secretaria copia nombres y teléfonos del panel para pegarlos en
+   WhatsApp. Sin esto, el resaltado sale con el azul por defecto del
+   sistema, que no pertenece a ninguna paleta. */
+::selection {
+  background: rgba(17, 109, 157, 0.18);
+  color: #071726;
+}
+
 /* ─── Scrollbar ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

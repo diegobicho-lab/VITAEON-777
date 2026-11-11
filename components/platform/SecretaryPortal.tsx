@@ -467,7 +467,7 @@ function NewAppointmentModal({
                     <p className="font-semibold text-[#071726]">{selectedPatient.name}</p>
                     <p className="text-xs text-slate-500">{selectedPatient.email}</p>
                   </div>
-                  <button onClick={() => setSelectedPatient(null)} className="rounded-full p-1 text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setSelectedPatient(null)} aria-label="Quitar paciente seleccionado" className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -670,7 +670,7 @@ function PinEntry({
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/30">
+        <p className="mt-6 text-center text-xs text-white/60">
           Acceso restringido · Solo personal autorizado
         </p>
       </div>
@@ -853,25 +853,31 @@ export function SecretaryPortalClient({
         {/* Header */}
         <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200/70 pb-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.32em] text-[#1e9bd4]">Panel de secretaría</p>
             {doctor && (
               <>
-                <h1 className="mt-2 text-3xl font-bold text-[#071726]">{doctor.fullName}</h1>
-                <p className="mt-1 text-sm text-slate-500">{doctor.specialty.name} · {doctor.hospital.name}</p>
+                <h1 className="text-3xl font-bold tracking-tight text-[#071726]">{doctor.fullName}</h1>
+                <p className="mt-1 text-sm text-slate-600">{doctor.specialty.name} · {doctor.hospital.name}</p>
               </>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+              className="flex items-center gap-2 rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[#071726]/15 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#071726]/20"
             >
               <Plus className="h-4 w-4" />
               Nueva cita
             </button>
+            {/*
+              "Salir" estaba a la misma altura y con la misma forma que la acción
+              principal. Con el teléfono en la otra mano es fácil rozarlo y
+              quedarse fuera con el paciente en la línea: ahora es un control
+              terciario, no un botón gemelo.
+            */}
             <button
               onClick={logout}
-              className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:border-slate-300"
+              aria-label="Cerrar sesión de secretaría"
+              className="flex items-center gap-2 rounded-full px-3 py-3 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             >
               <LogOut className="h-4 w-4" />
               Salir
@@ -961,7 +967,7 @@ export function SecretaryPortalClient({
                 <Calendar className="h-5 w-5 text-[#071726]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#071726]">{citasDeHoy.length}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#071726]">{citasDeHoy.length}</p>
                 <p className="text-xs text-slate-500">Citas hoy</p>
               </div>
             </div>
@@ -972,7 +978,7 @@ export function SecretaryPortalClient({
                 <Clock className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#071726]">{freeToday}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#071726]">{freeToday}</p>
                 <p className="text-xs text-slate-500">Huecos libres hoy</p>
               </div>
             </div>
@@ -983,7 +989,7 @@ export function SecretaryPortalClient({
                 <Users className="h-5 w-5 text-sky-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#071726]">{slots.length}</p>
+                <p className="text-2xl font-bold tabular-nums text-[#071726]">{slots.length}</p>
                 <p className="text-xs text-slate-500">Slots disponibles</p>
               </div>
             </div>
@@ -1013,7 +1019,7 @@ export function SecretaryPortalClient({
           {/* El vacío solo es real si el servidor respondió bien. */}
           {todayAppts.length === 0 && !loadError ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
-              <Calendar className="mx-auto h-8 w-8 text-slate-400" />
+              <Calendar className="mx-auto h-8 w-8 text-slate-400" aria-hidden="true" />
               <p className="mt-3 text-sm text-slate-600">Sin citas programadas en los próximos 7 días.</p>
               <button
                 onClick={() => setShowModal(true)}
@@ -1034,32 +1040,34 @@ export function SecretaryPortalClient({
                     >
                       {etiquetaDia(bloque.dia, bloque.grupo)}
                     </h3>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs tabular-nums text-slate-600">
                       {bloque.citas.length} {bloque.citas.length === 1 ? "cita" : "citas"}
                     </span>
                     <div className="h-px flex-1 bg-slate-100" />
                   </div>
-                  <div className="grid gap-3">
+                  <div className="divide-y divide-slate-100">
               {bloque.citas.map((appt) => {
                 const displayName = appt.guestPatientName ?? appt.patient?.user.name ?? "Paciente";
                 const payment = appt.payments[0];
                 return (
                   <div
                     key={appt.id}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
+                    className="-mx-2 flex flex-wrap items-center justify-between gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-slate-50"
                   >
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-[#071726]">{displayName}</p>
                         {appt.secretaryCreated && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 border border-sky-200">
-                            <UserPlus className="h-2.5 w-2.5" />
+                          <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                            <UserPlus className="h-3 w-3" />
                             Secretaría
                           </span>
                         )}
                       </div>
                       <p className="mt-0.5 text-sm text-slate-600">
-                        {appt.horaLocal || fmt(appt.availabilitySlot.startsAt)}
+                        <span className="tabular-nums">
+                          {appt.horaLocal || fmt(appt.availabilitySlot.startsAt)}
+                        </span>
                         {appt.guestPatientPhone ? ` · ${appt.guestPatientPhone}` : ""}
                         {payment ? ` · ${metodoPago(payment.provider)}` : ""}
                         {payment?.status === "PAID" && " · pagado"}
@@ -1098,7 +1106,7 @@ export function SecretaryPortalClient({
           )}
         </section>
 
-        <p className="mt-10 text-center text-xs text-slate-400">
+        <p className="mt-10 text-center text-xs text-slate-500">
           VITAEON · Panel de secretaría · Acceso restringido
         </p>
       </div>
