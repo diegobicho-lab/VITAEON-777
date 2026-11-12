@@ -37,6 +37,7 @@ body {
    especialidad que el paciente mira. */
 .page-ground {
   position: relative;
+  isolation: isolate;
   background:
     radial-gradient(ellipse 120% 52% at 50% -8%,
       color-mix(in srgb, var(--specialty-accent, #116D9D) 14%, transparent) 0%,
@@ -45,32 +46,36 @@ body {
   transition: background 700ms ease-out;
 }
 
+/* z-index negativo a propósito: así queda por encima del fondo del contenedor
+   pero por debajo del contenido en flujo, sin tener que elevar a los hijos.
+   La versión anterior usaba `.page-ground > * { position: relative }`, que le
+   sobrescribía `fixed` a los dos botones flotantes y los tiraba al flujo. */
 .page-ground::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   background-image: radial-gradient(circle, rgba(17, 109, 157, 0.055) 1px, transparent 1px);
   background-size: 34px 34px;
   mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 88%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 88%, transparent 100%);
 }
 
-.page-ground > * { position: relative; z-index: 1; }
-
 /* ─── Suelo de especialidades ────────────────────────────────────
    Las tarjetas flotaban sobre el lavado de la página, sin nada que las
    contuviera. Esta superficie les da un suelo propio y, sobre todo, es donde
    el color de la especialidad se nota más: tiene sentido que el sistema de
    color sea más fuerte justo donde el paciente lo está usando para elegir. */
+.specialty-ground { isolation: isolate; }
+
 .specialty-ground::before {
   content: "";
   position: absolute;
   inset: -2rem -1.5rem;
   border-radius: 2.5rem;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   background:
     radial-gradient(ellipse 70% 100% at 50% 0%,
       color-mix(in srgb, var(--specialty-accent, #116D9D) 10%, transparent) 0%,
@@ -78,7 +83,7 @@ body {
   transition: background 700ms ease-out;
 }
 
-.specialty-ground > * { position: relative; z-index: 1; }
+
 
 /* ─── Grano ───────────────────────────────────────────────────────
    El fondo eran tres lavados de casi-blanco, que es el aspecto por defecto de
