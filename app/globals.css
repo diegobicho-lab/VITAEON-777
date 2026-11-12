@@ -104,6 +104,23 @@ body {
 
 
 
+/* ─── Saltos de línea ─────────────────────────────────────────────
+   No había ni un solo `text-wrap` en la portada: los titulares rompían donde
+   cayera, dejando una palabra suelta en la última línea, y los párrafos igual.
+
+   `balance` reparte el titular en líneas de ancho parecido. `pretty` evita la
+   palabra huérfana al final del párrafo. Ambos son progresivos: el navegador
+   que no los entienda mantiene su comportamiento actual, así que no hay nada
+   que detectar ni respaldo que escribir. */
+h1, h2, h3,
+.text-balance {
+  text-wrap: balance;
+}
+
+p, li {
+  text-wrap: pretty;
+}
+
 /* ─── Grano ───────────────────────────────────────────────────────
    El fondo eran tres lavados de casi-blanco, que es el aspecto por defecto de
    cualquier interfaz y por eso se leía como plantilla. Esta capa de ruido al

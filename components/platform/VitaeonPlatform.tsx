@@ -1075,7 +1075,7 @@ export default function VitaeonPlatform() {
             </div>
 
             {/* H1 con stagger por segmento */}
-            <h1 className="mt-6 text-4xl font-extrabold leading-[1.09] tracking-tight text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
+            <h1 className="mt-6 text-4xl font-bold leading-[1.06] tracking-[-0.03em] text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
               <motion.span
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1165,7 +1165,7 @@ export default function VitaeonPlatform() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-medical" />
-                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.36em] text-medical">Buscador asistido</p>
+                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-medical">Buscador asistido</p>
                 </div>
                 <h2 className="mt-2 text-xl font-bold text-deep sm:text-2xl">¿Qué síntoma o especialista buscas?</h2>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
@@ -1246,7 +1246,7 @@ export default function VitaeonPlatform() {
               </div>
             ) : searchSuggestions.length > 0 && (
               <div className="mt-5">
-                <p className="mb-3 px-1 text-[0.63rem] font-bold uppercase tracking-[0.32em] text-slate-400">
+                <p className="mb-3 px-1 text-[0.7rem] font-bold uppercase tracking-[0.32em] text-slate-400">
                   Búsquedas frecuentes — toca para ir directo
                 </p>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -1261,7 +1261,7 @@ export default function VitaeonPlatform() {
                       </span>
                       <div className="min-w-0">
                         <span className="block truncate text-xs font-bold text-deep">{suggestion.label}</span>
-                        <span className="block truncate text-[0.63rem] text-slate-400">{suggestion.helper}</span>
+                        <span className="block truncate text-[0.7rem] text-slate-400">{suggestion.helper}</span>
                       </div>
                     </button>
                   ))}
@@ -1331,11 +1331,11 @@ export default function VitaeonPlatform() {
           <section id="appointment-ticket" className={`mx-auto mt-12 max-w-7xl scroll-mt-32 rounded-[2rem] border bg-white p-5 shadow-premium sm:p-8 ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "border-amber-100" : "border-emerald-100"}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
+                <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
                 <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">
                   Tu ticket de consulta está listo.
                 </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
                   Revisa con calma los detalles de tu consulta. Desde aquí puedes continuar al pago seguro y después consultar tu ticket en el panel del paciente.
                 </p>
               </div>
@@ -1366,11 +1366,11 @@ export default function VitaeonPlatform() {
               <div className="mt-5 rounded-[1.5rem] border border-silver bg-slate-50 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Pago seguro en línea</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Pago seguro en línea</p>
                     <h3 className="mt-2 text-2xl font-semibold text-deep">
                       {paymentLoading ? "Preparando pago seguro" : clientSecret && stripePromise ? "Pago seguro listo" : "Continúa con pago seguro"}
                     </h3>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
                       {paymentLoading
                         ? "Estamos preparando una experiencia de pago protegida para tu consulta."
                         : clientSecret && stripePromise
@@ -1474,12 +1474,12 @@ export default function VitaeonPlatform() {
             <div className="grid gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <button type="button" onClick={() => chooseAuthAudience("PATIENT", "register")} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Paciente</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Paciente</p>
                   <h3 className="mt-3 text-2xl font-semibold text-deep">Crear cuenta frecuente</h3>
                   <p className="mt-3 text-sm leading-6 text-slate-600">Agenda, guarda favoritos y consulta tickets desde tu panel.</p>
                 </button>
                 <button type="button" onClick={() => chooseAuthAudience("DOCTOR", "register")} className="rounded-[1.5rem] border border-silver bg-slate-50 p-5 text-left transition hover:-translate-y-1 hover:bg-white">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Médico</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Médico</p>
                   <h3 className="mt-3 text-2xl font-semibold text-deep">Unirme a VITAEON</h3>
                   <p className="mt-3 text-sm leading-6 text-slate-600">Revisa suscripciones, verificación y cómo funciona la red.</p>
                 </button>
@@ -1508,7 +1508,7 @@ export default function VitaeonPlatform() {
             </div>
             {authAudience === "DOCTOR" && (
               <div className="rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Suscripciones médicas</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Suscripciones médicas</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {doctorSubscriptionPlans.map((plan) => (
                     <button
@@ -1613,7 +1613,7 @@ export default function VitaeonPlatform() {
                   <article key={`${item.lab}-${item.email}`} className="representative-option rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-premium">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Farmacéutica</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Farmacéutica</p>
                         <h3 className="mt-2 text-2xl font-semibold text-deep">{item.lab}</h3>
                       </div>
                       <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">Obsidiana activa</span>
@@ -1641,7 +1641,7 @@ export default function VitaeonPlatform() {
                   <article key={item.id} className="rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-premium">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Catering médico</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Catering médico</p>
                         <h3 className="mt-2 text-2xl font-semibold text-deep">{item.name}</h3>
                       </div>
                       <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">Obsidiana activa</span>
@@ -1730,7 +1730,7 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071726]">
             <HeartPulse className="h-4 w-4 text-white" />
           </div>
-          <span className="text-sm font-bold tracking-[0.42em] text-deep sm:text-base">VITAEON</span>
+          <span className="text-sm font-bold tracking-[0.32em] text-deep sm:text-base">VITAEON</span>
         </Link>
         <div className="hidden items-center gap-1 md:flex">
           <a href="#busqueda" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
@@ -1812,7 +1812,7 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
 function HeroStats({ onRepresentativesClick }: { onRepresentativesClick: () => void }) {
   return (
     <div className="mt-10">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Médicos en hospitales de León</p>
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Médicos en hospitales de León</p>
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
         {["Hospital Ángeles", "Aranda de la Parra", "Médica Campestre", "Christus Muguerza"].map((name) => (
           <span key={name} className="text-sm font-semibold text-slate-400 transition-colors hover:text-slate-600">{name}</span>
@@ -1931,7 +1931,7 @@ function PlanCard({ plan }: { plan: (typeof doctorSubscriptionPlans)[number] }) 
       {plan.recommended && <span className="doctor-plan-ribbon">Más completo</span>}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">{plan.tone}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">{plan.tone}</p>
           <h3 className="mt-3 text-3xl font-semibold text-deep">{plan.title}</h3>
         </div>
         <MedalShield medal={plan.medal} compact />
@@ -2022,7 +2022,7 @@ function IntelligentGuide({
   return (
     <div className="ai-orientation-card premium-card grid gap-8 rounded-[2rem] p-7 lg:grid-cols-[0.72fr_1fr] lg:items-center">
       <div>
-        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-medical">
+        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.32em] text-medical">
           <Brain className="h-5 w-5" /> Orientador inteligente
         </p>
         <h2 className="mt-3 text-3xl font-semibold text-deep">Dinos qué te duele</h2>
@@ -2084,11 +2084,11 @@ function IntelligentGuide({
           {/* Badge de fuente */}
           <div className="mb-3 flex items-center gap-2">
             {result.aiGenerated ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-[0.68rem] font-semibold text-violet-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-[0.75rem] font-semibold text-violet-700">
                 <Sparkles className="h-3 w-3" /> Generado por IA
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[0.75rem] font-semibold text-slate-500">
                 <Zap className="h-3 w-3" /> Orientación rápida
               </span>
             )}
@@ -2112,7 +2112,7 @@ function IntelligentGuide({
 
           {alternativeSpecialties.length > 0 && (
             <div className="mt-4">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-slate-400">También podrías considerar</p>
+              <p className="text-[0.75rem] font-semibold uppercase tracking-[0.22em] text-slate-400">También podrías considerar</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {alternativeSpecialties.map(({ name, specialty }) =>
                   specialty ? (
@@ -2143,7 +2143,7 @@ function IntelligentGuide({
           )}
 
           {/* Disclaimer */}
-          <p className="mt-4 text-[0.68rem] leading-5 text-slate-400">
+          <p className="mt-4 text-[0.75rem] leading-5 text-slate-400">
             Esta orientación {result.aiGenerated ? "generada por IA " : ""}no constituye un diagnóstico médico. Consulta siempre con un profesional de la salud.
           </p>
         </div>
@@ -2238,7 +2238,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
           {/* Dark overlay for text legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-7">
-            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.36em] text-white/60">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-white/60">
               VITAEON · {activeCategory !== "all" ? (visibleCategories.find((c) => c.id === activeCategory)?.label ?? "Especialidades") : "Red médica"}
             </p>
             <h3 className="mt-2 text-3xl font-bold leading-tight text-white">
@@ -2379,7 +2379,7 @@ function specialtyThemeFor(name = ""): SpecialtyTheme {
 function SubscriptionShowcase() {
   return (
     <section id="suscripciones" className="mx-auto mt-16 max-w-7xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Suscripciones médicas</p>
+      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Suscripciones médicas</p>
       <h2 className="mt-3 max-w-4xl text-4xl font-semibold text-deep">Distintivos premium para médicos que desean crecer con orden, presencia y confianza.</h2>
       <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {doctorSubscriptionPlans.map((plan) => <PlanCard key={plan.title} plan={plan} />)}
@@ -2403,7 +2403,7 @@ function StateBlock({ loading, error, empty, onJoinAsDoctor }: { loading: boolea
       <div className="mx-auto mt-10 max-w-7xl">
         <div className="mb-4 flex items-center gap-3 rounded-[1.5rem] border border-silver bg-white px-6 py-4 text-slate-600 shadow-soft">
           <Loader2 className="h-5 w-5 animate-spin text-medical" />
-          <span className="font-medium">Cargando red médica...</span>
+          <span className="font-semibold">Cargando red médica...</span>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
@@ -2487,7 +2487,7 @@ function BookingFlow(props: {
   return (
     <div className="booking-flow grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
       <section className="rounded-[1.75rem] bg-slate-50 p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Especialidad seleccionada</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Especialidad seleccionada</p>
         <select
           value={props.specialtyId}
           onChange={(event) => props.setSpecialtyId(event.target.value)}
@@ -2504,7 +2504,7 @@ function BookingFlow(props: {
         </div>
 
         <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Doctores disponibles</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Doctores disponibles</p>
           <div className="booking-doctor-list mt-4 grid gap-3">
             {props.doctorsLoading && (
               <div className="flex items-center gap-3 rounded-3xl bg-white p-5 text-slate-600">
@@ -2717,7 +2717,7 @@ function UrgentCareModal(props: {
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-1 h-6 w-6 text-red-600" />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-red-600">Cita pronta</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600">Cita pronta</p>
             <h3 className="mt-2 text-2xl font-semibold text-deep">Atención cercana disponible</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Te mostramos los horarios más cercanos disponibles. VITAEON no sustituye servicios de urgencias médicas reales.
@@ -2792,14 +2792,14 @@ function DoctorDetail(props: {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-emerald-700">
               <BadgeCheck className="h-3 w-3" /> Verificado
             </span>
             <MedalShield medal={doctor.medal} compact />
           </div>
           <h2 className="mt-1.5 text-2xl font-bold leading-tight text-deep">{doctor.name}</h2>
           {doctor.subSpecialty && (
-            <p className="mt-0.5 text-sm font-medium text-medical">{doctor.subSpecialty}</p>
+            <p className="mt-0.5 text-sm font-semibold text-medical">{doctor.subSpecialty}</p>
           )}
         </div>
       </div>
@@ -2812,21 +2812,21 @@ function DoctorDetail(props: {
       <div className="mt-5 grid grid-cols-3 gap-2">
         <div className="rounded-2xl bg-[#071726] p-3 text-center text-white sm:p-4">
           <p className="break-all text-base font-bold leading-tight sm:text-lg">{money(doctor.priceCents)}</p>
-          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-white/55">por consulta</p>
+          <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/55">por consulta</p>
         </div>
         <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
           <p className="text-base font-bold leading-tight text-deep sm:text-lg">{doctor.consultationDurationMinutes}<span className="text-sm font-normal text-slate-400"> min</span></p>
-          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">duración</p>
+          <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">duración</p>
         </div>
         <div className="rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
           <p className="text-base font-bold leading-tight text-deep sm:text-lg">{doctor.yearsExperience}<span className="text-sm font-normal text-slate-400"> años</span></p>
-          <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-slate-400">experiencia</p>
+          <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">experiencia</p>
         </div>
       </div>
 
       {/* ── Credenciales ───────────────────── */}
       <div className="mt-4 rounded-2xl border border-silver/60 bg-slate-50/60 p-4">
-        <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Información médica</p>
+        <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Información médica</p>
         <div className="grid gap-2.5">
           <div className="flex items-center gap-2.5 text-sm text-slate-600">
             <Stethoscope className="h-4 w-4 flex-none text-medical" />
@@ -2872,7 +2872,7 @@ function DoctorDetail(props: {
 
       {doctor.practicePhotoUrl && (
         <section className="mt-5 overflow-hidden rounded-2xl border border-silver bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Consultorio</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Consultorio</p>
           <Image
             src={doctor.practicePhotoUrl}
             alt={`Consultorio de ${doctor.name}`}
@@ -2889,7 +2889,7 @@ function DoctorDetail(props: {
 
       {/* ── Agendar ────────────────────────── */}
       <div className="mt-6 border-t border-silver/50 pt-6">
-        <p className="mb-4 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Agendar consulta</p>
+        <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Agendar consulta</p>
 
         <div>
           <label className="text-sm font-semibold text-slate-700">Disponibilidad real</label>
@@ -3009,7 +3009,7 @@ function DoctorLocationCard({ doctor }: { doctor: DoctorListItem }) {
 
   return (
     <section className="mt-6 rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Información profesional y ubicación</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Información profesional y ubicación</p>
       <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
         {doctor.officeAddress && <Line icon={<MapPin className="h-5 w-5" />} text={doctor.officeAddress} />}
         {doctor.officeReference && <Line icon={<Hospital className="h-5 w-5" />} text={doctor.officeReference} />}
@@ -3042,7 +3042,7 @@ function DoctorReviews(props: {
     <section className="mt-8 rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical">Opiniones de pacientes</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Opiniones de pacientes</p>
           <h3 className="mt-2 text-2xl font-semibold text-deep">
             {(props.reviews?.average ?? 0).toFixed(1)} estrellas
           </h3>
@@ -3093,7 +3093,7 @@ function Line({ icon, text }: { icon: ReactNode; text: string }) {
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-silver/60 bg-slate-50/80 p-4">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
       <p className="mt-1.5 font-semibold text-deep">{value}</p>
     </div>
   );
@@ -3427,7 +3427,7 @@ function LegalLinks() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071726]">
                 <HeartPulse className="h-4 w-4 text-white" />
               </div>
-              <p className="text-sm font-bold tracking-[0.42em] text-deep">VITAEON</p>
+              <p className="text-sm font-bold tracking-[0.32em] text-deep">VITAEON</p>
             </div>
             <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500">
               Medicina privada, tecnología clínica y experiencia premium para el paciente en León, Guanajuato.

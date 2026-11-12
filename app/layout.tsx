@@ -21,7 +21,10 @@ const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700", "800"]
+  /* Se cargaban cinco pesos: el 500 aparecía dos veces en toda la portada y el
+     800 una sola. Quedan los tres que el sistema usa de verdad — cuerpo, el
+     escalón intermedio y el titular. */
+  weight: ["400", "600", "700"]
 });
 
 const fontSerif = DM_Serif_Display({
