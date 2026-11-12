@@ -102,8 +102,6 @@ body {
   transition: background 700ms ease-out;
 }
 
-
-
 /* ─── Saltos de línea ─────────────────────────────────────────────
    No había ni un solo `text-wrap` en la portada: los titulares rompían donde
    cayera, dejando una palabra suelta en la última línea, y los párrafos igual.
@@ -255,12 +253,6 @@ select {
   main > section:first-of-type {
     animation: editorial-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-
-  .stagger-1 { animation-delay: 60ms; }
-  .stagger-2 { animation-delay: 120ms; }
-  .stagger-3 { animation-delay: 180ms; }
-  .stagger-4 { animation-delay: 240ms; }
-  .stagger-5 { animation-delay: 300ms; }
 }
 
 @keyframes editorial-rise {
@@ -309,16 +301,7 @@ select {
 
 /* ─── Hero panel orbs ─────────────────────────────────────────── */
 
-
-
-
 /* ─── Hero blob + float ───────────────────────────────────────── */
-
-
-
-
-
-
 
 /* ─── Forma orgánica del hero ─────────────────────────────────────
    La versión anterior animaba `border-radius` nueve segundos en bucle, que
@@ -421,12 +404,6 @@ select {
 .specialty-content {
   align-items: start;
 }
-
-.specialty-card-grid > .premium-card:nth-child(3n + 2) { transform: translateY(1.15rem); }
-.specialty-card-grid > .premium-card:nth-child(3n + 2):hover { transform: translateY(0.55rem); }
-.specialty-card-grid > .premium-card:nth-child(3n) { transform: translateY(2.25rem); }
-.specialty-card-grid > .premium-card:nth-child(3n):hover { transform: translateY(1.65rem); }
-
 .specialty-motion-card {
   position: relative;
   overflow: hidden;
@@ -453,65 +430,7 @@ select {
   opacity: 1;
   transform: scale(1.02) translateY(0);
 }
-
-.specialty-preview {
-  position: sticky;
-  top: 6rem;
-  z-index: 1;
-  min-height: 24rem;
-  align-self: start;
-  will-change: transform;
-  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 520ms ease, opacity 520ms ease, filter 520ms ease;
-  transform-origin: center;
-  opacity: 0.88;
-  filter: saturate(0.85) contrast(0.96);
-}
-
-.specialty-preview img {
-  transform: scale(1.035);
-  filter: saturate(0.88) contrast(0.96);
-  animation: specialty-kenburns 11s ease-in-out infinite alternate;
-}
-
 /* ─── Doctor card ─────────────────────────────────────────────── */
-.doctor-card-game {
-  position: relative;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(232, 243, 249, 0.88)),
-    radial-gradient(circle at 84% 18%, rgba(216, 226, 234, 0.38), transparent 14rem);
-  border-color: rgba(216, 226, 234, 0.72);
-}
-
-.doctor-card-game::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(120deg, transparent 0 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58% 100%);
-  opacity: 0;
-  transform: translateX(-32%);
-  transition: opacity 420ms ease, transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
-  border-radius: inherit;
-}
-
-.doctor-card-game:hover { transform: translateY(-5px) scale(1.008); }
-.doctor-card-game:hover::after { opacity: 1; transform: translateX(32%); }
-.doctor-card-game img { transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1), filter 500ms ease; }
-.doctor-card-game:hover img { transform: scale(1.05); filter: saturate(1.03) contrast(1.02); }
-
-.doctor-results-grid > article,
-.doctor-results-grid > button {
-  /* 700ms estaba al doble del techo de interfaz, y `ease` es demasiado débil
-     para una entrada deliberada. */
-  animation: editorial-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.doctor-results-grid > article:nth-child(2n),
-.doctor-results-grid > button:nth-child(2n) { margin-top: 1.5rem; }
-
-.doctor-results-grid > article:nth-child(3n),
-.doctor-results-grid > button:nth-child(3n) { margin-top: 3rem; }
-
 /* ─── Filter bar ──────────────────────────────────────────────── */
 .specialty-filter-bar {
   transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 400ms ease, background 400ms ease;
@@ -525,38 +444,6 @@ select {
 }
 
 /* ─── Specialty route strip ───────────────────────────────────── */
-.specialty-route-strip {
-  position: relative;
-  min-height: 10rem;
-  background-image:
-    linear-gradient(90deg, rgba(8, 32, 51, 0.84), rgba(8, 32, 51, 0.44)),
-    var(--route-photo);
-  background-position: center, var(--route-position, center);
-  background-size: cover;
-  transform: translateZ(0);
-}
-
-.specialty-route-strip::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(90deg, black, transparent 78%);
-  opacity: 0.5;
-}
-
-.specialty-route-strip::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 84% 22%, rgba(255, 255, 255, 0.18), transparent 14rem);
-}
-
-.specialty-route-strip:hover { background-size: cover, 104%; }
-
 /* ─── Medal / Badge ───────────────────────────────────────────── */
 .medal {
   display: inline-flex;
@@ -641,29 +528,6 @@ select {
 }
 
 /* ─── Hero stats ──────────────────────────────────────────────── */
-.hero-stats { align-items: stretch; }
-
-.hero-stats > div,
-.hero-stats > button,
-.hero-stats > a {
-  display: grid;
-  min-height: 8rem;
-  place-items: center;
-  align-content: center;
-  overflow: hidden;
-  transition: transform 260ms ease, box-shadow 260ms ease;
-  border-radius: 2rem;
-}
-
-.hero-stats > div:hover,
-.hero-stats > button:hover,
-.hero-stats > a:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 22px 55px rgba(8, 32, 51, 0.09);
-}
-
-.hero-stats p { max-width: 13rem; margin-inline: auto; }
-
 .hero-bubble { width: 100%; min-width: 0; gap: 0.2rem; }
 .hero-medal-bubble { padding-inline: 1rem; }
 .hero-medal-bubble .medal-compact { min-height: 3rem; min-width: 3rem; }
@@ -903,13 +767,6 @@ select {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-
-
-@keyframes specialty-kenburns {
-  from { transform: scale(1.015) translateX(0); }
-  to   { transform: scale(1.055) translateX(-0.7rem); }
-}
-
 /* ─── Dashboard ───────────────────────────────────────────────── */
 .dashboard-card {
   background: rgba(255, 255, 255, 0.95);
@@ -997,26 +854,14 @@ body { overflow-x: hidden; }
 
 @media (hover: none) {
   .premium-card:hover { transform: none !important; }
-  .doctor-card-game:hover { transform: none !important; }
   .dashboard-card:hover { transform: none !important; box-shadow: 0 4px 24px rgba(8, 32, 51, 0.05) !important; }
   .specialty-filter-bar:hover { transform: none !important; }
-  .hero-stats > div:hover,
-  .hero-stats > button:hover,
-  .hero-stats > a:hover { transform: none !important; }
   .booking-doctor-option:hover { transform: none !important; }
   .medal:hover { transform: none !important; }
 }
 
 /* ─── Mobile ──────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .hero-stats {
-    max-width: 24rem;
-    margin-inline: auto;
-  }
-
-  .hero-stats > div,
-  .hero-stats > button { min-height: 7.2rem; }
-
   .modal-shell {
     align-items: end;
     padding: 0;
@@ -1062,19 +907,6 @@ body { overflow-x: hidden; }
     border-radius: 1.35rem;
   }
 
-  .specialty-card-grid > .premium-card,
-  .specialty-card-grid > .premium-card:nth-child(3n + 2),
-  .specialty-card-grid > .premium-card:nth-child(3n),
-  .specialty-card-grid > .premium-card:hover,
-  .specialty-card-grid > .premium-card:nth-child(3n + 2):hover,
-  .specialty-card-grid > .premium-card:nth-child(3n):hover { transform: none; }
-
-  .doctor-results-grid > article,
-  .doctor-results-grid > article:nth-child(2n),
-  .doctor-results-grid > article:nth-child(3n) { margin-top: 0; }
-
-  .specialty-route-strip { min-height: 12rem; }
-
   /* Previene zoom en iOS al enfocar inputs */
   input, select, textarea { font-size: 16px; }
 
@@ -1083,13 +915,6 @@ body { overflow-x: hidden; }
 
   /* ─── Dashboard card — reduce padding on mobile ─── */
   .dashboard-card { padding: 1.125rem; }
-
-  /* ─── Tablet y arriba: doctor-results-grid stagger ─── */
-  .doctor-results-grid > article:nth-child(2n),
-  .doctor-results-grid > button:nth-child(2n) { margin-top: 0; }
-
-  .doctor-results-grid > article:nth-child(3n),
-  .doctor-results-grid > button:nth-child(3n) { margin-top: 0; }
 }
 
 /* ─── Movimiento reducido ─────────────────────────────────────────
