@@ -955,16 +955,33 @@ body { overflow-x: hidden; }
   .doctor-results-grid > button:nth-child(3n) { margin-top: 0; }
 }
 
-/* ─── Reduced motion — disable all decorative animations ─────── */
+/* ─── Movimiento reducido ─────────────────────────────────────────
+   Esto nombraba cuatro selectores y decía "todas". Seguían corriendo el blob
+   del hero y sus tres orbes, hero-breathe, el skeleton, el animate-ping del
+   badge y todo framer-motion: quien activaba la preferencia del sistema recibía
+   un hero que seguía morfando, respirando, pulsando y siguiendo su cursor.
+   Una implementación parcial se lee como un gesto de cumplimiento.
+
+   La regla universal es deliberada: cubre lo que exista hoy y lo que se añada
+   mañana, sin que haya que acordarse de volver aquí. */
 @media (prefers-reduced-motion: reduce) {
-  .dna-halo-ring,
-  .dna-halo-ring::after { animation: none; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 
-  .hero-gradient-text { animation: none; }
-
-  .specialty-preview img { animation: none; }
-
-  .editorial-image { animation: none; }
+  /* Excepción razonada: un indicador de carga congelado parece la página
+     trabada, que es peor que el movimiento que evita. Rotar en su propio eje,
+     en un elemento pequeño y lento, no es lo que dispara el malestar
+     vestibular; eso lo causan el parallax, el morphing y el desplazamiento. */
+  .animate-spin {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* ─── Print ───────────────────────────────────────────────────── */

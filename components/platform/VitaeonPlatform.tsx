@@ -47,7 +47,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { EmailVerificationNotice, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 
 // Dashboard mockup — hero visual principal
 const DashboardMockup = dynamic(
@@ -493,14 +493,26 @@ export default function VitaeonPlatform() {
   const resultsRef = useRef<HTMLElement>(null);
 
   // Parallax cursor del hero
+  /*
+   * El parallax y la entrada escalonada del hero se calculan en JavaScript, así
+   * que la regla CSS de movimiento reducido no los alcanza: había que
+   * preguntarle a framer-motion directamente. Quien activa la preferencia del
+   * sistema recibía un hero que seguía su cursor.
+   *
+   * Con la preferencia activa el rango de desplazamiento se vuelve cero: el
+   * contenido queda exactamente donde debe, sin derivar.
+   */
+  const prefersReducedMotion = useReducedMotion();
+  const parallax = (amount: number) => (prefersReducedMotion ? 0 : amount);
+
   const heroMouseX = useMotionValue(0);
   const heroMouseY = useMotionValue(0);
   const heroSmoothX = useSpring(heroMouseX, { stiffness: 80, damping: 20 });
   const heroSmoothY = useSpring(heroMouseY, { stiffness: 80, damping: 20 });
-  const heroTextX = useTransform(heroSmoothX, [-0.5, 0.5], [-4, 4]);
-  const heroTextY = useTransform(heroSmoothY, [-0.5, 0.5], [-3, 3]);
-  const heroImageX = useTransform(heroSmoothX, [-0.5, 0.5], [6, -6]);
-  const heroImageY = useTransform(heroSmoothY, [-0.5, 0.5], [4, -4]);
+  const heroTextX = useTransform(heroSmoothX, [-0.5, 0.5], [parallax(-4), parallax(4)]);
+  const heroTextY = useTransform(heroSmoothY, [-0.5, 0.5], [parallax(-3), parallax(3)]);
+  const heroImageX = useTransform(heroSmoothX, [-0.5, 0.5], [parallax(6), parallax(-6)]);
+  const heroImageY = useTransform(heroSmoothY, [-0.5, 0.5], [parallax(4), parallax(-4)]);
 
   useEffect(() => {
     async function bootstrap() {
@@ -1009,8 +1021,17 @@ export default function VitaeonPlatform() {
     }
   }
 
+  /*
+   * framer-motion calcula sus transformaciones en JavaScript, así que la regla
+   * CSS de movimiento reducido no las alcanzaba: el parallax y las entradas
+   * escalonadas del hero corrían aunque el visitante hubiera pedido lo contrario
+   * en su sistema. `reducedMotion="user"` hace que la biblioteca respete esa
+   * preferencia en todos sus componentes, también en los que se añadan después,
+   * sin tener que acordarse de condicionarlos uno por uno.
+   */
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink">
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink">
       <ScrollOrbs />
       <Header user={user} onLogin={() => openAuth()} onLogout={logout} />
 
@@ -1679,6 +1700,7 @@ export default function VitaeonPlatform() {
         </Modal>
       )}
     </div>
+    </MotionConfig>
   );
 }
 
