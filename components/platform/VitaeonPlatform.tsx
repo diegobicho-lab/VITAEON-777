@@ -1055,7 +1055,7 @@ export default function VitaeonPlatform() {
 
       <main className="px-4 pb-24 pt-28 sm:px-5 sm:pt-32">
         <section
-          className="hero-grid pixieset-section mx-auto grid max-w-7xl gap-10 rounded-[2rem] px-5 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:rounded-[2.5rem] lg:px-12 lg:py-12"
+          className="pixieset-section mx-auto grid max-w-7xl gap-10 py-10 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-16 lg:py-14"
           onMouseMove={handleHeroMouseMove}
           onMouseLeave={handleHeroMouseLeave}
         >
@@ -3264,7 +3264,7 @@ function FAQ() {
 
   return (
     <section className="mx-auto mt-20 max-w-7xl">
-      <div className="rounded-[2.5rem] border border-silver/70 bg-white px-5 py-8 shadow-soft sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+      <div>
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Preguntas frecuentes</p>
         <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">Respuestas rápidas</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-3">

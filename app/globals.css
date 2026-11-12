@@ -38,11 +38,30 @@ body {
 .page-ground {
   position: relative;
   isolation: isolate;
+  /*
+   * El color cambia conforme se baja, sin JavaScript y sin escuchar el scroll.
+   *
+   * El degradado cubre la altura completa del documento, así que al desplazarse
+   * se va viendo un tramo distinto: arriba casi blanco para que el titular
+   * respire, un seno teñido con el acento de la especialidad en la zona de
+   * búsqueda y tarjetas, y un cierre más frío y profundo hacia el pie.
+   *
+   * Hacerlo con un oyente de scroll habría significado recalcular color en cada
+   * frame; así lo resuelve el compositor una sola vez.
+   */
   background:
-    radial-gradient(ellipse 120% 52% at 50% -8%,
-      color-mix(in srgb, var(--specialty-accent, #116D9D) 14%, transparent) 0%,
-      transparent 62%),
-    linear-gradient(180deg, #f8fbfd 0%, #ffffff 45%, #eef5f8 100%);
+    radial-gradient(ellipse 120% 44% at 50% -6%,
+      color-mix(in srgb, var(--specialty-accent, #116D9D) 13%, transparent) 0%,
+      transparent 60%),
+    linear-gradient(
+      180deg,
+      #fafcfd 0%,
+      #ffffff 18%,
+      color-mix(in srgb, var(--specialty-accent, #116D9D) 5%, #ffffff) 40%,
+      color-mix(in srgb, var(--specialty-accent, #116D9D) 9%, #f4f9fb) 62%,
+      #eef4f8 84%,
+      #e6eef4 100%
+    );
   transition: background 700ms ease-out;
 }
 
@@ -246,13 +265,9 @@ select {
   backdrop-filter: blur(20px);
 }
 
-/* ─── Hero grid ───────────────────────────────────────────────── */
-.hero-grid {
-  background:
-    radial-gradient(circle at 82% 18%, rgba(216, 226, 234, 0.48), transparent 20rem),
-    radial-gradient(circle at 12% 82%, rgba(17, 109, 157, 0.07), transparent 24rem),
-    linear-gradient(180deg, #faf9f7 0%, #ffffff 58%, #f4f8fa 100%);
-}
+/* `.hero-grid` retirado: su fondo propio era lo que recortaba el hero como una
+   tarjeta pegada encima de la página. Ahora el hero se apoya en el suelo
+   general y la superficie se lee continua. */
 
 /* ─── Hero gradient text — shimmer ───────────────────────────── */
 /*
