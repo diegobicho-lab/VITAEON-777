@@ -1095,14 +1095,14 @@ export default function VitaeonPlatform() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => setBookingOpen(true)}
-                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#071726] px-8 py-4 font-semibold text-white shadow-glass transition-all duration-300 hover:-translate-y-1 hover:bg-[#0d2638] hover:shadow-[0_0_0_8px_rgba(7,23,38,0.10),0_16px_40px_rgba(7,23,38,0.30)] active:scale-[0.97]"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#071726] px-8 py-4 font-semibold text-white shadow-glass transition-[transform,background-color,box-shadow] duration-300 hover:-translate-y-1 hover:bg-[#0d2638] hover:shadow-[0_0_0_8px_rgba(7,23,38,0.10),0_16px_40px_rgba(7,23,38,0.30)] active:scale-[0.97]"
               >
                 <Calendar className="h-4 w-4" />
                 Agendar cita
               </button>
               <a
                 href="#busqueda"
-                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-medical/30 hover:shadow-[0_0_0_6px_rgba(17,109,157,0.08),0_8px_32px_rgba(17,109,157,0.12)]"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-silver bg-white px-8 py-4 font-semibold text-deep shadow-soft transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-medical/30 hover:shadow-[0_0_0_6px_rgba(17,109,157,0.08),0_8px_32px_rgba(17,109,157,0.12)]"
               >
                 <Search className="h-4 w-4" />
                 Buscar especialista
@@ -1130,7 +1130,6 @@ export default function VitaeonPlatform() {
           </motion.div>
           <motion.div style={{ x: heroImageX, y: heroImageY }}>
             <div className="editorial-image relative">
-              <div className="dna-halo-ring" aria-hidden="true" />
               <HeroMockup />
             </div>
           </motion.div>
@@ -1237,7 +1236,7 @@ export default function VitaeonPlatform() {
                     <button
                       key={suggestion.label}
                       onClick={() => handleSuggestionClick(suggestion.label)}
-                      className="group flex items-center gap-3 rounded-2xl border border-silver/60 bg-white p-3.5 text-left shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-medical/30 hover:shadow-[0_8px_24px_rgba(17,109,157,0.09)]"
+                      className="group flex items-center gap-3 rounded-2xl border border-silver/60 bg-white p-3.5 text-left shadow-soft transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-medical/30 hover:shadow-[0_8px_24px_rgba(17,109,157,0.09)]"
                     >
                       <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-sky-50 to-blue-100/70 text-medical shadow-sm ring-1 ring-medical/10 transition-transform duration-200 group-hover:scale-110">
                         {SUGGESTION_ICONS[suggestion.label] ?? <Search className="h-4 w-4" />}
@@ -1840,12 +1839,12 @@ function ScrollOrbs() {
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
       <div
-        className={`absolute left-[-6%] top-[22%] h-[420px] w-[420px] rounded-full bg-medical blur-[90px] transition-all duration-[1800ms] ease-out ${
+        className={`absolute left-[-6%] top-[22%] h-[420px] w-[420px] rounded-full bg-medical blur-[90px] transition-[opacity,transform] duration-700 ease-out ${
           past ? "opacity-[0.10] translate-x-0" : "opacity-0 translate-x-[180px]"
         }`}
       />
       <div
-        className={`absolute right-[-6%] top-[32%] h-[360px] w-[360px] rounded-full bg-[#0e5580] blur-[90px] transition-all duration-[1800ms] ease-out ${
+        className={`absolute right-[-6%] top-[32%] h-[360px] w-[360px] rounded-full bg-[#0e5580] blur-[90px] transition-[opacity,transform] duration-700 ease-out ${
           past ? "opacity-[0.10] translate-x-0" : "opacity-0 -translate-x-[180px]"
         }`}
       />
@@ -1857,14 +1856,27 @@ function HeroMockup() {
   return (
     <div className="relative flex h-[400px] items-center justify-center sm:h-[480px] lg:h-[540px]">
 
-      {/* ── Morphing blob — SIN CAMBIOS ── */}
+      {/*
+        Esta forma animaba `border-radius` nueve segundos en bucle, y dentro
+        llevaba tres orbes derivando con desenfoques de 48 a 72px.
+        `border-radius` no es una propiedad acelerada: cada frame repintaba el
+        contenedor y sus tres hijos desenfocados, en el primer viewport y
+        mientras el navegador carga las tipografías.
+
+        Los tres orbes vivían detrás del mockup, con tanto desenfoque que su
+        movimiento no era distinguible. Se quedan como fondo, quietos: la forma
+        se conserva, el coste por frame desaparece.
+      */}
       <div
-        className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)] [animation:blobMorph_9s_ease-in-out_infinite]"
-        style={{ backgroundColor: "#071e30" }}
+        className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)]"
+        style={{
+          backgroundColor: "#071e30",
+          borderRadius: "56% 44% 35% 65% / 48% 58% 42% 52%"
+        }}
       >
-        <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/40 blur-[64px] [animation:orbA_9s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/50 blur-[72px] [animation:orbB_11s_ease-in-out_infinite]" />
-        <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px] [animation:orbC_7s_ease-in-out_infinite]" />
+        <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/40 blur-[64px]" />
+        <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/50 blur-[72px]" />
+        <div className="absolute left-[25%] top-[20%] h-52 w-52 rounded-full bg-[#1a80b8]/22 blur-[48px]" />
       </div>
 
       {/* ── Dashboard mockup ── */}
@@ -2252,7 +2264,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
                   onFocus={() => setHoveredId(specialty.id)}
                   onBlur={() => setHoveredId(null)}
                   onClick={() => onSelect(specialty.id)}
-                  className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
+                  className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-[transform,border-color,box-shadow,background-color] duration-300 ${
                     isSelected
                       ? "border-medical/30 bg-white shadow-[0_8px_32px_rgba(17,109,157,0.12)] ring-2 ring-medical/15"
                       : "border-silver/60 bg-white hover:border-silver hover:shadow-soft"
@@ -2555,7 +2567,7 @@ function DoctorCard({ doctor, selected, onSelect }: { doctor: DoctorListItem; se
   return (
     <button
       onClick={onSelect}
-      className={`group relative w-full overflow-hidden rounded-[1.75rem] border text-left transition-all duration-300 ${
+      className={`group relative w-full overflow-hidden rounded-[1.75rem] border text-left transition-[transform,border-color,box-shadow,background-color] duration-300 ${
         selected
           ? "border-medical/30 bg-white shadow-[0_16px_56px_rgba(17,109,157,0.14)] ring-2 ring-medical/12"
           : "border-silver/70 bg-white hover:border-medical/20 hover:shadow-[0_12px_48px_rgba(8,32,51,0.09)]"
