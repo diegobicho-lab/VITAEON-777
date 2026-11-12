@@ -114,32 +114,17 @@ type WelcomeDiscountQuote = {
   message?: string;
 };
 
-const defaultMedicalRepresentatives: MedicalRepresentative[] = [
-  {
-    lab: "Aspen",
-    focus: "Cardiometabolismo, dolor y medicina interna",
-    representative: "Lic. Mariana Aranda",
-    zone: "León, Guanajuato",
-    phone: "+52 477 120 8842",
-    email: "mariana.aranda@aspen-vitaeon.mx"
-  },
-  {
-    lab: "AstraZeneca",
-    focus: "Cardiología, neumología, oncología y metabolismo",
-    representative: "Dr. Rodrigo Salvatierra",
-    zone: "Bajío médico",
-    phone: "+52 477 318 2047",
-    email: "rodrigo.salvatierra@az-vitaeon.mx"
-  },
-  {
-    lab: "Sanofi",
-    focus: "Diabetes, vacunas, inmunología y atención crónica",
-    representative: "Lic. Andrea Ledesma",
-    zone: "León y corredor industrial",
-    phone: "+52 477 590 7311",
-    email: "andrea.ledesma@sanofi-vitaeon.mx"
-  }
-];
+/*
+ * Aquí vivía `defaultMedicalRepresentatives`: tres visitadores médicos
+ * inventados bajo marcas registradas reales (Aspen, AstraZeneca, Sanofi), con
+ * nombres, teléfonos y correos falsos en dominios que no existen.
+ *
+ * Se mostraban PRECISAMENTE cuando la API fallaba, así que un fallo de red
+ * publicaba datos de contacto falsos atribuidos a laboratorios reales. Eso no
+ * es un respaldo: es publicar algo que no es verdad en el peor momento posible.
+ *
+ * Si la API falla, ahora se muestra el fallo. Nada más.
+ */
 
 const doctorSubscriptionPlans: Array<{
   medal: DoctorListItem["medal"];
@@ -711,7 +696,9 @@ export default function VitaeonPlatform() {
         setCateringServices(data.catering);
       }
     } catch (caught) {
-      setRepresentatives(defaultMedicalRepresentatives);
+      // Antes aquí se inyectaban representantes inventados. Un error se dice,
+      // no se disimula con datos falsos.
+      setRepresentatives([]);
       setCateringServices([]);
       setRepresentativesError(caught instanceof Error ? caught.message : "No fue posible cargar representantes médicos.");
     } finally {
@@ -1074,7 +1061,9 @@ export default function VitaeonPlatform() {
 
             {/* Subtítulo */}
             <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-500">
-              Cédula verificada, agenda online y pago digital directo al médico. El directorio médico premium de León, Guanajuato.
+              Red médica privada en León. Ningún especialista aparece aquí sin que
+              administración revise su cédula profesional. Agenda en línea y pago
+              protegido hasta tu consulta.
             </p>
 
             {/* CTAs con bloom */}
@@ -1094,6 +1083,24 @@ export default function VitaeonPlatform() {
                 Buscar especialista
               </a>
             </div>
+
+            {/*
+              El diferenciador confirmado del producto —el consultorio completo
+              para el médico— vivía once secciones más abajo, así que un
+              especialista que llegaba a la portada no encontraba nada dirigido a
+              él. Esta es su puerta: discreta, para no competir con el CTA del
+              paciente, pero presente desde el primer viewport.
+            */}
+            <p className="mt-6 text-sm text-slate-600">
+              ¿Eres especialista en León?{" "}
+              <a
+                href="#para-medicos"
+                className="font-semibold text-medical underline decoration-medical/30 underline-offset-4 transition hover:decoration-medical"
+              >
+                Así funciona tu consultorio en VITAEON
+              </a>
+            </p>
+
             <HeroStats onRepresentativesClick={openRepresentatives} />
           </motion.div>
           <motion.div style={{ x: heroImageX, y: heroImageY }}>
@@ -1223,7 +1230,12 @@ export default function VitaeonPlatform() {
         </section>
 
         <SpecialtiesSection specialties={specialties} selectedId={specialtyId} onSelect={(id) => chooseSpecialty(id, true)} />
-        {user?.role === "DOCTOR" && <SubscriptionShowcase />}
+        {/*
+          Esto estaba condicionado a `user?.role === "DOCTOR"`, así que la tabla
+          de planes solo existía para médicos YA registrados. El que estaba
+          evaluando si pagar tenía que crear cuenta para ver el precio.
+        */}
+        <SubscriptionShowcase />
 
         <StateBlock loading={loading || doctorsLoading} error={error} empty={!doctorsLoading && doctors.length === 0} onJoinAsDoctor={() => openAuth("DOCTOR")} />
 
@@ -1362,7 +1374,7 @@ export default function VitaeonPlatform() {
                 Ver mi panel
               </a>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Agendé mi consulta con ${ticket.doctor} (${ticket.specialty}) el ${dateTime(ticket.startsAt)} a través de VITAEON.mx — El directorio médico premium de León, Gto. 🩺`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`Agendé mi consulta con ${ticket.doctor} (${ticket.specialty}) el ${dateTime(ticket.startsAt)} a través de VITAEON.mx — Red médica privada de León, Gto. 🩺`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => track("share_whatsapp", { specialty: ticket.specialty })}
@@ -1383,7 +1395,8 @@ export default function VitaeonPlatform() {
         )}
 
         <HowItWorks />
-        <Testimonials />
+        <BetaPrivada />
+        <div id="para-medicos" className="scroll-mt-28" />
         <ForDoctors onRegister={() => { setAuthAudience("DOCTOR"); setAuthOpen(true); }} />
         <FAQ />
         <LegalLinks />
@@ -1547,9 +1560,14 @@ export default function VitaeonPlatform() {
             </div>
             {representativesLoading && <p className="rounded-3xl bg-slate-50 p-5 text-slate-600">Cargando laboratorios...</p>}
             {representativesError && <p className="rounded-3xl bg-red-50 p-5 text-red-700">{representativesError}</p>}
+            {commercialDirectoryTab === "representatives" && !representativesLoading && !representativesError && representatives.length === 0 && (
+              <p className="rounded-3xl bg-slate-50 p-5 text-slate-600">
+                Todavía no hay representantes médicos publicados en el directorio comercial.
+              </p>
+            )}
             {commercialDirectoryTab === "representatives" && (
               <div className="grid gap-4">
-                {(representativesError ? defaultMedicalRepresentatives : representatives).map((item) => (
+                {representatives.map((item) => (
                   <article key={`${item.lab}-${item.email}`} className="representative-option rounded-[1.5rem] border border-silver bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-premium">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -1677,6 +1695,9 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
           </a>
           <a href="#especialidades" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
             Áreas
+          </a>
+          <a href="#para-medicos" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
+            Para médicos
           </a>
           {dashboardPath && (
             <a href={dashboardPath} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-deep">
@@ -3105,49 +3126,61 @@ function HowItWorks() {
   );
 }
 
-function Testimonials() {
+/**
+ * Aquí había dos testimonios con cinco estrellas firmados por "Paciente
+ * verificado" y "Paciente VITAEON · Beta privada". No existe ningún paciente
+ * real todavía, así que eran inventados — y las dos atribuciones se
+ * contradecían entre sí, que es como el visitante los descubría.
+ *
+ * Con cero pacientes y cero médicos publicados, la honestidad es el único
+ * inventario que hay. Esta sección vende la puerta de curaduría, que sí es
+ * cierta y además es el diferenciador, en lugar de simular una red llena.
+ */
+function BetaPrivada() {
+  const pasos = [
+    {
+      titulo: "El médico solicita entrar",
+      texto: "Envía cédula profesional, hospital y datos de su consultorio."
+    },
+    {
+      titulo: "Administración lo revisa",
+      texto: "Una persona verifica la cédula contra el registro y confirma el consultorio. No hay alta automática."
+    },
+    {
+      titulo: "Solo entonces aparece",
+      texto: "Publica su agenda y empieza a recibir pacientes. Si no pasa la revisión, no existe en VITAEON."
+    }
+  ];
+
   return (
     <section className="mx-auto mt-20 max-w-7xl">
-      <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+      <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Confianza paciente</p>
-          <h2 className="mt-3 text-3xl font-semibold leading-tight text-deep sm:text-4xl">
-            Acompañamiento privado desde la primera búsqueda.
+          <h2 className="text-3xl font-semibold leading-tight text-deep sm:text-4xl">
+            Estamos construyendo la red, un médico a la vez.
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-slate-500">
-            Cada cita en VITAEON está respaldada por verificación médica, agenda transparente y experiencia digital de alto nivel.
+          <p className="mt-5 text-lg leading-relaxed text-slate-600">
+            VITAEON está en beta privada en León. Todavía no somos muchos, y esa
+            es la idea: cada especialista entra revisado, no dado de alta.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            {
-              quote: "La información del especialista y el ticket de cita hacen que el proceso se sienta claro y confiable.",
-              author: "Paciente verificado",
-              detail: "León, Gto."
-            },
-            {
-              quote: "La agenda visible y la verificación médica ayudan a elegir con más seguridad.",
-              author: "Paciente VITAEON",
-              detail: "Beta privada"
-            }
-          ].map((t) => (
-            <article key={t.author} className="rounded-[2rem] border border-silver/80 bg-white p-7 shadow-soft">
-              <div className="mb-4 flex gap-1 text-amber-400">
-                {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+
+        <ol className="grid gap-4">
+          {pasos.map((paso, idx) => (
+            <li
+              key={paso.titulo}
+              className="flex gap-4 rounded-[2rem] border border-silver/80 bg-white p-7 shadow-soft"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-medical/10 text-sm font-semibold tabular-nums text-medical">
+                {idx + 1}
+              </span>
+              <div>
+                <p className="text-base font-semibold text-deep">{paso.titulo}</p>
+                <p className="mt-1.5 text-base leading-7 text-slate-600">{paso.texto}</p>
               </div>
-              <p className="text-base leading-8 text-slate-600">&ldquo;{t.quote}&rdquo;</p>
-              <div className="mt-6 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-medical/10 text-medical">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-deep">{t.author}</p>
-                  <p className="text-xs text-slate-400">{t.detail}</p>
-                </div>
-              </div>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );
@@ -3193,7 +3226,7 @@ function ForDoctors({ onRegister }: { onRegister: () => void }) {
     {
       icon: <Users className="h-6 w-6" />,
       title: "Más pacientes nuevos",
-      desc: "Tu perfil verificado aparece en búsquedas de especialidad dentro de León. Pacientes reales encuentran tu disponibilidad y agendan directamente."
+      desc: "Tu perfil verificado aparece en las búsquedas por especialidad de León, con tu agenda publicada para que el paciente elija horario y confirme sin llamadas."
     },
     {
       icon: <Calendar className="h-6 w-6" />,

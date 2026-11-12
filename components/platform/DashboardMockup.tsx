@@ -70,14 +70,14 @@ export default function DashboardMockup() {
               className="rounded-full bg-[#1e9bd4]/40 border border-[#7dd3fc]/30 flex items-center justify-center text-white/80 font-bold flex-shrink-0"
               style={{ width: 28, height: 28, fontSize: "8px" }}
             >
-              EV
+              ✓
             </div>
             <div className="flex-1 min-w-0">
               <p style={{ fontSize: "9px" }} className="font-semibold text-white leading-tight">
-                Dra. Elena Vargas
+                Cardiología
               </p>
               <p style={{ fontSize: "7px" }} className="text-white/55 leading-tight mt-0.5">
-                Cardiología · Hoy 10:30 AM
+                Mañana · 10:30 AM
               </p>
             </div>
             {/* Badge */}
@@ -95,7 +95,7 @@ export default function DashboardMockup() {
               {/* Location dot */}
               <div className="h-1.5 w-1.5 rounded-full bg-[#1e9bd4]/80 flex-shrink-0" />
               <p style={{ fontSize: "6.5px" }} className="text-white/45 truncate">
-                Hospital Ángeles León · Piso 4
+                Consultorio verificado
               </p>
             </div>
           </div>
@@ -127,79 +127,57 @@ export default function DashboardMockup() {
           </div>
         </div>
 
-        {/* ── Médicos ─────────────────────────────────────── */}
+        {/*
+          Aquí había dos médicos inventados con calificación y número de reseñas,
+          y debajo una barra que afirmaba "127 Médicos · 4.9★ · 36 Especialidades".
+          La propia página admite seiscientos píxeles más abajo que está
+          incorporando especialistas a la beta privada, así que el visitante leía
+          la promesa y el desmentido en el mismo scroll.
+
+          En su lugar va lo que sí es cierto y además es la tesis del producto:
+          nadie aparece sin que administración revise su cédula.
+        */}
         <div className="flex-1 min-h-0 flex flex-col">
           <p
             style={{ fontSize: "6.5px" }}
             className="text-white/45 uppercase tracking-widest mb-1.5"
           >
-            Médicos destacados
+            Antes de aparecer aquí
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex flex-col gap-1">
             {[
-              { initials: "CM", name: "Dr. Carlos Mejía",   spec: "Ortopedia",    rating: "4.9", reviews: "38" },
-              { initials: "LR", name: "Dra. Luz Reyes",     spec: "Neurología",   rating: "4.8", reviews: "51" },
-            ].map(({ initials, name, spec, rating, reviews }) => (
+              "Cédula profesional revisada",
+              "Hospital y consultorio confirmados",
+              "Pago protegido hasta la consulta"
+            ].map((linea) => (
               <div
-                key={name}
-                className="rounded-xl border border-white/10 flex flex-col items-center relative overflow-hidden"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  padding: "8px 6px 7px",
-                  gap: "5px",
-                }}
+                key={linea}
+                className="rounded-lg border border-white/10 flex items-center gap-1.5"
+                style={{ background: "rgba(255,255,255,0.05)", padding: "6px 7px" }}
               >
-                {/* Avatar */}
-                <div
-                  className="rounded-full bg-[#0e5580]/70 border border-white/15 flex items-center justify-center text-white/80 font-bold"
-                  style={{ width: 26, height: 26, fontSize: "8px" }}
+                <span
+                  className="rounded-full bg-emerald-400/20 text-emerald-300 flex items-center justify-center flex-shrink-0"
+                  style={{ width: 11, height: 11, fontSize: "7px" }}
                 >
-                  {initials}
-                </div>
-                <div className="text-center">
-                  <p style={{ fontSize: "7.5px" }} className="font-semibold text-white leading-tight truncate max-w-[70px]">
-                    {name}
-                  </p>
-                  <p style={{ fontSize: "6.5px" }} className="text-white/50 leading-tight mt-0.5">
-                    {spec}
-                  </p>
-                </div>
-                {/* Rating */}
-                <div className="flex items-center gap-0.5">
-                  <svg width="7" height="7" viewBox="0 0 10 10" fill="#fbbf24">
-                    <polygon points="5,1 6.2,4 9.5,4 7,6 8,9.5 5,7.5 2,9.5 3,6 0.5,4 3.8,4" />
-                  </svg>
-                  <span style={{ fontSize: "7px" }} className="text-amber-300 font-semibold">
-                    {rating}
-                  </span>
-                  <span style={{ fontSize: "6px" }} className="text-white/35">
-                    ({reviews})
-                  </span>
-                </div>
+                  ✓
+                </span>
+                <p style={{ fontSize: "7px" }} className="text-white/70 leading-tight">
+                  {linea}
+                </p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── Stats bar ───────────────────────────────────── */}
+        {/* Una sola línea cierta, en lugar de tres cifras que no lo son. */}
         <div
-          className="grid grid-cols-3 rounded-xl border border-white/8 divide-x divide-white/8 mt-auto"
-          style={{ background: "rgba(255,255,255,0.04)" }}
+          className="rounded-xl border border-white/8 mt-auto flex items-center justify-center gap-1.5"
+          style={{ background: "rgba(255,255,255,0.04)", padding: "7px 4px" }}
         >
-          {[
-            { value: "127",   label: "Médicos"       },
-            { value: "4.9★",  label: "Calificación"  },
-            { value: "36",    label: "Especialidades" },
-          ].map(({ value, label }) => (
-            <div key={label} className="flex flex-col items-center" style={{ padding: "6px 4px" }}>
-              <span style={{ fontSize: "9px" }} className="font-bold text-[#7dd3fc] leading-none">
-                {value}
-              </span>
-              <span style={{ fontSize: "5.5px" }} className="text-white/40 mt-0.5 text-center leading-tight">
-                {label}
-              </span>
-            </div>
-          ))}
+          <span className="h-1 w-1 rounded-full bg-emerald-400 flex-shrink-0" />
+          <span style={{ fontSize: "6.5px" }} className="text-white/55 tracking-wide">
+            Red privada · León, Gto.
+          </span>
         </div>
 
       </div>
