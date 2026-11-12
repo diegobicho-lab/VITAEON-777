@@ -901,12 +901,6 @@ body { overflow-x: hidden; }
 
   .medal-compact { min-height: 2rem; min-width: 2rem; }
 
-  .specialty-preview {
-    top: 5.8rem;
-    min-height: 11rem;
-    border-radius: 1.35rem;
-  }
-
   /* Previene zoom en iOS al enfocar inputs */
   input, select, textarea { font-size: 16px; }
 

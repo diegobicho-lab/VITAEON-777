@@ -2226,9 +2226,18 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
 
       {/* Content: preview image + cards grid */}
       <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr]">
-        {/* Sticky preview panel — hidden on small screens */}
+        {/*
+          El panel se estiraba a la altura completa de la rejilla —treinta y seis
+          especialidades— y su contenido estaba anclado abajo, así que arriba
+          quedaba un vacío de varios cientos de píxeles y la leyenda solo se veía
+          al final del scroll.
+
+          `self-start` evita que el grid lo estire, y `sticky` lo mantiene a la
+          vista mientras se recorren las tarjetas: la leyenda acompaña a la
+          especialidad que se está mirando, que es su único trabajo.
+        */}
         <div
-          className="specialty-preview relative hidden min-h-[28rem] overflow-hidden rounded-[2rem] shadow-premium lg:block"
+          className="specialty-preview relative hidden h-[28rem] overflow-hidden rounded-[2rem] shadow-premium lg:block lg:self-start lg:sticky lg:top-28"
           style={{ background: activeTheme.gradient }}
         >
           {/* Watermark icon — large, bottom-right, low opacity */}
