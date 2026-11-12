@@ -625,8 +625,16 @@ export default function VitaeonPlatform() {
     // Un error de la reserva anterior no debe seguir visible en otro médico.
     setBookingError(null);
     setBookingStatus("idle");
-    setSpecialtyId(doctor.specialtyId);
-    setHospitalId(doctor.hospitalId);
+    /*
+     * Aquí se hacía `setSpecialtyId(doctor.specialtyId)` y
+     * `setHospitalId(doctor.hospitalId)`, que disparaban el efecto de carga y
+     * colapsaban la lista a la especialidad y el hospital del médico abierto.
+     *
+     * La tarea del paciente es COMPARAR: busca en todas las especialidades,
+     * escanea seis médicos, abre el tercero para leer su biografía — y los otros
+     * cinco desaparecían, con los filtros cambiados a valores que él nunca
+     * eligió. Abrir un médico es una acción de vista, no un filtro.
+     */
     track("doctor_viewed", { specialty: doctor.specialty, medal: doctor.medal, hasSlots: doctor.availability.length > 0 });
     if (window.innerWidth < 1024) {
       requestAnimationFrame(() => {

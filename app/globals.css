@@ -168,8 +168,15 @@ select {
 }
 
 /* ─── Hero gradient text — shimmer ───────────────────────────── */
+/*
+ * La parada clara era #0ea5e9: 2.77:1 sobre blanco, por debajo del mínimo de
+ * 3.0 para texto grande. El shimmer hacía que la palabra clave del H1 —la que
+ * sostiene todo el posicionamiento— entrara y saliera de cumplimiento cada tres
+ * segundos. Las paradas nuevas salen del azul de la paleta (#116D9D) y el barrido
+ * completo se mantiene por encima de 4.3:1.
+ */
 .hero-gradient-text {
-  background: linear-gradient(90deg, #1a80b8 0%, #0ea5e9 40%, #1a80b8 100%);
+  background: linear-gradient(90deg, #0e5f8a 0%, #1a80b8 40%, #0e5f8a 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
