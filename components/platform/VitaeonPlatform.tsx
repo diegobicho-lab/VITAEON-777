@@ -1153,11 +1153,11 @@ export default function VitaeonPlatform() {
           </motion.div>
         </section>
 
-        <section className="mx-auto mt-10 max-w-7xl">
+        <section className="mx-auto mt-12 max-w-7xl">
           <IntelligentGuide specialties={specialties} onSpecialtySelect={(id) => chooseSpecialty(id, true)} user={user} onLogin={() => openAuth()} />
         </section>
 
-        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-32 overflow-hidden rounded-[2rem] shadow-premium">
+        <section id="busqueda" className="specialty-filter-bar glass mx-auto mt-16 max-w-7xl scroll-mt-20 overflow-hidden rounded-[2rem] shadow-premium">
 
           {/* ── Header band ─────────────────────────────────────────── */}
           <div className="border-b border-silver/40 bg-gradient-to-br from-[#fafcff] to-[#eef5fb] px-6 py-7 sm:px-8">
@@ -1332,7 +1332,7 @@ export default function VitaeonPlatform() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${ticket.paymentMethod === "CASH" || ticket.paymentStatus !== "PAID" ? "text-amber-700" : "text-emerald-700"}`}>Ticket VITAEON</p>
-                <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">
+                <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">
                   Tu ticket de consulta está listo.
                 </h2>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
@@ -1932,7 +1932,7 @@ function PlanCard({ plan }: { plan: (typeof doctorSubscriptionPlans)[number] }) 
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">{plan.tone}</p>
-          <h3 className="mt-3 text-3xl font-semibold text-deep">{plan.title}</h3>
+          <h3 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">{plan.title}</h3>
         </div>
         <MedalShield medal={plan.medal} compact />
       </div>
@@ -2025,7 +2025,7 @@ function IntelligentGuide({
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.32em] text-medical">
           <Brain className="h-5 w-5" /> Orientador inteligente
         </p>
-        <h2 className="mt-3 text-3xl font-semibold text-deep">Dinos qué te duele</h2>
+        <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">Dinos qué te duele</h2>
         <p className="mt-3 leading-7 text-slate-600">
           Esta orientación no sustituye una valoración médica. Te ayudamos a encontrar el especialista más adecuado según tus síntomas.
         </p>
@@ -2192,12 +2192,12 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
   const PreviewIcon = activeTheme.Icon;
 
   return (
-    <section id="especialidades" className="specialty-ground relative mx-auto mt-20 max-w-7xl scroll-mt-24">
+    <section id="especialidades" className="specialty-ground relative mx-auto mt-20 max-w-7xl scroll-mt-20">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Especialidades</p>
-          <h2 className="mt-3 text-3xl font-bold leading-tight text-deep sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">
             Encuentra tu especialista
           </h2>
           <p className="mt-3 max-w-xl text-lg text-slate-500">
@@ -2378,7 +2378,7 @@ function specialtyThemeFor(name = ""): SpecialtyTheme {
 
 function SubscriptionShowcase() {
   return (
-    <section id="suscripciones" className="mx-auto mt-16 max-w-7xl">
+    <section id="suscripciones" className="mx-auto mt-20 max-w-7xl">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Suscripciones médicas</p>
       <h2 className="mt-3 max-w-4xl text-4xl font-semibold text-deep">Distintivos premium para médicos que desean crecer con orden, presencia y confianza.</h2>
       <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -3162,9 +3162,9 @@ function HowItWorks() {
    * no se inventa un color, se reutiliza el que el sistema ya tiene.
    */
   return (
-    <section className="mx-auto mt-20 max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#071726] via-[#0a2d47] to-[#0d3d60] px-6 py-14 sm:px-10 lg:rounded-[2.5rem] lg:px-14 lg:py-16">
+    <section className="mx-auto mt-32 max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#071726] via-[#0a2d47] to-[#0d3d60] px-6 py-14 sm:px-10 lg:rounded-[2.5rem] lg:px-14 lg:py-16">
       <div className="mb-10">
-        <h2 className="text-3xl font-semibold leading-tight text-white sm:text-4xl">
+        <h2 className="text-3xl font-semibold leading-tight tracking-[-0.01em] text-white sm:text-4xl">
           Una ruta médica simple,<br className="hidden sm:block" /> segura y premium.
         </h2>
       </div>
@@ -3216,7 +3216,7 @@ function BetaPrivada() {
     <section className="mx-auto mt-20 max-w-7xl">
       <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
         <div>
-          <h2 className="text-3xl font-semibold leading-tight text-deep sm:text-4xl">
+          <h2 className="text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">
             Estamos construyendo la red, un médico a la vez.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-slate-600">
@@ -3266,7 +3266,7 @@ function FAQ() {
     <section className="mx-auto mt-20 max-w-7xl">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Preguntas frecuentes</p>
-        <h2 className="mt-3 text-3xl font-semibold text-deep sm:text-4xl">Respuestas rápidas</h2>
+        <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.01em] text-deep sm:text-4xl">Respuestas rápidas</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {items.map(({ q, a }) => (
             <article key={q} className="rounded-2xl border border-silver/60 bg-slate-50/60 p-5">
@@ -3335,11 +3335,11 @@ function ForDoctors({ onRegister }: { onRegister: () => void }) {
   ];
 
   return (
-    <section className="mx-auto mt-24 max-w-7xl">
+    <section className="mx-auto mt-32 max-w-7xl">
       {/* Header */}
       <div className="rounded-[2.5rem] bg-[#071726] px-7 py-10 sm:px-10 sm:py-14 lg:px-16 lg:py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#7dd3fc]">Para médicos en León</p>
-        <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
+        <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.01em] text-white sm:text-4xl">
           Tu consulta merece una presencia digital de primer nivel.
         </h2>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-white/60">
