@@ -24,6 +24,27 @@ body {
   overscroll-behavior: none;
 }
 
+/* ─── Grano ───────────────────────────────────────────────────────
+   El fondo eran tres lavados de casi-blanco, que es el aspecto por defecto de
+   cualquier interfaz y por eso se leía como plantilla. Esta capa de ruido al
+   tres por ciento hace que el blanco se perciba como papel en vez de como
+   pantalla: es el detalle que separa una superficie cuidada de una recién
+   instalada, y casi nadie lo nota conscientemente.
+
+   El ruido se genera con feTurbulence en línea, así que no descarga nada.
+   `pointer-events: none` para que no intercepte ningún clic. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* El grano va encima de todo, como el de una película: a 3% no afecta la
+     legibilidad y `pointer-events: none` lo deja fuera de cualquier clic. */
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 * {
   box-sizing: border-box;
 }
@@ -215,17 +236,19 @@ select {
    lee como si mutara. Un solo movimiento, no cuatro superpuestos. */
 .hero-blob {
   border-radius: 56% 44% 35% 65% / 48% 58% 42% 52%;
-  animation: hero-blob-drift 24s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  animation: hero-blob-drift 11s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
   will-change: transform;
 }
 
-/* Oscila en lugar de girar entero: una vuelta completa llevaría la sombra
-   proyectada a apuntar hacia arriba a mitad del ciclo, como si la luz se
-   moviera. Dieciséis grados bastan para que una silueta asimétrica se lea
-   como si mutara. */
+/* Rota y además estira en ejes opuestos: eso es lo que de verdad cambia la
+   silueta. Solo girar movía la forma sin deformarla, y a ±8° en 24s daba
+   0.67 grados por segundo, imperceptible.
+
+   No da la vuelta entera a propósito: llevaría la sombra proyectada a apuntar
+   hacia arriba a mitad del ciclo, como si la luz se moviera. */
 @keyframes hero-blob-drift {
-  from { transform: rotate(-8deg) scale(1);    }
-  to   { transform: rotate(8deg)  scale(1.045); }
+  from { transform: rotate(-11deg) scaleX(1.06) scaleY(0.95); }
+  to   { transform: rotate(11deg)  scaleX(0.95) scaleY(1.07); }
 }
 
 /* ─── Premium card ────────────────────────────────────────────── */

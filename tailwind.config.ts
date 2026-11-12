@@ -29,11 +29,18 @@ const config: Config = {
         "5xl": "2.5rem"
       },
       boxShadow: {
-        premium: "0 24px 70px rgba(8, 32, 51, 0.12)",
-        glass: "0 18px 55px rgba(17, 109, 157, 0.16)",
-        "card-hover": "0 32px 90px rgba(8, 32, 51, 0.16)",
+        /*
+         * Todas las sombras eran de una sola capa difusa, así que sobre un
+         * fondo casi blanco las tarjetas flotaban sin peso: nada parecía
+         * apoyado en nada. Ahora cada una lleva dos capas — un contacto corto
+         * y duro que ancla el borde al fondo, más la difusa que da la altura.
+         * Es como se comporta una sombra real con una sola fuente de luz.
+         */
+        premium: "0 1px 2px rgba(8, 32, 51, 0.08), 0 24px 70px rgba(8, 32, 51, 0.12)",
+        glass: "0 1px 2px rgba(17, 109, 157, 0.10), 0 18px 55px rgba(17, 109, 157, 0.16)",
+        "card-hover": "0 2px 4px rgba(8, 32, 51, 0.10), 0 32px 90px rgba(8, 32, 51, 0.16)",
         "input-focus": "0 0 0 3px rgba(17, 109, 157, 0.12)",
-        "soft": "0 4px 24px rgba(8, 32, 51, 0.06)"
+        "soft": "0 1px 2px rgba(8, 32, 51, 0.05), 0 4px 24px rgba(8, 32, 51, 0.06)"
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",

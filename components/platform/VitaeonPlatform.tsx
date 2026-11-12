@@ -3132,28 +3132,33 @@ function HowItWorks() {
     }
   ];
 
+  /*
+   * Todo el scroll era el mismo lavado claro de arriba abajo, con siete
+   * secciones de la misma forma: por eso se leía plano. Esta sección pasa a
+   * suelo oscuro y funciona como quiebre de capítulo entre la mitad de
+   * descubrimiento (buscar, especialidades) y la de confianza (beta, médicos).
+   *
+   * El navy es el mismo que ya usan el mockup del hero y la sección de médicos:
+   * no se inventa un color, se reutiliza el que el sistema ya tiene.
+   */
   return (
-    <section className="mx-auto mt-20 max-w-7xl">
+    <section className="mx-auto mt-20 max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#071726] via-[#0a2d47] to-[#0d3d60] px-6 py-14 sm:px-10 lg:rounded-[2.5rem] lg:px-14 lg:py-16">
       <div className="mb-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-medical">Cómo funciona</p>
-        <h2 className="mt-3 text-3xl font-semibold leading-tight text-deep sm:text-4xl">
+        <h2 className="text-3xl font-semibold leading-tight text-white sm:text-4xl">
           Una ruta médica simple,<br className="hidden sm:block" /> segura y premium.
         </h2>
       </div>
       <div className="grid gap-5 sm:grid-cols-3">
-        {steps.map((step, idx) => (
+        {steps.map((step) => (
           <article
             key={step.number}
-            className={`stagger-${idx + 1} rounded-[2rem] border border-silver/80 bg-white p-7 shadow-soft transition hover:-translate-y-1 hover:shadow-premium`}
+            className="rounded-[2rem] border border-white/10 bg-white/5 p-7 transition hover:-translate-y-1 hover:bg-white/10"
           >
-            <div className="flex items-center justify-between">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#071726] text-white">
-                {step.icon}
-              </span>
-              <span className="font-mono text-4xl font-bold text-slate-100">{step.number}</span>
-            </div>
-            <h3 className="mt-6 text-xl font-semibold text-deep">{step.title}</h3>
-            <p className="mt-3 leading-7 text-slate-500">{step.text}</p>
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e9bd4]/20 text-[#7dd3fc]">
+              {step.icon}
+            </span>
+            <h3 className="mt-6 text-xl font-semibold text-white">{step.title}</h3>
+            <p className="mt-3 leading-7 text-white/70">{step.text}</p>
           </article>
         ))}
       </div>
