@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ElementType, ReactNode } from "react";
+import type { CSSProperties, ElementType, ReactNode } from "react";
 import { EmailVerificationNotice, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
@@ -502,6 +502,21 @@ export default function VitaeonPlatform() {
    * Con la preferencia activa el rango de desplazamiento se vuelve cero: el
    * contenido queda exactamente donde debe, sin derivar.
    */
+  /*
+   * El color de la página sigue a la especialidad que el paciente está mirando.
+   *
+   * `specialtyThemeFor` ya mapea 27 áreas clínicas a su color, pero ese sistema
+   * solo vivía dentro de las tarjetas. Al conducir también el ambiente, un
+   * paciente que vuelve reconoce Cardiología por el color antes de leer la
+   * etiqueta — y es lo único de esta portada que un competidor sin el catálogo
+   * de León no puede copiar.
+   *
+   * Cuando no hay especialidad elegida, vuelve al azul de la marca.
+   */
+  const specialtyAccent = specialtyId
+    ? specialtyThemeFor(specialties.find((sp) => sp.id === specialtyId)?.name).iconColor
+    : "#116D9D";
+
   const prefersReducedMotion = useReducedMotion();
   const parallax = (amount: number) => (prefersReducedMotion ? 0 : amount);
 
@@ -1031,7 +1046,10 @@ export default function VitaeonPlatform() {
    */
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink">
+      <div
+        className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink"
+        style={{ "--specialty-accent": specialtyAccent } as CSSProperties}
+      >
       <ScrollOrbs />
       <Header user={user} onLogin={() => openAuth()} onLogout={logout} />
 
@@ -1839,12 +1857,14 @@ function ScrollOrbs() {
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
       <div
-        className={`absolute left-[-6%] top-[22%] h-[420px] w-[420px] rounded-full bg-medical blur-[90px] transition-[opacity,transform] duration-700 ease-out ${
+        style={{ backgroundColor: "var(--specialty-accent, #116D9D)" }}
+        className={`absolute left-[-6%] top-[22%] h-[420px] w-[420px] rounded-full blur-[90px] transition-[opacity,transform,background-color] duration-700 ease-out ${
           past ? "opacity-[0.10] translate-x-0" : "opacity-0 translate-x-[180px]"
         }`}
       />
       <div
-        className={`absolute right-[-6%] top-[32%] h-[360px] w-[360px] rounded-full bg-[#0e5580] blur-[90px] transition-[opacity,transform] duration-700 ease-out ${
+        style={{ backgroundColor: "var(--specialty-accent, #0e5580)" }}
+        className={`absolute right-[-6%] top-[32%] h-[360px] w-[360px] rounded-full blur-[90px] transition-[opacity,transform,background-color] duration-700 ease-out ${
           past ? "opacity-[0.10] translate-x-0" : "opacity-0 -translate-x-[180px]"
         }`}
       />
