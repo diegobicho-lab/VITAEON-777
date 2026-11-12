@@ -1047,7 +1047,7 @@ export default function VitaeonPlatform() {
   return (
     <MotionConfig reducedMotion="user">
       <div
-        className="min-h-screen bg-[linear-gradient(180deg,#f8fbfd_0%,#ffffff_45%,#eef5f8_100%)] text-ink"
+        className="page-ground min-h-screen text-ink"
         style={{ "--specialty-accent": specialtyAccent } as CSSProperties}
       >
       <ScrollOrbs />
@@ -2192,7 +2192,7 @@ function SpecialtiesSection({ specialties, selectedId, onSelect }: { specialties
   const PreviewIcon = activeTheme.Icon;
 
   return (
-    <section id="especialidades" className="relative mx-auto mt-20 max-w-7xl scroll-mt-24">
+    <section id="especialidades" className="specialty-ground relative mx-auto mt-20 max-w-7xl scroll-mt-24">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>

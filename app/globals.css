@@ -24,6 +24,62 @@ body {
   overscroll-behavior: none;
 }
 
+/* ─── Suelo de la página ─────────────────────────────────────────
+   Debajo del hero no había nada: un lavado plano de arriba abajo, por eso la
+   zona de especialidades se sentía vacía.
+
+   Dos capas. Un resplandor amplio que entra desde el borde superior, por
+   detrás de la navegación, que es lo que da sensación de profundidad sin
+   dibujar nada; y una rejilla de puntos muy tenue que recorre toda la página
+   para que el espacio en blanco tenga materia en lugar de ser un hueco.
+
+   El resplandor toma `--specialty-accent`, así que también sigue a la
+   especialidad que el paciente mira. */
+.page-ground {
+  position: relative;
+  background:
+    radial-gradient(ellipse 120% 52% at 50% -8%,
+      color-mix(in srgb, var(--specialty-accent, #116D9D) 14%, transparent) 0%,
+      transparent 62%),
+    linear-gradient(180deg, #f8fbfd 0%, #ffffff 45%, #eef5f8 100%);
+  transition: background 700ms ease-out;
+}
+
+.page-ground::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(17, 109, 157, 0.055) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 88%, transparent 100%);
+}
+
+.page-ground > * { position: relative; z-index: 1; }
+
+/* ─── Suelo de especialidades ────────────────────────────────────
+   Las tarjetas flotaban sobre el lavado de la página, sin nada que las
+   contuviera. Esta superficie les da un suelo propio y, sobre todo, es donde
+   el color de la especialidad se nota más: tiene sentido que el sistema de
+   color sea más fuerte justo donde el paciente lo está usando para elegir. */
+.specialty-ground::before {
+  content: "";
+  position: absolute;
+  inset: -2rem -1.5rem;
+  border-radius: 2.5rem;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0%,
+      color-mix(in srgb, var(--specialty-accent, #116D9D) 10%, transparent) 0%,
+      transparent 70%);
+  transition: background 700ms ease-out;
+}
+
+.specialty-ground > * { position: relative; z-index: 1; }
+
 /* ─── Grano ───────────────────────────────────────────────────────
    El fondo eran tres lavados de casi-blanco, que es el aspecto por defecto de
    cualquier interfaz y por eso se leía como plantilla. Esta capa de ruido al
@@ -581,16 +637,22 @@ select {
   overflow: hidden;
 }
 
+/* Era una rejilla de líneas de 56px. Las líneas leen a plano de arquitecto y a
+   landing de software; los puntos leen a superficie trabajada. Mismo trabajo de
+   dar estructura al vacío, sin la connotación.
+
+   La máscara pasa de lineal a radial: antes la rejilla se cortaba en una banda
+   horizontal recta arriba y abajo, que se notaba. Ahora se desvanece hacia los
+   bordes desde donde está el titular, que es donde la mirada entra. */
 .pixieset-section::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(17, 109, 157, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 109, 157, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(180deg, transparent 0%, black 16%, black 82%, transparent 100%);
+  background-image: radial-gradient(circle, rgba(17, 109, 157, 0.1) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(ellipse 85% 70% at 28% 42%, black 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 28% 42%, black 0%, transparent 78%);
 }
 
 .pixieset-section > * { position: relative; z-index: 1; }
