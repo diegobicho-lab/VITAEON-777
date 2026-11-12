@@ -1056,11 +1056,8 @@ export default function VitaeonPlatform() {
               Beta privada · León, Guanajuato
             </div>
 
-            {/* Eyebrow serif */}
-            <p className="mt-5 font-serif text-base italic text-medical/70">Red médica privada</p>
-
             {/* H1 con stagger por segmento */}
-            <h1 className="mt-2 text-4xl font-extrabold leading-[1.09] tracking-tight text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
+            <h1 className="mt-6 text-4xl font-extrabold leading-[1.09] tracking-tight text-deep sm:text-5xl lg:text-6xl xl:text-7xl">
               <motion.span
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1090,9 +1087,8 @@ export default function VitaeonPlatform() {
 
             {/* Subtítulo */}
             <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-500">
-              Red médica privada en León. Ningún especialista aparece aquí sin que
-              administración revise su cédula profesional. Agenda en línea y pago
-              protegido hasta tu consulta.
+              Ningún especialista aparece aquí sin que administración revise su
+              cédula profesional. Agenda en línea y pago protegido hasta tu consulta.
             </p>
 
             {/* CTAs con bloom */}
