@@ -206,6 +206,28 @@ select {
 
 
 
+/* ─── Forma orgánica del hero ─────────────────────────────────────
+   La versión anterior animaba `border-radius` nueve segundos en bucle, que
+   obliga a repintar la forma y los tres orbes desenfocados que lleva dentro.
+
+   Esta hace el mismo trabajo visual con `transform`, que va por GPU y no
+   repinta nada: la silueta ya es asimétrica, así que girarla muy despacio se
+   lee como si mutara. Un solo movimiento, no cuatro superpuestos. */
+.hero-blob {
+  border-radius: 56% 44% 35% 65% / 48% 58% 42% 52%;
+  animation: hero-blob-drift 24s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  will-change: transform;
+}
+
+/* Oscila en lugar de girar entero: una vuelta completa llevaría la sombra
+   proyectada a apuntar hacia arriba a mitad del ciclo, como si la luz se
+   moviera. Dieciséis grados bastan para que una silueta asimétrica se lea
+   como si mutara. */
+@keyframes hero-blob-drift {
+  from { transform: rotate(-8deg) scale(1);    }
+  to   { transform: rotate(8deg)  scale(1.045); }
+}
+
 /* ─── Premium card ────────────────────────────────────────────── */
 .premium-card {
   background: rgba(255, 255, 255, 0.92);

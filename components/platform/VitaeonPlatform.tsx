@@ -1868,11 +1868,8 @@ function HeroMockup() {
         se conserva, el coste por frame desaparece.
       */}
       <div
-        className="absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)]"
-        style={{
-          backgroundColor: "#071e30",
-          borderRadius: "56% 44% 35% 65% / 48% 58% 42% 52%"
-        }}
+        className="hero-blob absolute inset-[4%] overflow-hidden shadow-[0_28px_90px_rgba(7,23,38,0.5)]"
+        style={{ backgroundColor: "#071e30" }}
       >
         <div className="absolute left-[-10%] top-[-15%] h-72 w-72 rounded-full bg-medical/40 blur-[64px]" />
         <div className="absolute bottom-[-5%] right-[-10%] h-64 w-64 rounded-full bg-[#0e5580]/50 blur-[72px]" />
