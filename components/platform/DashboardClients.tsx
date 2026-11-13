@@ -1362,23 +1362,21 @@ function localDayKey(date: Date): string {
 }
 
 /* ── Mobile bottom nav — doctor dashboard ─────────────────────── */
-type DoctorSection = "resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas";
+type DoctorSection = "consulta" | "horarios" | "secretaria" | "negocio" | "perfil";
 
 function DoctorMobileNav({
   activeSection,
-  onSelect,
-  unreadCount
+  onSelect
 }: {
   activeSection: DoctorSection;
   onSelect: (s: DoctorSection) => void;
-  unreadCount: number;
 }) {
   const primary: Array<{ id: DoctorSection; label: string; Icon: React.FC<{ className?: string }> }> = [
-    { id: "resumen", label: "Inicio", Icon: ({ className }) => <Stethoscope className={className} /> },
-    { id: "agenda", label: "Agenda", Icon: ({ className }) => <Calendar className={className} /> },
-    { id: "disponibilidad", label: "Horarios", Icon: ({ className }) => <Clock className={className} /> },
+    { id: "consulta", label: "Consulta", Icon: ({ className }) => <Stethoscope className={className} /> },
+    { id: "horarios", label: "Mi agenda", Icon: ({ className }) => <Clock className={className} /> },
+    { id: "secretaria", label: "Secretaría", Icon: ({ className }) => <Users className={className} /> },
+    { id: "negocio", label: "Negocio", Icon: ({ className }) => <BarChart2 className={className} /> },
     { id: "perfil", label: "Perfil", Icon: ({ className }) => <User className={className} /> },
-    { id: "notificaciones", label: "Alertas", Icon: ({ className }) => <Bell className={className} /> },
   ];
   return (
     <nav
@@ -1396,11 +1394,6 @@ function DoctorMobileNav({
             >
               <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-400"}`} />
               {label}
-              {id === "notificaciones" && unreadCount > 0 && (
-                <span className="absolute right-[18%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </button>
           );
         })}
@@ -1454,7 +1447,7 @@ export function DoctorDashboardClient() {
   const [refundPolicyNotes, setRefundPolicyNotes] = useState("");
   const [doctorReviews, setDoctorReviews] = useState<ReviewSummary | null>(null);
   const [reviewReply, setReviewReply] = useState("");
-  const [activeSection, setActiveSection] = useState<"resumen" | "agenda" | "disponibilidad" | "perfil" | "suscripcion" | "cobros" | "opiniones" | "recursos" | "notificaciones" | "asistentes" | "estadisticas">("resumen");
+  const [activeSection, setActiveSection] = useState<DoctorSection>("consulta");
   const [achievementsText, setAchievementsText] = useState("");
   const [certificationsText, setCertificationsText] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
@@ -1643,7 +1636,7 @@ export function DoctorDashboardClient() {
       await load();
 
       if (subscriptionResult === "cancelled") {
-        setActiveSection("suscripcion");
+        setActiveSection("negocio");
         setMessage("El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.");
         return;
       }
@@ -1656,7 +1649,7 @@ export function DoctorDashboardClient() {
       const planParam = params.get("plan");
       const validPlan = (planParam && planParam in planActivatingConfig) ? planParam as keyof typeof planActivatingConfig : null;
       setActivatingPlan(validPlan);
-      setActiveSection("suscripcion");
+      setActiveSection("negocio");
       setMessage("");
 
       let pollAttempts = 0;
@@ -1699,7 +1692,7 @@ export function DoctorDashboardClient() {
   // principal; esto es el respaldo para cuando el médico vuelve de Stripe y el
   // webhook aún no llegó. La guarda por estado evita bucles y polling.
   useEffect(() => {
-    if (activeSection !== "cobros") return;
+    if (activeSection !== "negocio") return;
     if (connectStatusState !== "idle") return;
     if (!profile?.stripeAccountId) return;
     void refreshConnectStatus(true);
@@ -1774,7 +1767,7 @@ export function DoctorDashboardClient() {
             ? err.message
             : "No fue posible iniciar el pago del plan. Ve a Suscripción para intentarlo de nuevo."
         );
-        setActiveSection("suscripcion");
+        setActiveSection("negocio");
       }
     } else {
       setMessage(`¡Perfil completado con éxito!${availabilityNote}`);
@@ -2921,19 +2914,20 @@ export function DoctorDashboardClient() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   }
 
+  /**
+   * Cinco secciones, no once. El médico no piensa en once categorías: piensa en
+   * "estoy atendiendo", "estoy organizando mi semana" y "estoy viendo cómo va el
+   * negocio". Nada se borró — cada panel vive dentro de una de estas cinco.
+   */
   const sections = [
-    ["resumen", "Resumen"],
-    ["agenda", "Agenda clínica"],
-    ["disponibilidad", "Disponibilidad"],
-    ["perfil", "Perfil profesional"],
-    ["suscripcion", "Suscripción"],
-    ["cobros", "Cobros"],
-    ["opiniones", "Opiniones"],
-    ["recursos", "Recursos Clínicos"],
-    ["notificaciones", "Notificaciones"],
-    ["asistentes", "Asistentes"],
-    ["estadisticas", "Estadísticas"]
+    ["consulta", "Consulta"],
+    ["horarios", "Mi agenda"],
+    ["secretaria", "Secretaría"],
+    ["negocio", "Negocio"],
+    ["perfil", "Perfil"]
   ] as const;
+
+  const alertasSinLeer = notifications.filter((item) => !item.isRead).length;
 
   const onboardingItems = [
     {
@@ -2961,14 +2955,14 @@ export function DoctorDashboardClient() {
       title: "Disponibilidad mensual publicada",
       detail: "Publica horarios reales para que pacientes puedan agendar sin fricción.",
       done: Boolean((agenda?.summary.available ?? 0) > 0),
-      section: "disponibilidad",
+      section: "horarios",
       action: "Configurar horarios"
     },
     {
       title: "Cobros de citas configurados",
       detail: "Conecta Stripe para recibir pagos de consultas directamente en tu cuenta.",
       done: Boolean(profile?.stripeAccountId && profile?.chargesEnabled && profile?.payoutsEnabled),
-      section: "cobros",
+      section: "negocio",
       action: "Configurar cobros"
     },
     {
@@ -3028,10 +3022,23 @@ export function DoctorDashboardClient() {
                 <h2 className="mt-3 text-xl font-semibold text-deep sm:mt-4 sm:text-3xl">{profile?.fullName}</h2>
                 <p className="mt-1 text-sm text-slate-600 sm:mt-2">{profile?.specialty.name} · {profile?.hospital.name}</p>
               </div>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
                 <PlanBadge medal={medal} />
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("consulta")}
+                  aria-label={alertasSinLeer > 0 ? `${alertasSinLeer} alertas sin leer` : "Sin alertas pendientes"}
+                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-silver/60 bg-white text-slate-500 transition hover:border-silver hover:text-deep"
+                >
+                  <Bell className="h-4 w-4" />
+                  {alertasSinLeer > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                      {alertasSinLeer > 9 ? "9+" : alertasSinLeer}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
             {/* Tabs: hidden on mobile (bottom nav handles primary tabs); visible on md+ */}
@@ -3046,18 +3053,6 @@ export function DoctorDashboardClient() {
                 </button>
               ))}
             </nav>
-            {/* Mobile: compact 2-col tab grid for all sections */}
-            <div className="mt-4 grid grid-cols-2 gap-2 md:hidden">
-              {sections.map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveSection(id)}
-                  className={`rounded-2xl px-3 py-2.5 text-[13px] font-semibold transition-all text-left ${activeSection === id ? "bg-[#071726] text-white shadow-soft" : "border border-silver/50 bg-white/80 text-slate-600"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
 
@@ -3101,7 +3096,7 @@ export function DoctorDashboardClient() {
             </div>
           </section>
 
-          {activeSection === "resumen" && (
+          {activeSection === "consulta" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -3164,7 +3159,7 @@ export function DoctorDashboardClient() {
             </section>
           )}
 
-          {(activeSection === "agenda" || activeSection === "disponibilidad") && (
+          {(activeSection === "consulta" || activeSection === "horarios") && (
             <DoctorAgendaPanel
               agenda={agenda}
               month={calendarMonth}
@@ -3175,7 +3170,7 @@ export function DoctorDashboardClient() {
               durationMinutes={slotDurationMinutes}
               repeatWeekdays={repeatWeekdays}
               lastRepeatBatchId={lastRepeatBatchId}
-              showConfigurator={activeSection === "disponibilidad"}
+              showConfigurator={activeSection === "horarios"}
               onMonthChange={(date) => {
                 setCalendarMonth(date);
                 load(date).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible cambiar de mes."));
@@ -3208,7 +3203,7 @@ export function DoctorDashboardClient() {
           )}
 
           {/* ── Horario habitual, día por día ── */}
-          {activeSection === "disponibilidad" && (
+          {activeSection === "horarios" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="max-w-xl">
@@ -3355,7 +3350,7 @@ export function DoctorDashboardClient() {
             </section>
           )}
 
-          {activeSection === "disponibilidad" && (
+          {activeSection === "horarios" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="max-w-xl">
@@ -3500,11 +3495,11 @@ export function DoctorDashboardClient() {
             </section>
           )}
 
-          {activeSection === "disponibilidad" && (
+          {activeSection === "horarios" && (
             <SecretaryLinkSection medal={medal} />
           )}
 
-          {activeSection === "agenda" && (
+          {activeSection === "consulta" && (
             <AppointmentList
               appointments={appointments}
               onAccept={(id) => updateAppointment(id, "ACCEPT")}
@@ -3516,11 +3511,11 @@ export function DoctorDashboardClient() {
             />
           )}
 
-          {activeSection === "suscripcion" && activatingPlan && (
+          {activeSection === "negocio" && activatingPlan && (
             <PlanActivatingCard plan={activatingPlan} />
           )}
 
-          {activeSection === "suscripcion" && !activatingPlan && (
+          {activeSection === "negocio" && !activatingPlan && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -3590,7 +3585,7 @@ export function DoctorDashboardClient() {
             </section>
           )}
 
-          {activeSection === "cobros" && (
+          {activeSection === "negocio" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -3935,22 +3930,22 @@ export function DoctorDashboardClient() {
             </>
           )}
 
-          {activeSection === "opiniones" && (
+          {activeSection === "negocio" && (
             <DoctorReviewPanel reviews={doctorReviews} reply={reviewReply} setReply={setReviewReply} onReply={replyToReview} />
           )}
 
-          {activeSection === "recursos" && <ClinicalResourcesSection />}
+          {activeSection === "consulta" && <ClinicalResourcesSection />}
 
-          {activeSection === "asistentes" && (
+          {activeSection === "secretaria" && (
             <DoctorAssistantsSection
               plan={profile?.medal ?? "oro"}
               onMessage={setMessage}
             />
           )}
 
-          {activeSection === "estadisticas" && <DoctorAnalyticsSection />}
+          {activeSection === "negocio" && <DoctorAnalyticsSection />}
 
-          {activeSection === "notificaciones" && (
+          {activeSection === "consulta" && (
             <div className="grid gap-6">
               <section className="dashboard-card rounded-[1.75rem] border-silver/70">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -4076,7 +4071,6 @@ export function DoctorDashboardClient() {
     <DoctorMobileNav
       activeSection={activeSection}
       onSelect={setActiveSection}
-      unreadCount={notifications.filter((n) => !n.isRead).length}
     />
     </>
   );
