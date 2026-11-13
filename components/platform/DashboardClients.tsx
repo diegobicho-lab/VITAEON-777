@@ -11,6 +11,7 @@ import { ClinicalResourcesSection } from "@/components/platform/ClinicalResource
 import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
 import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
 import DoctorOnboardingWizard, { type WizardData } from "@/components/platform/DoctorOnboardingWizard";
+import { esCobrableEnMostrador } from "@/lib/payments/counter-payment";
 import { clientApi } from "@/services/client/api";
 
 type AppointmentsResponse = {
@@ -552,7 +553,7 @@ function ProfileCompletionCard({ profile }: { profile: DoctorProfile }) {
       )}
       {pct < 100 && (
         <p className="mt-2 text-[11px] text-slate-400">
-          Los perfiles completos reciben hasta 4× más citas.
+          Un perfil completo es requisito para aparecer en las búsquedas de pacientes.
         </p>
       )}
     </div>
@@ -1534,7 +1535,21 @@ export function DoctorDashboardClient() {
   const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
   // Historias clínicas y recetario disponibles para todos los planes salvo Obsidiana
   const clinicalToolsEnabled = medal !== "obsidiana";
-  const activeDoctorAppointments = appointments.filter((appointment) => !["CANCELLED", "COMPLETED", "NO_SHOW", "REFUNDED", "AUTO_CANCELLED"].includes(appointment.status));
+  /*
+   * Citas sobre las que el médico puede escribir o corregir el expediente y el
+   * recetario.
+   *
+   * COMPLETED y NO_SHOW estaban excluidas, así que cerrar la cita cerraba el
+   * expediente con llave. El orden natural —atender, cerrar, redactar o
+   * corregir— destruía el trabajo: se podía abrir la historia de una cita
+   * completada, editarla y perderlo todo al guardar.
+   *
+   * Quedan fuera solo las canceladas y reembolsadas: ahí no hubo consulta que
+   * documentar.
+   */
+  const editableDoctorAppointments = appointments.filter(
+    (appointment) => !["CANCELLED", "REFUNDED", "AUTO_CANCELLED"].includes(appointment.status)
+  );
 
   function monthKey(date: Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -2080,7 +2095,7 @@ export function DoctorDashboardClient() {
 
   async function updateAppointment(
     id: string,
-    action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "CANCEL_BY_DOCTOR" | "APPROVE_REFUND" | "REJECT_REFUND",
+    action: "ACCEPT" | "COMPLETE" | "MARK_NO_SHOW" | "CANCEL_BY_DOCTOR" | "APPROVE_REFUND" | "REJECT_REFUND" | "MARK_PAID",
     reason?: string
   ) {
     setFeedback(null);
@@ -2101,7 +2116,8 @@ export function DoctorDashboardClient() {
         MARK_NO_SHOW: "La cita fue marcada como no asistida.",
         CANCEL_BY_DOCTOR: "La cancelación fue procesada. Si había pago en línea, la devolución quedó registrada.",
         APPROVE_REFUND: "La devolución fue aprobada.",
-        REJECT_REFUND: "La solicitud de devolución quedó marcada como no aprobada."
+        REJECT_REFUND: "La solicitud de devolución quedó marcada como no aprobada.",
+        MARK_PAID: "El cobro quedó registrado."
       };
       setFeedback({ tone: "success", text: messages[action] });
       await load();
@@ -2544,7 +2560,7 @@ export function DoctorDashboardClient() {
 
   function selectClinicalAppointment(appointmentId: string) {
     setSelectedClinicalAppointmentId(appointmentId);
-    const appointment = activeDoctorAppointments.find((item) => item.id === appointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === appointmentId);
     const existing = appointment ? clinicalHistories.find((history) => history.patientId === appointment.patient.id) : undefined;
     if (existing) {
       openClinicalHistory(existing);
@@ -2587,7 +2603,7 @@ export function DoctorDashboardClient() {
       setClinicalStatus("Selecciona un paciente con cita activa antes de guardar.");
       return;
     }
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
     if (!appointment) {
       setClinicalStatus("La cita seleccionada ya no está activa.");
       return;
@@ -2613,7 +2629,7 @@ export function DoctorDashboardClient() {
   }
 
   async function exportClinicalHistoryPdf() {
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
     const history = appointment ? clinicalHistories.find((item) => item.patientId === appointment.patient.id) : undefined;
     if (!appointment || !history) {
       setClinicalStatus("Guarda la historia clínica antes de exportar el PDF.");
@@ -2643,7 +2659,7 @@ export function DoctorDashboardClient() {
   }
 
   function printClinicalHistory() {
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedClinicalAppointmentId);
     if (!appointment) {
       setClinicalStatus("Selecciona una historia clínica antes de imprimir.");
       return;
@@ -2727,7 +2743,7 @@ export function DoctorDashboardClient() {
 
   function selectPrescriptionAppointment(appointmentId: string) {
     setSelectedPrescriptionAppointmentId(appointmentId);
-    const appointment = activeDoctorAppointments.find((item) => item.id === appointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === appointmentId);
     const existing = prescriptions.find((prescription) => prescription.appointmentId === appointmentId);
     if (existing) {
       openPrescription(existing);
@@ -2811,7 +2827,7 @@ export function DoctorDashboardClient() {
       setPrescriptionStatus("Selecciona un paciente con cita activa antes de guardar la receta.");
       return;
     }
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
     if (!appointment) {
       setPrescriptionStatus("La cita seleccionada ya no está activa.");
       return;
@@ -2850,7 +2866,7 @@ export function DoctorDashboardClient() {
   }
 
   function printPrescription() {
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
     if (!appointment) {
       setPrescriptionStatus("Selecciona una receta antes de imprimir.");
       return;
@@ -2886,7 +2902,7 @@ export function DoctorDashboardClient() {
   }
 
   function sharePrescriptionWhatsApp() {
-    const appointment = activeDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
+    const appointment = editableDoctorAppointments.find((item) => item.id === selectedPrescriptionAppointmentId);
     if (!appointment) {
       setPrescriptionStatus("Selecciona una receta antes de compartir.");
       return;
@@ -3182,6 +3198,7 @@ export function DoctorDashboardClient() {
               onMarkDayAvailable={markSelectedDayAvailable}
               onAcceptAppointment={(id) => updateAppointment(id, "ACCEPT")}
               onCompleteAppointment={(id) => updateAppointment(id, "COMPLETE")}
+              onMarkPaid={(id) => updateAppointment(id, "MARK_PAID")}
               onNoShowAppointment={(id) => updateAppointment(id, "MARK_NO_SHOW")}
               onCancelAppointment={(id) => {
                 const appointment = appointments.find((item) => item.id === id);
@@ -3517,8 +3534,20 @@ export function DoctorDashboardClient() {
                 </div>
                 <CreditCard className="h-8 w-8 text-medical" />
               </div>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {doctorPlans.map((plan) => (
+              {/*
+                Obsidiana cuesta exactamente lo mismo que Diamante ($499) y se
+                mostraba como una cuarta tarjeta idéntica que disparaba Stripe
+                directo. Pero es la suscripción comercial para representantes y
+                catering: comprarla cambia la medalla y
+                `app/dashboard/doctor/page.tsx` expulsa de este panel a quien la
+                tenga. Un médico que comparaba precios podía pagar $499 y perder
+                su agenda, su expediente y su recetario, sin confirmación ni
+                vuelta atrás.
+
+                No es un plan médico, así que no se ofrece en el panel médico.
+              */}
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {doctorPlans.filter((plan) => plan.id !== "obsidiana").map((plan) => (
                   <button
                     key={plan.id}
                     onClick={() => checkoutPlan(plan.id).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar el pago del plan."))}
@@ -3962,7 +3991,7 @@ export function DoctorDashboardClient() {
 
               {activeAmatistaTool === "historias" && (
                 <AmatistaClinicalHistoryPanel
-                  appointments={activeDoctorAppointments}
+                  appointments={editableDoctorAppointments}
                   histories={clinicalHistories}
                   search={clinicalSearch}
                   setSearch={setClinicalSearch}
@@ -3983,7 +4012,7 @@ export function DoctorDashboardClient() {
 
               {activeAmatistaTool === "recetario" && (
                 <AmatistaPrescriptionPanel
-                  appointments={activeDoctorAppointments}
+                  appointments={editableDoctorAppointments}
                   prescriptions={prescriptions}
                   search={prescriptionSearch}
                   setSearch={setPrescriptionSearch}
@@ -4918,7 +4947,8 @@ function DoctorAgendaPanel({
   onAcceptAppointment,
   onCompleteAppointment,
   onNoShowAppointment,
-  onCancelAppointment
+  onCancelAppointment,
+  onMarkPaid
 }: {
   agenda: DoctorAgenda | null;
   month: Date;
@@ -4947,6 +4977,8 @@ function DoctorAgendaPanel({
   onMarkDayAvailable: () => void;
   onAcceptAppointment: (appointmentId: string) => void;
   onCompleteAppointment: (appointmentId: string) => void;
+  /** Registrar el cobro hecho en el consultorio cuando el médico atiende sin recepción. */
+  onMarkPaid: (appointmentId: string) => void;
   onNoShowAppointment: (appointmentId: string) => void;
   onCancelAppointment: (appointmentId: string) => void;
 }) {
@@ -5231,9 +5263,29 @@ function DoctorAgendaPanel({
                             {slot.appointment.guestPatientPhone ? ` · ${slot.appointment.guestPatientPhone}` : ""}
                           </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge value={slot.appointment.status} />
                           <PaymentBadge status={slot.appointment.paymentStatus} provider={slot.appointment.paymentProvider} />
+                          {/*
+                            La pastilla decía "Pago en efectivo pendiente" y no
+                            ofrecía nada. El backend autoriza MARK_PAID al médico
+                            desde hace días —para cuando atiende sin recepción—
+                            pero solo la secretaría tenía el botón. Un médico Oro
+                            o Diamante, que no tiene derecho a enlace de
+                            secretaría, no podía cerrar un cobro en efectivo de
+                            ninguna forma.
+                          */}
+                          {esCobrableEnMostrador({
+                            provider: slot.appointment.paymentProvider,
+                            status: slot.appointment.paymentStatus
+                          }) && (
+                            <button
+                              onClick={() => slot.appointment && onMarkPaid(slot.appointment.id)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                            >
+                              Ya pagó
+                            </button>
+                          )}
                         </div>
                       </div>
                       {slot.appointment.reason && <p className="mt-3 text-sm leading-6 text-slate-600">Motivo de consulta: {slot.appointment.reason}</p>}

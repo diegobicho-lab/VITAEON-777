@@ -7,13 +7,30 @@ import { rateLimitByIp } from "@/lib/security/rate-limit";
 import { openSensitiveText, sealSensitiveText } from "@/lib/security/crypto";
 import { clinicalHistoryUpsertSchema } from "@/lib/validation/schemas";
 
-const activeAppointmentStatuses = [
+/**
+ * Citas sobre las que el médico puede escribir o corregir el expediente.
+ *
+ * COMPLETED y NO_SHOW estaban fuera, así que marcar "Completar cita" cerraba el
+ * expediente con llave: el orden natural —atender, cerrar la cita, redactar o
+ * corregir la nota— destruía el trabajo. El médico podía abrir la historia de
+ * una cita completada, editarla veinte minutos y perderlo todo al guardar con
+ * "La cita seleccionada ya no está activa".
+ *
+ * El expediente clínico documenta un acto médico que ya ocurrió. Bloquearlo en
+ * el momento en que ese acto termina es exactamente al revés.
+ *
+ * Quedan fuera solo las canceladas y reembolsadas: ahí no hubo consulta que
+ * documentar.
+ */
+const editableAppointmentStatuses = [
   AppointmentStatus.PENDING,
   AppointmentStatus.PENDING_DOCTOR_ACCEPTANCE,
   AppointmentStatus.ACCEPTED,
   AppointmentStatus.CONFIRMED,
   AppointmentStatus.RESCHEDULE_REQUESTED,
-  AppointmentStatus.RESCHEDULED
+  AppointmentStatus.RESCHEDULED,
+  AppointmentStatus.COMPLETED,
+  AppointmentStatus.NO_SHOW
 ];
 
 async function getAmatistaDoctor() {
@@ -131,7 +148,7 @@ export async function POST(request: Request) {
       id: parsed.data.appointmentId,
       doctorId: session.doctor.id,
       patientId: parsed.data.patientId,
-      status: { in: activeAppointmentStatuses }
+      status: { in: editableAppointmentStatuses }
     },
     select: { id: true }
   });

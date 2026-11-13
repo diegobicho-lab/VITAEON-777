@@ -11,6 +11,7 @@ import {
   X
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { esCobrableEnMostrador, nombreMetodoPago } from "@/lib/payments/counter-payment";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */
 
@@ -84,22 +85,6 @@ function clinicDay(value: string | Date) {
 
 function isToday(iso: string) {
   return clinicDay(iso) === clinicDay(new Date());
-}
-
-function metodoPago(provider: string) {
-  if (provider === "CASH") return "Efectivo";
-  if (provider === "TRANSFER") return "Transferencia";
-  return "En línea";
-}
-
-/**
- * Solo se cobra en mostrador lo que se paga en efectivo o transferencia. Los
- * pagos de Stripe los confirma el webhook contra el dinero real, así que la
- * secretaria no debe poder declararlos pagados desde aquí.
- */
-function cobrableEnMostrador(payment?: { provider: string; status: string }) {
-  if (!payment) return false;
-  return (payment.provider === "CASH" || payment.provider === "TRANSFER") && payment.status === "PENDING";
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -1015,7 +1000,7 @@ export function SecretaryPortalClient({
                 <span className="tabular-nums">{siguienteCita.horaLocal || fmt(siguienteCita.availabilitySlot.startsAt)}</span>
                 {siguienteCita.grupo !== "hoy" && ` · ${etiquetaDia(siguienteCita.dia, siguienteCita.grupo)}`}
                 {doctor ? ` · ${doctor.consultationDurationMinutes} min` : ""}
-                {siguienteCita.payments[0] ? ` · ${metodoPago(siguienteCita.payments[0].provider)}` : ""}
+                {siguienteCita.payments[0] ? ` · ${nombreMetodoPago(siguienteCita.payments[0].provider)}` : ""}
               </p>
 
               {siguienteCita.guestPatientPhone && (
@@ -1124,7 +1109,7 @@ export function SecretaryPortalClient({
                           {appt.horaLocal || fmt(appt.availabilitySlot.startsAt)}
                         </span>
                         {appt.guestPatientPhone ? ` · ${appt.guestPatientPhone}` : ""}
-                        {payment ? ` · ${metodoPago(payment.provider)}` : ""}
+                        {payment ? ` · ${nombreMetodoPago(payment.provider)}` : ""}
                         {payment?.status === "PAID" && " · pagado"}
                       </p>
                     </div>
@@ -1135,7 +1120,7 @@ export function SecretaryPortalClient({
                         seguía ahí para siempre, aunque el paciente ya hubiera
                         pagado en el mostrador.
                       */}
-                      {cobrableEnMostrador(payment) && (
+                      {esCobrableEnMostrador(payment) && (
                         <button
                           onClick={() => marcarPagada(appt.id, displayName)}
                           disabled={cobrando === appt.id}

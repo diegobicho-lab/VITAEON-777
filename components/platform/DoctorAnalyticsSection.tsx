@@ -125,7 +125,7 @@ export function DoctorAnalyticsSection() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Estadísticas</p>
           <h2 className="mt-2 text-2xl font-semibold text-deep">Rendimiento clínico</h2>
-          <p className="mt-1 text-sm text-slate-500">Últimos 90 días · actualizado en tiempo real</p>
+          <p className="mt-1 text-sm text-slate-500">Últimos 90 días · actualizado al abrir esta pestaña</p>
         </div>
         <BarChart2 className="h-8 w-8 shrink-0 text-slate-200" />
       </div>
@@ -226,7 +226,7 @@ export function DoctorAnalyticsSection() {
           {data.revenueThisMonthCents === 0 && (
             <li className="flex gap-2"><span className="shrink-0 text-slate-400">💳</span>Activa los cobros en línea con Stripe para registrar ingresos automáticamente en tu panel.</li>
           )}
-          <li className="flex gap-2"><span className="shrink-0 text-sky-500">👤</span>Los médicos con foto, bio y dirección completas reciben 4× más visitas en su perfil público.</li>
+          <li className="flex gap-2"><span className="shrink-0 text-sky-500">👤</span>Completa foto, biografía y dirección: es lo que el paciente compara antes de elegir.</li>
           {data.total90 > 0 && data.appointmentsByDay.some((d) => d.count === 0) && (
             <li className="flex gap-2"><span className="shrink-0 text-violet-400">📅</span>Algunos días de la semana no tienes citas. Considera publicar disponibilidad en esos días.</li>
           )}
