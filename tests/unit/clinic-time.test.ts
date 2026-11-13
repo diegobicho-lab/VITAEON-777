@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clinicDayKey, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
+import { clinicDayKey, clinicDayStart, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
 
 describe("hora del consultorio", () => {
   // El backend genera los slots anclados a -06:00. Si la interfaz los mostrara
@@ -42,9 +42,30 @@ describe("hora del consultorio", () => {
   });
 });
 
+describe("inicio del día clínico", () => {
+  // `?scope=upcoming` filtra desde el inicio del día clínico, no desde "ahora":
+  // una cita de las 09:00 sigue siendo la de hoy a las 09:30 y el médico
+  // necesita verla.
+  it("no deja fuera una cita que ya empezó hoy", () => {
+    const cita = new Date("2026-11-13T15:00:00.000Z"); // 09:00 en México
+    const ahora = new Date("2026-11-13T15:30:00.000Z"); // 09:30 en México
+    expect(cita.getTime()).toBeGreaterThanOrEqual(clinicDayStart(ahora).getTime());
+    expect(cita.getTime()).toBeLessThan(ahora.getTime());
+  });
+
+  // El fallo que esto evita: con la medianoche UTC, a las 18:00 de México ya es
+  // el día siguiente en UTC, así que toda la tarde quedaría fuera de "hoy".
+  it("ancla la medianoche a la zona del consultorio, no a UTC", () => {
+    const tardeEnMexico = new Date("2026-11-13T23:00:00.000Z"); // 17:00 en México
+    expect(clinicDayKey(clinicDayStart(tardeEnMexico))).toBe("2026-11-13");
+    expect(clinicDayStart(tardeEnMexico).toISOString()).toBe("2026-11-13T06:00:00.000Z");
+  });
+});
+
 describe("ventana de agenda de la secretaría", () => {
-  // Réplica de la lógica de app/api/secretaria/[token]/appointments/route.ts.
-  const clinicDayStart = (instant: Date) => new Date(`${clinicDayKey(instant)}T00:00:00-06:00`);
+  // Antes esto replicaba la lógica del route; una copia en el test no detecta una
+  // regresión en el código real. Ahora `clinicDayStart` se importa de la librería
+  // que usan tanto el portal de secretaría como `?scope=upcoming`.
   const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
 
   // El bug original: `new Date().setHours(0,0,0,0)` usa la hora local del

@@ -1,6 +1,7 @@
 import { AppointmentStatus, PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/api-response";
 import { autoCancelExpiredAppointments } from "@/lib/appointments/auto-cancel";
+import { clinicDayStart } from "@/lib/clinic-time";
 import { isDateBlocked } from "@/lib/availability/availability";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
@@ -20,11 +21,13 @@ export async function GET(request: Request) {
   const parsedQuery = appointmentListQuerySchema.safeParse({
     cursor: url.searchParams.get("cursor") ?? undefined,
     take: url.searchParams.get("take") ?? undefined,
-    status: url.searchParams.get("status") ?? undefined
+    status: url.searchParams.get("status") ?? undefined,
+    scope: url.searchParams.get("scope") ?? undefined
   });
   if (!parsedQuery.success) return fail("VALIDATION_ERROR", "Filtros de citas inválidos.", 422, parsedQuery.error.flatten());
 
-  const { cursor, take, status } = parsedQuery.data;
+  const { cursor, take, status, scope } = parsedQuery.data;
+  const upcoming = scope === "upcoming";
 
   // Fire-and-forget: do not await so we don't add latency to the user's request.
   // A Vercel Cron (vercel.json) now runs this every hour as the primary mechanism.
@@ -55,6 +58,12 @@ export async function GET(request: Request) {
 
   if (status) where.status = status as AppointmentStatus;
 
+  // Desde el inicio del día clínico, no desde "ahora": una cita de las 09:00
+  // sigue siendo la de hoy a las 09:30, y el médico necesita verla.
+  if (upcoming) {
+    where.availabilitySlot = { startsAt: { gte: clinicDayStart(new Date()) } };
+  }
+
   const appointments = await prisma.appointment.findMany({
     where,
     include: {
@@ -63,9 +72,11 @@ export async function GET(request: Request) {
       availabilitySlot: true,
       payments: true
     },
-    orderBy: { createdAt: "desc" },
-    cursor: cursor ? { id: cursor } : undefined,
-    skip: cursor ? 1 : 0,
+    orderBy: upcoming ? { availabilitySlot: { startsAt: "asc" } } : { createdAt: "desc" },
+    // El cursor por id asume el orden por createdAt; combinarlo con el orden por
+    // hora de cita daría páginas mal definidas, así que `upcoming` no pagina.
+    cursor: cursor && !upcoming ? { id: cursor } : undefined,
+    skip: cursor && !upcoming ? 1 : 0,
     take: take + 1
   });
 

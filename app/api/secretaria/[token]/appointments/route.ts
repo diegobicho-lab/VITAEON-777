@@ -10,7 +10,7 @@ import {
 import { fail, ok } from "@/lib/api-response";
 import { auditLog } from "@/lib/audit/audit";
 import { getSecretarySession } from "@/lib/auth/secretary";
-import { CLINIC_TIME_ZONE, CLINIC_UTC_OFFSET, clinicDayKey } from "@/lib/clinic-time";
+import { CLINIC_TIME_ZONE, clinicDayKey, clinicDayStart } from "@/lib/clinic-time";
 import { prisma } from "@/lib/db/prisma";
 import { emailButton, emailShell, sendTransactionalEmail } from "@/lib/email/mailer";
 import { createNotification } from "@/lib/notifications/notifications";
@@ -19,11 +19,6 @@ import { sealSensitiveText } from "@/lib/security/crypto";
 
 /** Días hacia adelante que ve la secretaría, además de hoy. */
 const UPCOMING_DAYS = 7;
-
-/** Medianoche del día civil del consultorio, como instante absoluto. */
-function clinicDayStart(instant: Date): Date {
-  return new Date(`${clinicDayKey(instant)}T00:00:00${CLINIC_UTC_OFFSET}`);
-}
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);

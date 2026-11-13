@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NoRefundConfirmation, RefundPolicyNotice } from "@/components/platform/BookingNotices";
-import { CLINIC_TIME_ZONE, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
+import { CLINIC_TIME_ZONE, clinicDayKey, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
 import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
 import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
@@ -45,6 +45,8 @@ type Appointment = {
   originalAmountCents?: number;
   discountCents?: number;
   discountLabel?: string | null;
+  /** Motivo de consulta que escribió el paciente. El API ya lo devuelve descifrado. */
+  reason?: string | null;
   availabilitySlot: { startsAt: string; endsAt: string };
   doctor: {
     fullName: string;
@@ -1362,6 +1364,185 @@ function localDayKey(date: Date): string {
 }
 
 /* ── Mobile bottom nav — doctor dashboard ─────────────────────── */
+/* ── La pantalla de diez segundos ─────────────────────────────── */
+
+/** Estados en los que la cita ya no espera nada del médico. */
+const CITAS_CERRADAS = ["CANCELLED", "AUTO_CANCELLED", "REFUNDED", "REJECTED", "COMPLETED", "NO_SHOW"];
+
+/**
+ * Lo primero que ve el médico al abrir el panel: a quién atiende ahora.
+ *
+ * Antes la respuesta costaba tres navegaciones y venía ordenada por fecha de
+ * creación, no por hora de cita. Se alimenta de `?scope=upcoming`, que ordena
+ * en el servidor: con más citas que el tamaño de página, ordenar en el cliente
+ * habría mostrado al paciente equivocado con toda confianza.
+ */
+function DoctorNextPatients({
+  appointments,
+  loading,
+  onAccept,
+  onMarkPaid,
+  onOpenRecord
+}: {
+  appointments: Appointment[];
+  loading: boolean;
+  onAccept: (id: string) => void;
+  onMarkPaid: (id: string) => void;
+  onOpenRecord: (id: string) => void;
+}) {
+  const porAtender = appointments.filter((item) => !CITAS_CERRADAS.includes(item.status));
+  const hoy = clinicDayKey(new Date());
+  const manana = clinicDayKey(new Date(Date.now() + 86_400_000));
+
+  const siguiente = porAtender[0];
+  const restoHoy = porAtender
+    .slice(1)
+    .filter((item) => clinicDayKey(item.availabilitySlot.startsAt) === hoy);
+  const deManana = porAtender.filter(
+    (item) => clinicDayKey(item.availabilitySlot.startsAt) === manana
+  );
+
+  function etiquetaDia(startsAt: string) {
+    const dia = clinicDayKey(startsAt);
+    if (dia === hoy) return "Hoy";
+    if (dia === manana) return "Mañana";
+    return new Intl.DateTimeFormat("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: CLINIC_TIME_ZONE
+    }).format(new Date(startsAt));
+  }
+
+  function Fila({ cita }: { cita: Appointment }) {
+    return (
+      <button
+        onClick={() => onOpenRecord(cita.id)}
+        className="flex w-full items-center gap-4 rounded-2xl bg-white px-4 py-3 text-left shadow-sm transition hover:shadow-premium"
+      >
+        <span className="w-20 shrink-0 text-sm font-bold tabular-nums text-deep">
+          {formatClinicTime(cita.availabilitySlot.startsAt)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-deep">
+          {cita.patient.user.name}
+        </span>
+        {cita.payments.some((pago) => esCobrableEnMostrador(pago)) && (
+          <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+            Por cobrar
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <section className="dashboard-card rounded-[1.75rem] border-silver/70">
+      {loading && !siguiente && (
+        <div className="flex items-center gap-3 text-sm font-semibold text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Cargando tu agenda…
+        </div>
+      )}
+
+      {!loading && !siguiente && (
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-medical">Tu consulta</p>
+          <h2 className="mt-2 text-2xl font-bold text-deep">No tienes citas por delante</h2>
+          <p className="mt-2 max-w-prose text-sm leading-6 text-slate-500">
+            Cuando un paciente agende, aparecerá aquí con su hora, su motivo y si falta cobrarle.
+          </p>
+        </div>
+      )}
+
+      {siguiente && (
+        <>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-medical">Sigue ahora</p>
+              <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-3xl font-bold tracking-tight tabular-nums text-deep sm:text-4xl">
+                  {formatClinicTime(siguiente.availabilitySlot.startsAt)}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                  {etiquetaDia(siguiente.availabilitySlot.startsAt)}
+                </span>
+              </div>
+              <h2 className="mt-2 text-2xl font-bold leading-tight text-deep sm:text-3xl">
+                {siguiente.patient.user.name}
+              </h2>
+              {siguiente.reason && (
+                <p className="mt-2 max-w-prose text-sm leading-6 text-slate-600">{siguiente.reason}</p>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Badge value={siguiente.status} />
+              {siguiente.payments[0] && (
+                <PaymentBadge
+                  status={siguiente.payments[0].status}
+                  provider={siguiente.payments[0].provider}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Las tres acciones viven junto a la cita, no en otra pestaña. */}
+          <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+            {siguiente.status === "PENDING_DOCTOR_ACCEPTANCE" && (
+              <button
+                onClick={() => onAccept(siguiente.id)}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#071726] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Aceptar cita
+              </button>
+            )}
+            {siguiente.payments.some((pago) => esCobrableEnMostrador(pago)) && (
+              <button
+                onClick={() => onMarkPaid(siguiente.id)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              >
+                <Wallet className="h-4 w-4" />
+                Ya pagó
+              </button>
+            )}
+            <button
+              onClick={() => onOpenRecord(siguiente.id)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-silver/60 bg-white px-5 py-2.5 text-sm font-semibold text-deep transition hover:border-silver hover:bg-slate-50"
+            >
+              <FileText className="h-4 w-4" />
+              Abrir nota clínica
+            </button>
+          </div>
+
+          {restoHoy.length > 0 && (
+            <div className="mt-6 border-t border-silver/40 pt-5">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
+                Luego hoy
+              </p>
+              <div className="mt-3 grid gap-2">
+                {restoHoy.map((cita) => (
+                  <Fila key={cita.id} cita={cita} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {deManana.length > 0 && (
+            <div className="mt-5 border-t border-silver/40 pt-5">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Mañana</p>
+              <div className="mt-3 grid gap-2">
+                {deManana.map((cita) => (
+                  <Fila key={cita.id} cita={cita} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 type DoctorSection = "consulta" | "horarios" | "secretaria" | "negocio" | "perfil";
 
 function DoctorMobileNav({
@@ -1405,6 +1586,9 @@ function DoctorMobileNav({
 export function DoctorDashboardClient() {
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  // Lote aparte, ordenado por hora de cita en el servidor. `appointments` llega
+  // ordenado por fecha de creación y sirve para el historial, no para "¿quién sigue?".
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [agenda, setAgenda] = useState<DoctorAgenda | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -1540,7 +1724,19 @@ export function DoctorDashboardClient() {
    * Quedan fuera solo las canceladas y reembolsadas: ahí no hubo consulta que
    * documentar.
    */
-  const editableDoctorAppointments = appointments.filter(
+  /**
+   * Las dos listas fusionadas, sin duplicados.
+   *
+   * `appointments` viene ordenado por creación y `upcomingAppointments` por hora
+   * de cita: una misma cita puede estar en uno y no en el otro. Las herramientas
+   * clínicas buscan aquí por id, así que si no se fusionan, "abrir nota" sobre
+   * una cita próxima no encontraría nada y fallaría sin decir por qué.
+   */
+  const editableDoctorAppointments = Array.from(
+    new Map(
+      [...appointments, ...upcomingAppointments].map((appointment) => [appointment.id, appointment])
+    ).values()
+  ).filter(
     (appointment) => !["CANCELLED", "REFUNDED", "AUTO_CANCELLED"].includes(appointment.status)
   );
 
@@ -1551,9 +1747,10 @@ export function DoctorDashboardClient() {
   async function load(month = calendarMonth) {
     setLoading(true);
     try {
-    const [doctor, appointmentData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
+    const [doctor, appointmentData, upcomingData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
       clientApi<DoctorProfile>("/api/doctors/me"),
       clientApi<AppointmentsResponse>("/api/appointments?take=20"),
+      clientApi<AppointmentsResponse>("/api/appointments?scope=upcoming&take=20"),
       clientApi<DoctorAgenda>(`/api/doctor-agenda?month=${monthKey(month)}`),
       clientApi<Array<{ id: string; name: string; specialty: string; hospital: string }>>("/api/doctors"),
       clientApi<SpecialtyOption[]>("/api/specialties"),
@@ -1591,6 +1788,7 @@ export function DoctorDashboardClient() {
     setLegalAccepted(doctor.legalDeclarationAccepted);
     setPrice(String(Math.round(doctor.consultationPriceCents / 100)));
     setAppointments(appointmentData.appointments);
+    setUpcomingAppointments(upcomingData.appointments);
     setAgenda(agendaData);
     setDoctorOptions(doctorData.filter((item) => item.id !== doctor.id));
     setSpecialties(specialtyData);
@@ -2537,6 +2735,18 @@ export function DoctorDashboardClient() {
     if (tool === "recetario") await Promise.all([loadPrescriptionTemplate(), loadPrescriptions()]);
   }
 
+  /** Abre la nota clínica de una cita en un solo clic, desde la pantalla de inicio. */
+  async function abrirNotaClinica(appointmentId: string) {
+    if (!clinicalToolsEnabled) {
+      setMessage("Herramientas clínicas no disponibles en el perfil Obsidiana.");
+      return;
+    }
+    setMessage("");
+    setActiveAmatistaTool("historias");
+    const records = await loadClinicalHistories();
+    selectClinicalAppointment(appointmentId, records);
+  }
+
   async function loadClinicalHistories(query = clinicalSearch) {
     setClinicalLoading(true);
     setClinicalStatus("");
@@ -2544,17 +2754,29 @@ export function DoctorDashboardClient() {
       const records = await clientApi<ClinicalHistoryRecord[]>(`/api/clinical-histories?q=${encodeURIComponent(query)}`);
       setClinicalHistories(records);
       if (records.length === 0 && query.trim()) setClinicalStatus("No se encontraron historias clínicas para este paciente.");
+      return records;
     } catch (error) {
       setClinicalStatus(error instanceof Error ? error.message : "No fue posible cargar historias clínicas.");
+      return [];
     } finally {
       setClinicalLoading(false);
     }
   }
 
-  function selectClinicalAppointment(appointmentId: string) {
+  /**
+   * `histories` permite pasar registros recién traídos. Al abrir la nota desde la
+   * pantalla de inicio, `clinicalHistories` todavía no se ha actualizado en este
+   * tick: leerlo abriría un formulario vacío para un paciente que sí tiene
+   * historia, y al guardar el servidor pisaría la nota existente con contenido
+   * parcial. En un expediente médico eso es pérdida de datos, no una molestia.
+   */
+  function selectClinicalAppointment(
+    appointmentId: string,
+    histories: ClinicalHistoryRecord[] = clinicalHistories
+  ) {
     setSelectedClinicalAppointmentId(appointmentId);
     const appointment = editableDoctorAppointments.find((item) => item.id === appointmentId);
-    const existing = appointment ? clinicalHistories.find((history) => history.patientId === appointment.patient.id) : undefined;
+    const existing = appointment ? histories.find((history) => history.patientId === appointment.patient.id) : undefined;
     if (existing) {
       openClinicalHistory(existing);
       return;
@@ -3097,49 +3319,46 @@ export function DoctorDashboardClient() {
           </section>
 
           {activeSection === "consulta" && (
+            <DoctorNextPatients
+              appointments={upcomingAppointments}
+              loading={loading}
+              onAccept={(id) => updateAppointment(id, "ACCEPT")}
+              onMarkPaid={(id) => updateAppointment(id, "MARK_PAID")}
+              onOpenRecord={(id) =>
+                void abrirNotaClinica(id).catch((error) =>
+                  setMessage(error instanceof Error ? error.message : "No fue posible abrir la nota clínica.")
+                )
+              }
+            />
+          )}
+
+          {activeSection === "consulta" && (
             <section className="dashboard-card rounded-[1.75rem] border-silver/70">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.28em] text-medical">Resumen clínico</p>
-                  <h2 className="mt-2 text-2xl font-bold text-deep">Tu operación de hoy</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Agenda, disponibilidad y alertas principales en una vista ligera.</p>
+                  <h2 className="mt-2 text-2xl font-bold text-deep">Tu operación reciente</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Cifras sobre tus citas más recientes, no sobre el total histórico.</p>
                 </div>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-medical/10">
                   <Calendar className="h-5 w-5 text-medical" />
                 </div>
               </div>
               <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                <MetricMini label="Citas" value={String(appointments.length)} />
+                <MetricMini label="Citas recientes" value={String(appointments.length)} />
                 <MetricMini label="Pendientes" value={String(appointments.filter((item) => pendingAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Confirmadas" value={String(appointments.filter((item) => confirmedAppointmentStatuses.includes(item.status)).length)} />
                 <MetricMini label="Notificaciones" value={String(notifications.filter((item) => !item.isRead).length)} />
               </div>
-              {profile && <div className="mt-6"><ProfileCompletionCard profile={profile} /></div>}
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Próximas citas</p>
-                  <div className="mt-3 grid gap-2.5">
-                    {appointments.slice(0, 3).map((appointment) => {
-                      const s = appointment.status;
-                      const isOk  = ["ACCEPTED","CONFIRMED","COMPLETED","PAID"].includes(s);
-                      const isErr = ["CANCELLED","FAILED","REJECTED","NO_SHOW","AUTO_CANCELLED"].includes(s);
-                      const isRef = ["REFUND_PENDING","CANCELLATION_REQUESTED","RESCHEDULE_REQUESTED"].includes(s);
-                      const accent = isOk ? "border-l-emerald-400" : isErr ? "border-l-red-400" : isRef ? "border-l-sky-400" : "border-l-amber-400";
-                      return (
-                        <div key={appointment.id} className={`overflow-hidden rounded-2xl border-l-4 bg-white px-4 py-3.5 shadow-sm ${accent}`}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-deep">{appointment.patient.user.name}</p>
-                              <p className="mt-0.5 text-xs text-slate-500">{dateTime(appointment.availabilitySlot.startsAt)}</p>
-                            </div>
-                            <Badge value={appointment.status} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {appointments.length === 0 && <EmptyState text="No hay citas asignadas." />}
-                  </div>
-                </div>
+              {/* Solo mientras falte algo: a un médico verificado hace meses no se le
+                  recibe con un trámite pendiente. */}
+              {profile && computeProfileCompletion(profile).pct < 100 && (
+                <div className="mt-6"><ProfileCompletionCard profile={profile} /></div>
+              )}
+              {/* "Próximas citas" vivía aquí ordenado por fecha de creación, no por hora
+                  de cita: mostraba las tres creadas más recientemente. Lo sustituye
+                  DoctorNextPatients, que ordena en el servidor. */}
+              <div className="mt-4 grid gap-4">
                 <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Alertas</p>
                   <div className="mt-3 grid gap-2.5">

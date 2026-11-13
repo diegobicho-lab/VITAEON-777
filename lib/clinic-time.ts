@@ -30,6 +30,17 @@ export function formatClinicDateTime(value: string | Date): string {
   }).format(new Date(value));
 }
 
+/**
+ * Medianoche del día natural de un instante, en zona del consultorio.
+ *
+ * El límite de "hoy" es una fecha civil, no un instante: a las 23:30 del
+ * dispositivo puede ser todavía el mismo día clínico, o ya el siguiente.
+ * Comparar contra `new Date()` directamente desplaza la agenda.
+ */
+export function clinicDayStart(value: string | Date): Date {
+  return new Date(`${clinicDayKey(value)}T00:00:00${CLINIC_UTC_OFFSET}`);
+}
+
 /** Día natural (YYYY-MM-DD) de un instante, leído en zona del consultorio. */
 export function clinicDayKey(value: string | Date): string {
   return new Intl.DateTimeFormat("en-CA", {

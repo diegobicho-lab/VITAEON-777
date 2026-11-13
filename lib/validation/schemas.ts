@@ -42,6 +42,13 @@ export const patientProfileUpdateSchema = z.object({
 export const appointmentListQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
   take: z.coerce.number().int().min(1).max(50).default(20),
+  /**
+   * `upcoming` devuelve lo que viene por delante, ordenado por hora de cita.
+   * El orden por `createdAt` sirve para un historial, pero no responde
+   * "¿quién sigue?": con más citas que `take`, la siguiente por hora puede
+   * quedar fuera del lote.
+   */
+  scope: z.enum(["upcoming"]).optional(),
   status: z
     .enum([
       "PENDING",
