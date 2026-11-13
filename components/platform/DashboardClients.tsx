@@ -1589,6 +1589,7 @@ export function DoctorDashboardClient() {
   // Lote aparte, ordenado por hora de cita en el servidor. `appointments` llega
   // ordenado por fecha de creación y sirve para el historial, no para "¿quién sigue?".
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [alertasAbiertas, setAlertasAbiertas] = useState(false);
   const [agenda, setAgenda] = useState<DoctorAgenda | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -1744,8 +1745,17 @@ export function DoctorDashboardClient() {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   }
 
-  async function load(month = calendarMonth) {
-    setLoading(true);
+  /**
+   * `silent` evita vaciar la pantalla.
+   *
+   * El render del panel es `{loading ? <LoadingState /> : (…)}`, así que poner
+   * `loading` en true borra todo —incluidas las pestañas— y lo sustituye por el
+   * esqueleto sobre el fondo azul pálido del Shell. Para la carga inicial eso es
+   * correcto; para un refresco de respaldo en segundo plano es un parpadeo que
+   * parece una caída.
+   */
+  async function load(month = calendarMonth, options?: { silent?: boolean }) {
+    if (!options?.silent) setLoading(true);
     try {
     const [doctor, appointmentData, upcomingData, agendaData, doctorData, specialtyData, hospitalData, notificationData, reviewData] = await Promise.all([
       clientApi<DoctorProfile>("/api/doctors/me"),
@@ -1817,7 +1827,7 @@ export function DoctorDashboardClient() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No fue posible cargar el panel médico.");
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }
 
@@ -2370,7 +2380,8 @@ export function DoctorDashboardClient() {
       } else {
         setConnectStatusMessage("La cuenta todavía requiere información adicional en Stripe.");
       }
-      await load();
+      // Silencioso: este refresco lo dispara abrir la sección, no el médico.
+      await load(calendarMonth, { silent });
     } catch (error) {
       setConnectStatusState("error");
       setConnectStatusMessage(
@@ -2733,6 +2744,20 @@ export function DoctorDashboardClient() {
     setActiveAmatistaTool(tool);
     if (tool === "historias") await loadClinicalHistories();
     if (tool === "recetario") await Promise.all([loadPrescriptionTemplate(), loadPrescriptions()]);
+  }
+
+  /** Marca todas las alertas como leídas. El PATCH sin id las marca todas. */
+  async function marcarAlertasLeidas() {
+    if (!notifications.some((item) => !item.isRead)) return;
+    // Optimista: el contador baja al instante y se revierte si el PATCH falla.
+    const previas = notifications;
+    setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    try {
+      await clientApi("/api/notifications", { method: "PATCH", body: JSON.stringify({}) });
+    } catch (error) {
+      setNotifications(previas);
+      setMessage(error instanceof Error ? error.message : "No fue posible marcar las alertas como leídas.");
+    }
   }
 
   /** Abre la nota clínica de una cita en un solo clic, desde la pantalla de inicio. */
@@ -3248,19 +3273,66 @@ export function DoctorDashboardClient() {
                 <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
                 <PlanBadge medal={medal} />
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
-                <button
-                  type="button"
-                  onClick={() => setActiveSection("consulta")}
-                  aria-label={alertasSinLeer > 0 ? `${alertasSinLeer} alertas sin leer` : "Sin alertas pendientes"}
-                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-silver/60 bg-white text-slate-500 transition hover:border-silver hover:text-deep"
-                >
-                  <Bell className="h-4 w-4" />
-                  {alertasSinLeer > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                      {alertasSinLeer > 9 ? "9+" : alertasSinLeer}
-                    </span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAlertasAbiertas((abierto) => !abierto)}
+                    aria-expanded={alertasAbiertas}
+                    aria-label={alertasSinLeer > 0 ? `${alertasSinLeer} alertas sin leer` : "Sin alertas pendientes"}
+                    className={`relative inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${alertasAbiertas ? "border-medical/40 bg-medical/10 text-medical" : "border-silver/60 bg-white text-slate-500 hover:border-silver hover:text-deep"}`}
+                  >
+                    <Bell className="h-4 w-4" />
+                    {alertasSinLeer > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                        {alertasSinLeer > 9 ? "9+" : alertasSinLeer}
+                      </span>
+                    )}
+                  </button>
+
+                  {alertasAbiertas && (
+                    <>
+                      {/* Capa para cerrar tocando fuera, sin atrapar el foco. */}
+                      <button
+                        type="button"
+                        aria-label="Cerrar alertas"
+                        onClick={() => setAlertasAbiertas(false)}
+                        className="fixed inset-0 z-30 cursor-default"
+                      />
+                      <div className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.25rem] border border-silver/60 bg-white shadow-premium">
+                        <div className="flex items-center justify-between gap-3 border-b border-silver/40 px-4 py-3">
+                          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Alertas</p>
+                          {alertasSinLeer > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => void marcarAlertasLeidas()}
+                              className="text-xs font-semibold text-medical transition hover:text-deep"
+                            >
+                              Marcar como leídas
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifications.length === 0 && (
+                            <p className="px-4 py-6 text-center text-sm text-slate-500">Sin alertas pendientes.</p>
+                          )}
+                          {notifications.map((item) => (
+                            <div
+                              key={item.id}
+                              className={`flex gap-3 border-b border-silver/30 px-4 py-3 last:border-b-0 ${item.isRead ? "bg-white" : "bg-medical/[0.04]"}`}
+                            >
+                              <div className={`mt-[7px] h-2 w-2 shrink-0 rounded-full ${item.isRead ? "bg-slate-300" : "bg-medical"}`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold leading-snug text-deep">{item.title}</p>
+                                <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.message}</p>
+                                <p className="mt-1 text-[11px] text-slate-400">{formatClinicDateTime(item.createdAt)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
-                </button>
+                </div>
               </div>
             </div>
             {/* Tabs: hidden on mobile (bottom nav handles primary tabs); visible on md+ */}
@@ -3278,6 +3350,9 @@ export function DoctorDashboardClient() {
             {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
 
+          {/* Solo mientras falte un paso de verdad. A un médico con los seis
+              completos no se le recibe con "Completa tu alta". */}
+          {completedOnboarding < onboardingItems.length && (
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -3317,6 +3392,7 @@ export function DoctorDashboardClient() {
               ))}
             </div>
           </section>
+          )}
 
           {activeSection === "consulta" && (
             <DoctorNextPatients
@@ -3355,26 +3431,9 @@ export function DoctorDashboardClient() {
               {profile && computeProfileCompletion(profile).pct < 100 && (
                 <div className="mt-6"><ProfileCompletionCard profile={profile} /></div>
               )}
-              {/* "Próximas citas" vivía aquí ordenado por fecha de creación, no por hora
-                  de cita: mostraba las tres creadas más recientemente. Lo sustituye
-                  DoctorNextPatients, que ordena en el servidor. */}
-              <div className="mt-4 grid gap-4">
-                <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Alertas</p>
-                  <div className="mt-3 grid gap-2.5">
-                    {notifications.slice(0, 4).map((item) => (
-                      <div key={item.id} className="flex gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-sm">
-                        <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-medical" />
-                        <div>
-                          <p className="text-sm font-semibold leading-snug text-deep">{item.title}</p>
-                          <p className="mt-0.5 text-xs leading-5 text-slate-500">{item.message}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {notifications.length === 0 && <EmptyState text="Sin alertas pendientes." />}
-                  </div>
-                </div>
-              </div>
+              {/* Dos listas vivían aquí: "Próximas citas", ordenada por fecha de
+                  creación en vez de por hora —la sustituye DoctorNextPatients—, y
+                  "Alertas", que ahora pertenece a la campana de la cabecera. */}
             </section>
           )}
 
