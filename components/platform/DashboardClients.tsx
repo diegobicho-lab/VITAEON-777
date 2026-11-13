@@ -1669,11 +1669,30 @@ export function DoctorDashboardClient() {
   const [additionalLocations, setAdditionalLocations] = useState<Array<{ id: string; notes?: string | null; hospital: { id: string; name: string; city: string } }>>([]);
   const [newLocHospitalId, setNewLocHospitalId] = useState("");
   const [newLocNotes, setNewLocNotes] = useState("");
-  const [message, setMessage] = useState("");
   const [subscriptionAction, setSubscriptionAction] = useState("");
   // Confirmaciones diferenciadas: antes un fallo real quedaba mudo porque
   // clientApi lanza y ningún handler lo capturaba.
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  /**
+   * Un solo estado para los avisos del panel.
+   *
+   * Había dos. `feedback`, con tono, se renderizaba junto a tres acciones.
+   * `message`, una cadena sin tono con 73 orígenes, se pintaba en un único
+   * sitio: la cabecera. Guardar algo en Perfil o en Negocio dejaba la
+   * confirmación mil píxeles por encima del botón, fuera de la pantalla: el
+   * médico no sabía si su cambio se había guardado.
+   */
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error" | "info"; text: string } | null>(null);
+
+  /**
+   * Compatibilidad con los avisos que aún no declaran tono.
+   *
+   * Se pintan como informativos, que es exactamente como se veían antes. Que un
+   * error se distinga de una confirmación exige leer los 60 restantes uno a uno;
+   * adivinar el tono sería pintar un fallo de verde.
+   */
+  function setMessage(text: string) {
+    setFeedback(text ? { tone: "info", text } : null);
+  }
   const [savingProfile, setSavingProfile] = useState(false);
   const [submittingVerification, setSubmittingVerification] = useState(false);
   const [blockedDates, setBlockedDates] = useState<Array<{ id: string; date: string; reason?: string | null }>>([]);
@@ -1825,7 +1844,7 @@ export function DoctorDashboardClient() {
     const profileIncomplete = !doctor.professionalLicense || !doctor.bio || doctor.bio.length < 40;
     setShowWizard(profileIncomplete);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible cargar el panel médico.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible cargar el panel médico." });
     } finally {
       if (!options?.silent) setLoading(false);
     }
@@ -1970,11 +1989,13 @@ export function DoctorDashboardClient() {
       try {
         await checkoutPlan(data.plan as DoctorProfile["medal"]);
       } catch (err) {
-        setMessage(
-          err instanceof Error
-            ? err.message
-            : "No fue posible iniciar el pago del plan. Ve a Suscripción para intentarlo de nuevo."
-        );
+        setFeedback({
+          tone: "error",
+          text:
+            err instanceof Error
+              ? err.message
+              : "No fue posible iniciar el pago del plan. Ve a Suscripción para intentarlo de nuevo."
+        });
         setActiveSection("negocio");
       }
     } else {
@@ -2013,7 +2034,7 @@ export function DoctorDashboardClient() {
       setMessage(isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible.");
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible actualizar ese horario.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible actualizar ese horario." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2028,7 +2049,7 @@ export function DoctorDashboardClient() {
       setMessage("Horario eliminado del calendario.");
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible eliminar ese horario.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible eliminar ese horario." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2091,7 +2112,7 @@ export function DoctorDashboardClient() {
       setMessage(`${dayLabel} habilitado(s) de nuevo: ${slotsToShow.length} horario(s) visibles para pacientes.`);
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible reactivar esos horarios.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible reactivar esos horarios." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2152,7 +2173,7 @@ export function DoctorDashboardClient() {
       );
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible ocultar los horarios de esos días.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible ocultar los horarios de esos días." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2204,7 +2225,7 @@ export function DoctorDashboardClient() {
       if (!repeat) setSelectedCalendarDates([]);
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible publicar los horarios.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible publicar los horarios." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2227,7 +2248,7 @@ export function DoctorDashboardClient() {
       setMessage(`Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).`);
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No fue posible revertir la repetición.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible revertir la repetición." });
     } finally {
       setAgendaBusy(null);
     }
@@ -2746,6 +2767,17 @@ export function DoctorDashboardClient() {
     if (tool === "recetario") await Promise.all([loadPrescriptionTemplate(), loadPrescriptions()]);
   }
 
+  /*
+   * Un acierto se retira solo; un error se queda hasta que el médico lo cierra.
+   * Un fallo que desaparece mientras lees otra cosa es un fallo que no te
+   * enteraste de que ocurrió.
+   */
+  useEffect(() => {
+    if (!feedback || feedback.tone === "error") return;
+    const id = setTimeout(() => setFeedback(null), 6000);
+    return () => clearTimeout(id);
+  }, [feedback]);
+
   /** Marca todas las alertas como leídas. El PATCH sin id las marca todas. */
   async function marcarAlertasLeidas() {
     if (!notifications.some((item) => !item.isRead)) return;
@@ -2756,7 +2788,7 @@ export function DoctorDashboardClient() {
       await clientApi("/api/notifications", { method: "PATCH", body: JSON.stringify({}) });
     } catch (error) {
       setNotifications(previas);
-      setMessage(error instanceof Error ? error.message : "No fue posible marcar las alertas como leídas.");
+      setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible marcar las alertas como leídas." });
     }
   }
 
@@ -3262,6 +3294,42 @@ export function DoctorDashboardClient() {
       )}
       {loading ? <LoadingState /> : (
         <div className="mt-8 grid gap-6">
+          {/* Un solo aviso, pegado a la parte alta de la ventana. El médico ve el
+              resultado de lo que acaba de pulsar aunque el botón esté a mil
+              píxeles del encabezado. */}
+          {feedback && (
+            <div className="sticky top-4 z-40">
+              <div
+                role="status"
+                aria-live="polite"
+                className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 shadow-premium backdrop-blur-sm ${
+                  feedback.tone === "success"
+                    ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
+                    : feedback.tone === "error"
+                      ? "border-red-200 bg-red-50/95 text-red-800"
+                      : "border-medical/20 bg-white/95 text-medical"
+                }`}
+              >
+                {feedback.tone === "success" ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                ) : feedback.tone === "error" ? (
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Bell className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                )}
+                <span className="min-w-0 flex-1 font-semibold">{feedback.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setFeedback(null)}
+                  aria-label="Cerrar aviso"
+                  className="-mr-1 shrink-0 rounded-full p-1 opacity-60 transition hover:opacity-100"
+                >
+                  <XCircle className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <section className="dashboard-card rounded-[1.75rem] border-silver/70">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -3347,7 +3415,6 @@ export function DoctorDashboardClient() {
                 </button>
               ))}
             </nav>
-            {message && <p className="mt-5 rounded-2xl border border-medical/20 bg-medical/5 px-5 py-4 text-sm font-semibold text-medical">{message}</p>}
           </section>
 
           {/* Solo mientras falte un paso de verdad. A un médico con los seis
@@ -3607,24 +3674,6 @@ export function DoctorDashboardClient() {
                 </div>
               )}
 
-              {feedback && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
-                    feedback.tone === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  {feedback.tone === "success" ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  ) : (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  )}
-                  <span>{feedback.text}</span>
-                </div>
-              )}
             </section>
           )}
 
@@ -3752,24 +3801,6 @@ export function DoctorDashboardClient() {
                 </div>
               </div>
 
-              {feedback && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
-                    feedback.tone === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  {feedback.tone === "success" ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  ) : (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  )}
-                  <span>{feedback.text}</span>
-                </div>
-              )}
             </section>
           )}
 
@@ -4114,24 +4145,6 @@ export function DoctorDashboardClient() {
               </div>
 
               {/* Confirmación explícita del resultado real del servidor */}
-              {feedback && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm leading-6 ${
-                    feedback.tone === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  {feedback.tone === "success" ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  ) : (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  )}
-                  <span>{feedback.text}</span>
-                </div>
-              )}
 
               {profile?.verificationStatus && profile.verificationStatus !== "UNVERIFIED" && (
                 <p className="mt-3 text-xs font-semibold text-slate-500">
