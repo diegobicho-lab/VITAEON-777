@@ -9,7 +9,6 @@ import { NoRefundConfirmation, RefundPolicyNotice } from "@/components/platform/
 import { CLINIC_TIME_ZONE, clinicDayKey, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
 import { ClinicalResourcesSection } from "@/components/platform/ClinicalResourcesSection";
 import { DoctorAnalyticsSection } from "@/components/platform/DoctorAnalyticsSection";
-import { DoctorAssistantsSection } from "@/components/platform/DoctorAssistantsSection";
 import DoctorOnboardingWizard, { type WizardData } from "@/components/platform/DoctorOnboardingWizard";
 import { esCobrableEnMostrador } from "@/lib/payments/counter-payment";
 import { clientApi } from "@/services/client/api";
@@ -3798,10 +3797,6 @@ export function DoctorDashboardClient() {
             </section>
           )}
 
-          {activeSection === "horarios" && (
-            <SecretaryLinkSection medal={medal} />
-          )}
-
           {activeSection === "consulta" && (
             <AppointmentList
               appointments={appointments}
@@ -4222,10 +4217,7 @@ export function DoctorDashboardClient() {
           {activeSection === "consulta" && <ClinicalResourcesSection />}
 
           {activeSection === "secretaria" && (
-            <DoctorAssistantsSection
-              plan={profile?.medal ?? "oro"}
-              onFeedback={setFeedback}
-            />
+            <SecretaryLinkSection medal={medal} />
           )}
 
           {activeSection === "negocio" && <DoctorAnalyticsSection />}
