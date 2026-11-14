@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const specialty = await getSpecialty(slug).catch(() => null);
   if (!specialty) return { title: "Especialidad médica" };
   return {
-    title: `${specialty.name} en León, Guanajuato | VITAEON`,
+    title: `${specialty.name} en León, Guanajuato`,
     description: `Especialistas verificados en ${specialty.name} dentro de la red médica privada VITAEON en León, Guanajuato.`,
     robots: specialty.doctors.length > 0 ? { index: true, follow: true } : { index: false, follow: true }
   };

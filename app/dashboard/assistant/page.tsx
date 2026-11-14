@@ -4,7 +4,7 @@ import { AssistantDashboardClient } from "@/components/platform/AssistantDashboa
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "Panel de asistente | VITAEON",
+  title: "Panel de asistente",
   robots: { index: false, follow: false }
 };
 

@@ -541,7 +541,7 @@ function ProfileCompletionCard({ profile }: { profile: DoctorProfile }) {
   return (
     <div className="rounded-3xl border border-silver/40 bg-slate-50/60 p-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Completado del perfil</p>
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Completado del perfil</p>
         <span className="text-sm font-bold text-deep">{pct}%</span>
       </div>
       <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
@@ -549,12 +549,12 @@ function ProfileCompletionCard({ profile }: { profile: DoctorProfile }) {
       </div>
       <p className="mt-2 text-xs font-semibold text-slate-500">{label}</p>
       {missing.length > 0 && (
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-2 text-xs text-slate-500">
           Falta: {missing.join(" · ")}
         </p>
       )}
       {pct < 100 && (
-        <p className="mt-2 text-[11px] text-slate-400">
+        <p className="mt-2 text-[11px] text-slate-500">
           Un perfil completo es requisito para aparecer en las búsquedas de pacientes.
         </p>
       )}
@@ -922,16 +922,16 @@ function PatientMobileNav() {
         </button>
         <Link
           href="/#busqueda"
-          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-400 transition-colors"
+          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-500 transition-colors"
         >
-          <Search className="h-5 w-5 text-slate-400" />
+          <Search className="h-5 w-5 text-slate-500" />
           Buscar médico
         </Link>
         <Link
           href="/"
-          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-400 transition-colors"
+          className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold text-slate-500 transition-colors"
         >
-          <Home className="h-5 w-5 text-slate-400" />
+          <Home className="h-5 w-5 text-slate-500" />
           Inicio
         </Link>
       </div>
@@ -1220,33 +1220,33 @@ export function PatientDashboardClient() {
                 {/* Ticket ficha */}
                 <div className="mt-5 overflow-hidden rounded-2xl border border-silver/60 bg-white">
                   <div className="border-b border-silver/50 bg-slate-50/80 px-5 py-2.5">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.28em] text-slate-400">Ticket de cita</p>
+                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.28em] text-slate-500">Ticket de cita</p>
                   </div>
                   <div className="divide-y divide-silver/40 px-5">
                     <div className="flex items-center gap-3 py-3">
-                      <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Folio</span>
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <span className="w-24 shrink-0 text-xs text-slate-500 sm:w-28">Folio</span>
                       <span className="truncate font-mono text-xs text-slate-600">{appointment.id}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Estado de cita</span>
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <span className="w-24 shrink-0 text-xs text-slate-500 sm:w-28">Estado de cita</span>
                       <span className={`text-xs font-semibold ${statusTextColor(appointment.status)}`}>{appointmentReadableStatus(appointment.status)}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
-                      <CreditCard className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Pago</span>
+                      <CreditCard className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <span className="w-24 shrink-0 text-xs text-slate-500 sm:w-28">Pago</span>
                       <span className="text-xs text-slate-600">{paymentProviderLabel(appointment.payments[0]?.provider)} · {money(appointment.payments[0]?.amountCents ?? 0)}</span>
                     </div>
                     <div className="flex items-center gap-3 py-3">
-                      <Wallet className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">Estado de pago</span>
+                      <Wallet className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <span className="w-24 shrink-0 text-xs text-slate-500 sm:w-28">Estado de pago</span>
                       <span className="text-xs text-slate-600">{paymentReadableStatus(appointment.payments[0]?.status ?? "PENDING", appointment.payments[0]?.provider ?? "PENDING")}</span>
                     </div>
                     {appointment.discountCents ? (
                       <div className="flex items-center gap-3 py-3">
                         <Tag className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                        <span className="w-24 shrink-0 text-xs text-slate-400 sm:w-28">{appointment.discountLabel}</span>
+                        <span className="w-24 shrink-0 text-xs text-slate-500 sm:w-28">{appointment.discountLabel}</span>
                         <span className="text-xs font-semibold text-emerald-700">-{money(appointment.discountCents)}</span>
                       </div>
                     ) : null}
@@ -1263,7 +1263,7 @@ export function PatientDashboardClient() {
                       Pago confirmado. Tu cita fue aceptada automáticamente por confirmación en línea.
                     </div>
                   )}
-                  <p className="px-5 pb-4 pt-1 text-xs leading-5 text-slate-400">
+                  <p className="px-5 pb-4 pt-1 text-xs leading-5 text-slate-500">
                     Tu ticket de cita fue creado correctamente. Puedes consultarlo en tu panel de paciente en la sección Mis citas.
                   </p>
                 </div>
@@ -1463,7 +1463,7 @@ function DoctorNextPatients({
                 <span className="text-3xl font-bold tracking-tight tabular-nums text-deep sm:text-4xl">
                   {formatClinicTime(siguiente.availabilitySlot.startsAt)}
                 </span>
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
                   {etiquetaDia(siguiente.availabilitySlot.startsAt)}
                 </span>
               </div>
@@ -1516,7 +1516,7 @@ function DoctorNextPatients({
 
           {restoHoy.length > 0 && (
             <div className="mt-6 border-t border-silver/40 pt-5">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
                 Luego hoy
               </p>
               <div className="mt-3 grid gap-2">
@@ -1529,7 +1529,7 @@ function DoctorNextPatients({
 
           {deManana.length > 0 && (
             <div className="mt-5 border-t border-silver/40 pt-5">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Mañana</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Mañana</p>
               <div className="mt-3 grid gap-2">
                 {deManana.map((cita) => (
                   <Fila key={cita.id} cita={cita} />
@@ -1571,9 +1571,9 @@ function DoctorMobileNav({
             <button
               key={id}
               onClick={() => onSelect(id)}
-              className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-400"}`}
+              className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-500"}`}
             >
-              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-400"}`} />
+              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-500"}`} />
               {label}
             </button>
           );
@@ -1683,16 +1683,6 @@ export function DoctorDashboardClient() {
    */
   const [feedback, setFeedback] = useState<{ tone: "success" | "error" | "info"; text: string } | null>(null);
 
-  /**
-   * Compatibilidad con los avisos que aún no declaran tono.
-   *
-   * Se pintan como informativos, que es exactamente como se veían antes. Que un
-   * error se distinga de una confirmación exige leer los 60 restantes uno a uno;
-   * adivinar el tono sería pintar un fallo de verde.
-   */
-  function setMessage(text: string) {
-    setFeedback(text ? { tone: "info", text } : null);
-  }
   const [savingProfile, setSavingProfile] = useState(false);
   const [submittingVerification, setSubmittingVerification] = useState(false);
   const [blockedDates, setBlockedDates] = useState<Array<{ id: string; date: string; reason?: string | null }>>([]);
@@ -1864,7 +1854,7 @@ export function DoctorDashboardClient() {
 
       if (subscriptionResult === "cancelled") {
         setActiveSection("negocio");
-        setMessage("El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.");
+        setFeedback({ tone: "info", text: "El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras." });
         return;
       }
 
@@ -1877,7 +1867,7 @@ export function DoctorDashboardClient() {
       const validPlan = (planParam && planParam in planActivatingConfig) ? planParam as keyof typeof planActivatingConfig : null;
       setActivatingPlan(validPlan);
       setActiveSection("negocio");
-      setMessage("");
+      setFeedback(null);
 
       let pollAttempts = 0;
       const MAX_POLL = 75; // 5 min máximo
@@ -1891,7 +1881,7 @@ export function DoctorDashboardClient() {
             setMedal(doc.medal);
             setProfile(doc);
             setActivatingPlan(null);
-            setMessage(`✓ ¡${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.`);
+            setFeedback({ tone: "success", text: `¡${planLabel} activo! Tu perfil ya aparece con prioridad en búsquedas.` });
             void load();
             return;
           }
@@ -1901,9 +1891,10 @@ export function DoctorDashboardClient() {
         } else {
           // Después de 5 min sin respuesta — mensaje sin recarga
           setActivatingPlan(null);
-          setMessage(
-            "Tu pago fue registrado, pero la activación está tardando más de lo esperado. Recarga la página en un momento o contacta soporte si el plan no cambia."
-          );
+          setFeedback({
+            tone: "error",
+            text: "Tu pago fue registrado, pero la activación está tardando más de lo esperado. Recarga la página en un momento o contacta soporte si el plan no cambia."
+          });
         }
       };
 
@@ -1999,28 +1990,28 @@ export function DoctorDashboardClient() {
         setActiveSection("negocio");
       }
     } else {
-      setMessage(`¡Perfil completado con éxito!${availabilityNote}`);
+      setFeedback({ tone: "success", text: `¡Perfil completado con éxito!${availabilityNote}` });
     }
   }
 
   async function addLocation() {
-    setMessage("");
-    if (!newLocHospitalId) { setMessage("Selecciona un hospital para agregar."); return; }
+    setFeedback(null);
+    if (!newLocHospitalId) { setFeedback({ tone: "error", text: "Selecciona un hospital para agregar." }); return; }
     await clientApi("/api/doctor-locations", {
       method: "POST",
       body: JSON.stringify({ hospitalId: newLocHospitalId, notes: newLocNotes || undefined })
     });
     setNewLocHospitalId("");
     setNewLocNotes("");
-    setMessage("Consultorio adicional agregado.");
+    setFeedback({ tone: "success", text: "Consultorio adicional agregado." });
     const locationData = await clientApi<typeof additionalLocations>("/api/doctor-locations").catch(() => []);
     setAdditionalLocations(locationData);
   }
 
   async function removeLocation(locationId: string) {
-    setMessage("");
+    setFeedback(null);
     await clientApi(`/api/doctor-locations?id=${encodeURIComponent(locationId)}`, { method: "DELETE" });
-    setMessage("Consultorio eliminado.");
+    setFeedback({ tone: "success", text: "Consultorio eliminado." });
     const locationData = await clientApi<typeof additionalLocations>("/api/doctor-locations").catch(() => []);
     setAdditionalLocations(locationData);
   }
@@ -2028,10 +2019,10 @@ export function DoctorDashboardClient() {
   async function toggleAvailability(slotId: string, isActive: boolean) {
     if (agendaBusy) return;
     setAgendaBusy("slot");
-    setMessage("");
+    setFeedback(null);
     try {
       await clientApi("/api/availability", { method: "PATCH", body: JSON.stringify({ slotId, isActive }) });
-      setMessage(isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible.");
+      setFeedback({ tone: "success", text: isActive ? "Horario activado para pacientes." : "Horario marcado como no disponible." });
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
       setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible actualizar ese horario." });
@@ -2043,10 +2034,10 @@ export function DoctorDashboardClient() {
   async function deleteAvailability(slotId: string) {
     if (agendaBusy) return;
     setAgendaBusy("slot");
-    setMessage("");
+    setFeedback(null);
     try {
       await clientApi("/api/availability", { method: "DELETE", body: JSON.stringify({ slotId }) });
-      setMessage("Horario eliminado del calendario.");
+      setFeedback({ tone: "success", text: "Horario eliminado del calendario." });
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
       setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible eliminar ese horario." });
@@ -2071,7 +2062,7 @@ export function DoctorDashboardClient() {
    */
   async function markSelectedDayAvailable() {
     if (agendaBusy) return;
-    setMessage("");
+    setFeedback(null);
 
     const targetDates = selectedCalendarDates.length > 0
       ? [...selectedCalendarDates]
@@ -2080,7 +2071,7 @@ export function DoctorDashboardClient() {
         : [];
 
     if (targetDates.length === 0) {
-      setMessage("Selecciona uno o varios días del calendario para volver a mostrarlos.");
+      setFeedback({ tone: "error", text: "Selecciona uno o varios días del calendario para volver a mostrarlos." });
       return;
     }
 
@@ -2094,7 +2085,7 @@ export function DoctorDashboardClient() {
     });
 
     if (slotsToShow.length === 0) {
-      setMessage("Los días seleccionados no tienen horarios ocultos que reactivar.");
+      setFeedback({ tone: "error", text: "Los días seleccionados no tienen horarios ocultos que reactivar." });
       return;
     }
 
@@ -2109,7 +2100,7 @@ export function DoctorDashboardClient() {
         )
       );
       const dayLabel = targetDates.length === 1 ? "1 día" : `${targetDates.length} días`;
-      setMessage(`${dayLabel} habilitado(s) de nuevo: ${slotsToShow.length} horario(s) visibles para pacientes.`);
+      setFeedback({ tone: "success", text: `${dayLabel} habilitado(s) de nuevo: ${slotsToShow.length} horario(s) visibles para pacientes.` });
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
       setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible reactivar esos horarios." });
@@ -2120,7 +2111,7 @@ export function DoctorDashboardClient() {
 
   async function markSelectedDayUnavailable() {
     if (agendaBusy) return;
-    setMessage("");
+    setFeedback(null);
 
     // Copia estable: la selección puede cambiar mientras corre la petición.
     const targetDates = selectedCalendarDates.length > 0
@@ -2130,7 +2121,7 @@ export function DoctorDashboardClient() {
         : [];
 
     if (targetDates.length === 0) {
-      setMessage("Selecciona uno o varios días del calendario para marcarlos como no disponibles.");
+      setFeedback({ tone: "error", text: "Selecciona uno o varios días del calendario para marcarlos como no disponibles." });
       return;
     }
 
@@ -2146,11 +2137,13 @@ export function DoctorDashboardClient() {
     );
 
     if (slotsToHide.length === 0) {
-      setMessage(
-        daysWithAppointments.length > 0
-          ? "Los días seleccionados solo tienen horarios con cita reservada. Reagenda o cancela esas citas primero."
-          : "Los días seleccionados no tienen horarios libres activos para ocultar."
-      );
+      setFeedback({
+        tone: "error",
+        text:
+          daysWithAppointments.length > 0
+            ? "Los días seleccionados solo tienen horarios con cita reservada. Reagenda o cancela esas citas primero."
+            : "Los días seleccionados no tienen horarios libres activos para ocultar."
+      });
       return;
     }
 
@@ -2165,12 +2158,12 @@ export function DoctorDashboardClient() {
         )
       );
       const dayLabel = targetDates.length === 1 ? "1 día" : `${targetDates.length} días`;
-      setMessage(
-        `${dayLabel} marcado(s) como no disponible(s): ${slotsToHide.length} horario(s) ocultado(s) para pacientes.` +
-          (daysWithAppointments.length > 0
-            ? ` Los horarios con cita reservada se conservaron.`
-            : "")
-      );
+      setFeedback({
+        tone: "success",
+        text:
+          `${dayLabel} marcado(s) como no disponible(s): ${slotsToHide.length} horario(s) ocultado(s) para pacientes.` +
+          (daysWithAppointments.length > 0 ? ` Los horarios con cita reservada se conservaron.` : "")
+      });
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
       setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible ocultar los horarios de esos días." });
@@ -2181,9 +2174,9 @@ export function DoctorDashboardClient() {
 
   async function createCalendarBlocks(repeat = false) {
     if (agendaBusy) return;
-    setMessage("");
+    setFeedback(null);
     if (!repeat && selectedCalendarDates.length === 0) {
-      setMessage("Selecciona uno o varios días del calendario para publicar horarios.");
+      setFeedback({ tone: "error", text: "Selecciona uno o varios días del calendario para publicar horarios." });
       return;
     }
     if (repeat && !window.confirm("Se repetirá esta disponibilidad semanal durante el próximo mes. ¿Deseas continuar?")) {
@@ -2219,9 +2212,10 @@ export function DoctorDashboardClient() {
       if (response.blockedDatesSkipped) notes.push(`${response.blockedDatesSkipped} fecha(s) están marcadas como no disponibles`);
 
       const total = response.created + response.reactivated;
-      setMessage(
-        `Calendario actualizado: ${total} de ${response.requested} horarios disponibles en bloques de ${slotDurationMinutes} minutos${notes.length ? ` (${notes.join("; ")})` : ""}.`
-      );
+      setFeedback({
+        tone: "success",
+        text: `Calendario actualizado: ${total} de ${response.requested} horarios disponibles en bloques de ${slotDurationMinutes} minutos${notes.length ? ` (${notes.join("; ")})` : ""}.`
+      });
       if (!repeat) setSelectedCalendarDates([]);
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
@@ -2233,9 +2227,9 @@ export function DoctorDashboardClient() {
 
   async function revertMonthlyRepeat(repeatBatchId = lastRepeatBatchId) {
     if (agendaBusy) return;
-    setMessage("");
+    setFeedback(null);
     if (!repeatBatchId) {
-      setMessage("No hay una repetición mensual reciente para revertir.");
+      setFeedback({ tone: "error", text: "No hay una repetición mensual reciente para revertir." });
       return;
     }
     setAgendaBusy("revert");
@@ -2245,7 +2239,7 @@ export function DoctorDashboardClient() {
       body: JSON.stringify({ repeatBatchId })
     });
       setLastRepeatBatchId("");
-      setMessage(`Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).`);
+      setFeedback({ tone: "success", text: `Disponibilidad repetida revertida: ${response.deleted} horario(s) eliminado(s).` });
       await Promise.all([load(), loadWeekdaySchedule()]);
     } catch (error) {
       setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible revertir la repetición." });
@@ -2256,7 +2250,7 @@ export function DoctorDashboardClient() {
 
   async function uploadDoctorImage(kind: "profile" | "office" | "license", file?: File) {
     if (!file) return;
-    setMessage("");
+    setFeedback(null);
     const fieldByKind = {
       profile: "imageUrl",
       office: "practicePhotoUrl",
@@ -2278,11 +2272,11 @@ export function DoctorDashboardClient() {
     if (kind === "office") setPracticePhotoUrl(response.url);
     if (kind === "license") setProfessionalLicensePhotoUrl(response.url);
     setProfile((current) => current ? { ...current, [fieldByKind[kind]]: response.url } : current);
-    setMessage(`${labelByKind[kind]} cargada y guardada en tu perfil. Ya puedes revisar la vista previa.`);
+    setFeedback({ tone: "success", text: `${labelByKind[kind]} cargada y guardada en tu perfil. Ya puedes revisar la vista previa.` });
   }
 
   async function checkoutPlan(plan: DoctorProfile["medal"]) {
-    setMessage("");
+    setFeedback(null);
     const response = await clientApi<{ checkoutUrl?: string; status?: string }>("/api/subscriptions/checkout", {
       method: "POST",
       body: JSON.stringify({ plan })
@@ -2292,7 +2286,7 @@ export function DoctorDashboardClient() {
       return;
     }
     setMedal(plan);
-    setMessage("Plan actualizado correctamente.");
+    setFeedback({ tone: "success", text: "Plan actualizado correctamente." });
     await load();
   }
 
@@ -2300,16 +2294,16 @@ export function DoctorDashboardClient() {
     const confirmed = window.confirm("¿Quieres cancelar la renovación automática de tu suscripción? Tu acceso seguirá activo hasta terminar el periodo pagado.");
     if (!confirmed) return;
     setSubscriptionAction("cancel");
-    setMessage("");
+    setFeedback(null);
     try {
       const response = await clientApi<{ message: string }>("/api/subscriptions/cancel", {
         method: "POST",
         body: JSON.stringify({ plan: medal })
       });
-      setMessage(response.message);
+      setFeedback({ tone: "success", text: response.message });
       await load();
     } catch (caught) {
-      setMessage(caught instanceof Error ? caught.message : "No fue posible cancelar la renovación.");
+      setFeedback({ tone: "error", text: caught instanceof Error ? caught.message : "No fue posible cancelar la renovación." });
     } finally {
       setSubscriptionAction("");
     }
@@ -2354,14 +2348,14 @@ export function DoctorDashboardClient() {
   function openCancellationRequest(appointment: Appointment) {
     setCancellationModal(appointment);
     setCancellationReason("");
-    setMessage("");
+    setFeedback(null);
   }
 
   async function submitCancellationRequest() {
     if (!cancellationModal) return;
     const reason = cancellationReason.trim();
     if (reason.length < 6) {
-      setMessage("Escribe un motivo de cancelación claro antes de enviar la solicitud.");
+      setFeedback({ tone: "error", text: "Escribe un motivo de cancelación claro antes de enviar la solicitud." });
       return;
     }
     await updateAppointment(cancellationModal.id, "CANCEL_BY_DOCTOR", reason);
@@ -2370,7 +2364,7 @@ export function DoctorDashboardClient() {
   }
 
   async function startConnectOnboarding() {
-    setMessage("");
+    setFeedback(null);
     const response = await clientApi<{ url: string }>("/api/stripe/connect/onboarding", { method: "POST" });
     window.location.href = response.url;
   }
@@ -2687,14 +2681,14 @@ export function DoctorDashboardClient() {
       body: JSON.stringify({ reviewId, doctorReply: reviewReply })
     });
     setReviewReply("");
-    setMessage("Respuesta publicada en la opinión del paciente.");
+    setFeedback({ tone: "success", text: "Respuesta publicada en la opinión del paciente." });
     await load();
   }
 
   async function askAssistant() {
-    setMessage("");
+    setFeedback(null);
     if (!assistantEnabled) {
-      setMessage("El asistente de agenda está disponible al actualizar al plan Amatista.");
+      setFeedback({ tone: "info", text: "El asistente de agenda está disponible al actualizar al plan Amatista." });
       return;
     }
     const response = await clientApi<AssistantResponse>("/api/doctor-assistant", {
@@ -2705,9 +2699,9 @@ export function DoctorDashboardClient() {
   }
 
   async function searchMedicationReference() {
-    setMessage("");
+    setFeedback(null);
     if (!assistantEnabled) {
-      setMessage("La búsqueda de medicamentos está disponible en el plan Amatista.");
+      setFeedback({ tone: "info", text: "La búsqueda de medicamentos está disponible en el plan Amatista." });
       return;
     }
     const response = await clientApi<MedicationResult>("/api/medications/search", {
@@ -2718,9 +2712,9 @@ export function DoctorDashboardClient() {
   }
 
   async function createConversation() {
-    setMessage("");
+    setFeedback(null);
     if (!collaborationEnabled) {
-      setMessage("La colaboración médica es una función premium incluida únicamente en el Plan Amatista.");
+      setFeedback({ tone: "info", text: "La colaboración médica es una función premium incluida únicamente en el Plan Amatista." });
       return;
     }
     await clientApi("/api/doctor-conversations", {
@@ -2738,14 +2732,14 @@ export function DoctorDashboardClient() {
     setClinicalSummary("");
     setChatMessage("");
     setRecipientDoctorId("");
-    setMessage("Conversación médica creada.");
+    setFeedback({ tone: "success", text: "Conversación médica creada." });
     await load();
   }
 
   async function sendConversationMessage(conversationId: string) {
     if (!chatMessage.trim()) return;
     if (!collaborationEnabled) {
-      setMessage("La colaboración médica es una función premium incluida únicamente en el Plan Amatista.");
+      setFeedback({ tone: "info", text: "La colaboración médica es una función premium incluida únicamente en el Plan Amatista." });
       return;
     }
     await clientApi(`/api/doctor-conversations/${conversationId}/messages`, {
@@ -2757,9 +2751,9 @@ export function DoctorDashboardClient() {
   }
 
   async function openAmatistaTool(tool: "historias" | "recetario") {
-    setMessage("");
+    setFeedback(null);
     if (!clinicalToolsEnabled) {
-      setMessage("Herramientas clínicas no disponibles en el perfil Obsidiana.");
+      setFeedback({ tone: "info", text: "Herramientas clínicas no disponibles en el perfil Obsidiana." });
       return;
     }
     setActiveAmatistaTool(tool);
@@ -2795,10 +2789,10 @@ export function DoctorDashboardClient() {
   /** Abre la nota clínica de una cita en un solo clic, desde la pantalla de inicio. */
   async function abrirNotaClinica(appointmentId: string) {
     if (!clinicalToolsEnabled) {
-      setMessage("Herramientas clínicas no disponibles en el perfil Obsidiana.");
+      setFeedback({ tone: "info", text: "Herramientas clínicas no disponibles en el perfil Obsidiana." });
       return;
     }
-    setMessage("");
+    setFeedback(null);
     setActiveAmatistaTool("historias");
     const records = await loadClinicalHistories();
     selectClinicalAppointment(appointmentId, records);
@@ -3368,7 +3362,7 @@ export function DoctorDashboardClient() {
                       />
                       <div className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.25rem] border border-silver/60 bg-white shadow-premium">
                         <div className="flex items-center justify-between gap-3 border-b border-silver/40 px-4 py-3">
-                          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Alertas</p>
+                          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Alertas</p>
                           {alertasSinLeer > 0 && (
                             <button
                               type="button"
@@ -3392,7 +3386,7 @@ export function DoctorDashboardClient() {
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold leading-snug text-deep">{item.title}</p>
                                 <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.message}</p>
-                                <p className="mt-1 text-[11px] text-slate-400">{formatClinicDateTime(item.createdAt)}</p>
+                                <p className="mt-1 text-[11px] text-slate-500">{formatClinicDateTime(item.createdAt)}</p>
                               </div>
                             </div>
                           ))}
@@ -3469,7 +3463,7 @@ export function DoctorDashboardClient() {
               onMarkPaid={(id) => updateAppointment(id, "MARK_PAID")}
               onOpenRecord={(id) =>
                 void abrirNotaClinica(id).catch((error) =>
-                  setMessage(error instanceof Error ? error.message : "No fue posible abrir la nota clínica.")
+                  setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible abrir la nota clínica." })
                 )
               }
             />
@@ -3518,7 +3512,7 @@ export function DoctorDashboardClient() {
               showConfigurator={activeSection === "horarios"}
               onMonthChange={(date) => {
                 setCalendarMonth(date);
-                load(date).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible cambiar de mes."));
+                load(date).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible cambiar de mes." }));
               }}
               onSelectDate={(date) => {
                 setSelectedCalendarDate(date);
@@ -3607,7 +3601,7 @@ export function DoctorDashboardClient() {
                                   ? "bg-sky-50 text-sky-800"
                                   : slot.isActive
                                     ? "bg-slate-100 text-slate-700"
-                                    : "bg-slate-50 text-slate-400 line-through"
+                                    : "bg-slate-50 text-slate-500 line-through"
                               }`}
                             >
                               {new Date(slot.startsAt).toLocaleString("es-MX", {
@@ -3623,7 +3617,7 @@ export function DoctorDashboardClient() {
                                   onClick={() => void deleteSingleSlot(slot.id)}
                                   disabled={weekdayBusy}
                                   aria-label={`Eliminar horario ${formatClinicDateTime(slot.startsAt)}`}
-                                  className="text-slate-400 transition hover:text-red-600 disabled:opacity-50"
+                                  className="text-slate-500 transition hover:text-red-600 disabled:opacity-50"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                                 </button>
@@ -3854,7 +3848,7 @@ export function DoctorDashboardClient() {
                 {doctorPlans.filter((plan) => plan.id !== "obsidiana").map((plan) => (
                   <button
                     key={plan.id}
-                    onClick={() => checkoutPlan(plan.id).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar el pago del plan."))}
+                    onClick={() => checkoutPlan(plan.id).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible iniciar el pago del plan." }))}
                     className={`rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 ${medal === plan.id ? "border-medical bg-slate-50 ring-4 ring-medical/10" : "border-silver bg-white"}`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -3923,7 +3917,7 @@ export function DoctorDashboardClient() {
                   </div>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button
-                      onClick={() => startConnectOnboarding().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir Stripe Connect."))}
+                      onClick={() => startConnectOnboarding().catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible abrir Stripe Connect." }))}
                       className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
                     >
                       {profile?.stripeAccountId ? "Actualizar datos de cobro" : "Configurar cuenta de cobro"}
@@ -4028,15 +4022,15 @@ export function DoctorDashboardClient() {
                 </div>
                 <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
                   <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir foto principal</span>
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("profile", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("profile", event.target.files?.[0]).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible subir la imagen." }))} className="hidden" />
                 </label>
                 <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
                   <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir foto de consultorio</span>
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("office", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("office", event.target.files?.[0]).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible subir la imagen." }))} className="hidden" />
                 </label>
                 <label className="rounded-3xl border border-silver bg-white px-4 py-3 text-sm font-semibold text-deep">
                   <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Subir imagen de cédula</span>
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("license", event.target.files?.[0]).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible subir la imagen."))} className="hidden" />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadDoctorImage("license", event.target.files?.[0]).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible subir la imagen." }))} className="hidden" />
                 </label>
                 <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
                   <div className="rounded-2xl border border-silver bg-white p-3">
@@ -4044,7 +4038,7 @@ export function DoctorDashboardClient() {
                     {imageUrl ? (
                       <Image src={imageUrl} alt="Vista previa perfil" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
                     ) : (
-                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-500">Sin imagen</div>
                     )}
                   </div>
                   <div className="rounded-2xl border border-silver bg-white p-3">
@@ -4052,7 +4046,7 @@ export function DoctorDashboardClient() {
                     {practicePhotoUrl ? (
                       <Image src={practicePhotoUrl} alt="Vista previa consultorio" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
                     ) : (
-                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-500">Sin imagen</div>
                     )}
                   </div>
                   <div className="rounded-2xl border border-silver bg-white p-3">
@@ -4060,7 +4054,7 @@ export function DoctorDashboardClient() {
                     {professionalLicensePhotoUrl ? (
                       <Image src={professionalLicensePhotoUrl} alt="Vista previa cédula" width={360} height={120} unoptimized className="h-24 w-full rounded-xl object-cover" />
                     ) : (
-                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-400">Sin imagen</div>
+                      <div className="flex h-24 items-center justify-center rounded-xl bg-slate-50 text-xs font-semibold text-slate-500">Sin imagen</div>
                     )}
                   </div>
                 </div>
@@ -4132,7 +4126,7 @@ export function DoctorDashboardClient() {
                 <div className="flex w-full flex-col gap-1 sm:max-w-xs">
                   <p className="px-1 text-xs font-semibold text-slate-500">Link a tus documentos de verificación (cédula, título…)</p>
                   <input value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} placeholder="https://drive.google.com/…" className="w-full rounded-full bg-slate-50 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-medical/20" />
-                  <p className="px-1 text-[0.7rem] leading-4 text-slate-400">Debe ser un enlace https con acceso para el equipo de VITAEON.</p>
+                  <p className="px-1 text-[0.7rem] leading-4 text-slate-500">Debe ser un enlace https con acceso para el equipo de VITAEON.</p>
                 </div>
                 <button
                   onClick={submitVerification}
@@ -4179,7 +4173,7 @@ export function DoctorDashboardClient() {
                       <p className="text-sm text-slate-500">{loc.hospital.city}{loc.notes ? ` · ${loc.notes}` : ""}</p>
                     </div>
                     <button
-                      onClick={() => removeLocation(loc.id).catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible eliminar el consultorio."))}
+                      onClick={() => removeLocation(loc.id).catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible eliminar el consultorio." }))}
                       className="rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                     >
                       Eliminar
@@ -4210,7 +4204,7 @@ export function DoctorDashboardClient() {
                     className="rounded-2xl border border-silver/60 bg-slate-50/80 px-4 py-3 text-sm text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
                   />
                   <button
-                    onClick={() => addLocation().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible agregar el consultorio."))}
+                    onClick={() => addLocation().catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible agregar el consultorio." }))}
                     className="rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638]"
                   >
                     Agregar
@@ -4230,7 +4224,7 @@ export function DoctorDashboardClient() {
           {activeSection === "secretaria" && (
             <DoctorAssistantsSection
               plan={profile?.medal ?? "oro"}
-              onMessage={setMessage}
+              onFeedback={setFeedback}
             />
           )}
 
@@ -4250,7 +4244,7 @@ export function DoctorDashboardClient() {
                 </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   <button
-                    onClick={() => openAmatistaTool("historias").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir historias clínicas."))}
+                    onClick={() => openAmatistaTool("historias").catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible abrir historias clínicas." }))}
                     className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-premium ${activeAmatistaTool === "historias" ? "border-medical bg-sky-50/50" : "border-silver bg-white"}`}
                   >
                     <FileText className="h-7 w-7 text-medical" />
@@ -4259,7 +4253,7 @@ export function DoctorDashboardClient() {
                     <span className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">Abrir historias clínicas</span>
                   </button>
                   <button
-                    onClick={() => openAmatistaTool("recetario").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible abrir el recetario."))}
+                    onClick={() => openAmatistaTool("recetario").catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible abrir el recetario." }))}
                     className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-premium ${activeAmatistaTool === "recetario" ? "border-medical bg-sky-50/50" : "border-silver bg-white"}`}
                   >
                     <Printer className="h-7 w-7 text-medical" />
@@ -4322,7 +4316,7 @@ export function DoctorDashboardClient() {
 
               <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} secretary={secretarySummary} notifications={notifications} />
               <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} />
-              <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible iniciar Amatista."))} />
+              <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible iniciar Amatista." }))} />
             </div>
           )}
           {cancellationModal && (
@@ -4346,7 +4340,7 @@ export function DoctorDashboardClient() {
                   Esta acción crea una solicitud pendiente. Primero se intentará reagendar; una devolución queda como segunda opción de revisión, sin mezclar pagos de suscripciones.
                 </p>
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <button onClick={() => submitCancellationRequest().catch((error) => setMessage(error instanceof Error ? error.message : "No fue posible enviar la solicitud."))} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">
+                  <button onClick={() => submitCancellationRequest().catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible enviar la solicitud." }))} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">
                     Enviar solicitud
                   </button>
                   <button onClick={() => setCancellationModal(null)} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">
@@ -4396,9 +4390,9 @@ function AdminMobileNav({
             <button
               key={id}
               onClick={() => onSelect(id)}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-400"}`}
+              className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${active ? "text-medical" : "text-slate-500"}`}
             >
-              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-400"}`} />
+              <Icon className={`h-5 w-5 transition-colors ${active ? "text-medical" : "text-slate-500"}`} />
               {label}
             </button>
           );
@@ -4655,7 +4649,7 @@ export function AdminDashboardClient() {
                                 >
                                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                                   Documento {index + 1}
-                                  <span className="font-normal text-slate-400">({new URL(reference).hostname})</span>
+                                  <span className="font-normal text-slate-500">({new URL(reference).hostname})</span>
                                 </a>
                               ) : (
                                 <span className="inline-flex items-center gap-2 break-all text-sm text-slate-500">
@@ -5054,7 +5048,7 @@ function SecretaryLinkSection({ medal }: { medal: DoctorProfile["medal"] }) {
         </div>
         <div className="mt-6 rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-8 text-center">
           <Key className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-400">Actualiza tu plan para activar el enlace de secretaría.</p>
+          <p className="mt-3 text-sm text-slate-500">Actualiza tu plan para activar el enlace de secretaría.</p>
         </div>
       </section>
     );
@@ -5138,7 +5132,7 @@ function SecretaryLinkSection({ medal }: { medal: DoctorProfile["medal"] }) {
         <div className="mt-6 rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-8 text-center">
           <Key className="mx-auto h-8 w-8 text-slate-300" />
           <p className="mt-3 text-sm font-semibold text-slate-600">Sin enlace activo</p>
-          <p className="mt-1 text-sm text-slate-400">Genera un enlace con PIN para que tu secretaria pueda registrar citas.</p>
+          <p className="mt-1 text-sm text-slate-500">Genera un enlace con PIN para que tu secretaria pueda registrar citas.</p>
           <button
             onClick={() => { setShowForm(true); setLinkError(""); }}
             className="mt-5 flex items-center gap-2 mx-auto rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
@@ -5172,7 +5166,7 @@ function SecretaryLinkSection({ medal }: { medal: DoctorProfile["medal"] }) {
                 <button
                   type="button"
                   onClick={() => setShowPin((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
                 >
                   {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -5297,7 +5291,7 @@ function DoctorAgendaPanel({
     Parcial: { cell: "border-amber-200 bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
     Ocupado: { cell: "border-sky-200 bg-sky-50", text: "text-sky-700", dot: "bg-sky-500" },
     "No disp.": { cell: "border-red-300 bg-red-100", text: "text-red-700", dot: "bg-red-500" },
-    "Sin horarios": { cell: "border-silver bg-white", text: "text-slate-400", dot: "bg-slate-300" }
+    "Sin horarios": { cell: "border-silver bg-white", text: "text-slate-500", dot: "bg-slate-300" }
   };
 
   function shiftMonth(direction: number) {
@@ -5393,7 +5387,7 @@ function DoctorAgendaPanel({
       <div className={`mt-5 grid gap-4 ${showConfigurator ? "lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
         {showConfigurator && (
         <div className="rounded-3xl border border-silver/40 bg-slate-50 p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Configurar horarios</p>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Configurar horarios</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Selecciona uno o varios días del mes. VITAEON generará horarios en zona America/Mexico_City, en bloques de {durationMinutes} minutos.
           </p>
@@ -5432,7 +5426,7 @@ function DoctorAgendaPanel({
             </label>
           </div>
           <div className="mt-4 rounded-3xl bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Vista previa</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Vista previa</p>
             {preview.length === 0 ? (
               <p className="mt-2 text-sm text-red-600">La hora final debe ser posterior a la inicial.</p>
             ) : (
@@ -5481,7 +5475,7 @@ function DoctorAgendaPanel({
             </button>
           </div>
           <div className="mt-5 border-t border-silver pt-5">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Repetir por semana</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Repetir por semana</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {["D", "L", "M", "M", "J", "V", "S"].map((label, index) => (
                 <button key={`${label}-${index}`} onClick={() => toggleWeekday(index)} className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${repeatWeekdays.includes(index) ? "border-transparent bg-black text-white" : "border-silver bg-white text-deep hover:border-medical/40"}`}>{label}</button>
@@ -5514,7 +5508,7 @@ function DoctorAgendaPanel({
         </div>
         )}
         <div className="rounded-3xl border border-silver/40 bg-slate-50 p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Detalle del día</p>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Detalle del día</p>
           {!selectedDay ? <EmptyState text="No hay horarios en el día seleccionado." /> : (
             <div className="mt-4 grid gap-3">
               {selectedDay.slots.map((slot) => (
@@ -6316,7 +6310,7 @@ function DoctorReviewPanel({
 function MetricMini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-silver/50 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">{label}</p>
       <p className="mt-3 text-3xl font-bold tabular-nums text-deep">{value}</p>
       <div className="mt-3 h-[3px] w-8 rounded-full bg-medical/50" />
     </div>
@@ -6737,7 +6731,7 @@ export function ObsidianDashboardClient() {
                     {logoUrl ? (
                       <Image src={logoUrl} alt="Logo Obsidiana" fill className="object-cover" unoptimized />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-slate-400">Logo opcional</div>
+                      <div className="flex h-full items-center justify-center text-sm text-slate-600">Logo opcional</div>
                     )}
                   </div>
                   <div className="mt-5 flex items-start justify-between gap-3">
@@ -6773,7 +6767,7 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
       <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-medical/10 text-medical">
         {icon}
       </div>
-      <p className="mt-4 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <p className="mt-4 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</p>
       <p className="mt-1.5 text-3xl font-bold text-deep">{value}</p>
     </div>
   );
@@ -6817,7 +6811,7 @@ function ErrorState({ message }: { message: string }) {
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-silver/60 bg-slate-50/60 px-6 py-10 text-center">
-      <p className="text-sm text-slate-400">{text}</p>
+      <p className="text-sm text-slate-500">{text}</p>
     </div>
   );
 }

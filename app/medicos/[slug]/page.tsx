@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const doctor = await getDoctor(slug).catch(() => null);
   if (!doctor) return { title: "Perfil médico" };
   return {
-    title: `${doctor.fullName} | ${doctor.specialty.name} en León | VITAEON`,
+    title: `${doctor.fullName} · ${doctor.specialty.name} en León`,
     description: `${doctor.fullName}, ${doctor.specialty.name} en ${doctor.hospital.name}. ${doctor.bio?.slice(0, 120) ?? "Perfil verificado en VITAEON."}`,
     openGraph: {
       title: `${doctor.fullName} · ${doctor.specialty.name}`,

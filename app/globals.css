@@ -145,6 +145,11 @@ body::before {
 }
 
 /* ─── Typography scale ───────────────────────────────────────── */
+/* Ojo: este `color` se aplica al propio encabezado, y una regla sobre el
+   elemento gana siempre a lo que herede de su contenedor. Un <h2> dentro de
+   una tarjeta oscura con `text-white` NO se vuelve blanco: sale #071726 sobre
+   #071726, es decir, invisible. Todo encabezado sobre fondo oscuro necesita su
+   propia clase de color. */
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
   font-weight: 600;

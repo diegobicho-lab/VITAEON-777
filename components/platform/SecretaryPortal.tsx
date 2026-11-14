@@ -1059,7 +1059,7 @@ export function SecretaryPortalClient({
           {/* El vacío solo es real si el servidor respondió bien. */}
           {todayAppts.length === 0 && !loadError ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
-              <Calendar className="mx-auto h-8 w-8 text-slate-400" aria-hidden="true" />
+              <Calendar className="mx-auto h-8 w-8 text-slate-500" aria-hidden="true" />
               <p className="mt-3 text-sm text-slate-600">Sin citas programadas en los próximos 7 días.</p>
               <button
                 onClick={() => setShowModal(true)}

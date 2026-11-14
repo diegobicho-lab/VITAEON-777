@@ -145,7 +145,7 @@ export function ClinicalResourcesSection() {
 
       <div className="border-t border-silver/50 bg-slate-50/70 px-6 py-5 sm:px-7">
         <div className="flex gap-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
           <p className="text-xs leading-5 text-slate-500">
             Recursos externos ofrecidos como apoyo profesional. VITAEON no controla ni valida su contenido clínico,
             y no envía datos del médico, pacientes ni expediente a estos sitios. La decisión diagnóstica y

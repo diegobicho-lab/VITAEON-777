@@ -151,7 +151,7 @@ function InternalNoteRow({ appointmentId, initialNote }: { appointmentId: string
     <div className="mt-2 border-t border-slate-100 pt-2">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-slate-600"
+        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-600"
       >
         <MessageSquare className="h-3.5 w-3.5" />
         {note ? "Ver/editar nota interna" : "Agregar nota interna"}
@@ -175,7 +175,7 @@ function InternalNoteRow({ appointmentId, initialNote }: { appointmentId: string
               Guardar nota
             </button>
             {saved && <span className="text-xs font-semibold text-emerald-600">✓ Guardada</span>}
-            <p className="text-xs text-slate-400">Solo visible para el equipo médico.</p>
+            <p className="text-xs text-slate-500">Solo visible para el equipo médico.</p>
           </div>
         </div>
       )}
@@ -228,7 +228,7 @@ function ScheduleSection({
       {grouped.size === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
           <Clock className="mx-auto h-7 w-7 text-slate-300" />
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-500">
             El médico no tiene horarios publicados próximamente. Debe agregarlos desde su panel.
           </p>
         </div>
@@ -282,7 +282,7 @@ function ScheduleSection({
                                   <p className="mt-0.5 text-xs text-slate-500">{appt.patient.phone}</p>
                                 )}
                                 {appt.reason && (
-                                  <p className="mt-0.5 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
+                                  <p className="mt-0.5 text-xs italic text-slate-500">&ldquo;{appt.reason}&rdquo;</p>
                                 )}
                               </>
                             ) : isFree && !isPast ? (
@@ -473,7 +473,7 @@ function NewAppointmentModal({
                 </div>
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="rounded-full p-1 text-slate-400 transition hover:text-slate-600"
+                  className="rounded-full p-1 text-slate-500 transition hover:text-slate-600"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -529,7 +529,7 @@ function NewAppointmentModal({
           {/* Motivo (opcional) */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#071726]">
-              Motivo de consulta <span className="font-normal text-slate-400">(opcional)</span>
+              Motivo de consulta <span className="font-normal text-slate-500">(opcional)</span>
             </label>
             <textarea
               value={reason}
@@ -748,7 +748,7 @@ export function AssistantDashboardClient() {
 
           {todayAppointments.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
-              <p className="text-sm text-slate-400">Sin citas programadas para hoy.</p>
+              <p className="text-sm text-slate-500">Sin citas programadas para hoy.</p>
               <button
                 onClick={() => openModal()}
                 disabled={!me}
@@ -775,7 +775,7 @@ export function AssistantDashboardClient() {
                           {appt.patient.phone ? ` · ${appt.patient.phone}` : ""}
                         </p>
                         {appt.reason && (
-                          <p className="mt-1 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
+                          <p className="mt-1 text-xs italic text-slate-500">&ldquo;{appt.reason}&rdquo;</p>
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
@@ -822,7 +822,7 @@ export function AssistantDashboardClient() {
                         {appt.patient.phone ? ` · ${appt.patient.phone}` : ""}
                       </p>
                       {appt.reason && (
-                        <p className="mt-1 text-xs italic text-slate-400">&ldquo;{appt.reason}&rdquo;</p>
+                        <p className="mt-1 text-xs italic text-slate-500">&ldquo;{appt.reason}&rdquo;</p>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -851,7 +851,7 @@ export function AssistantDashboardClient() {
         )}
 
         {/* Branding */}
-        <p className="mt-12 text-center text-xs text-slate-400">
+        <p className="mt-12 text-center text-xs text-slate-500">
           VITAEON · Panel de asistente médico · Acceso restringido
         </p>
       </div>

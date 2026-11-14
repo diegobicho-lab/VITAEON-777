@@ -19,11 +19,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 
   if (!link?.isActive) {
-    return { title: "Enlace no válido · VITAEON" };
+    return { title: "Enlace no válido" };
   }
 
   return {
-    title: `Secretaría · ${link.doctor.fullName} · VITAEON`,
+    title: `Secretaría · ${link.doctor.fullName}`,
     robots: { index: false, follow: false }
   };
 }

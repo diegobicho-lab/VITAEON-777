@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Planes y precios | VITAEON",
+  title: "Planes y precios",
   description:
     "Conoce los planes para médicos y representantes médicos en VITAEON. Desde perfil gratuito hasta asistente IA real con agenda premium en León, Guanajuato.",
   robots: { index: true, follow: true }
@@ -166,13 +166,13 @@ export default function PreciosPage() {
                         </svg>
                       </span>
                     ) : (
-                      <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                      <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
                         <svg viewBox="0 0 12 12" fill="currentColor" className="h-2.5 w-2.5">
                           <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
                         </svg>
                       </span>
                     )}
-                    <span className={f.included ? "text-slate-700" : "text-slate-400"}>{f.label}</span>
+                    <span className={f.included ? "text-slate-700" : "text-slate-500"}>{f.label}</span>
                   </li>
                 ))}
               </ul>
@@ -261,13 +261,13 @@ export default function PreciosPage() {
       <footer className="mx-auto mt-16 max-w-7xl border-t border-slate-200/70 pt-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <span className="font-semibold tracking-[0.45em] text-[#071726]">VITAEON</span>
-          <div className="flex flex-wrap gap-5 text-sm text-slate-400">
+          <div className="flex flex-wrap gap-5 text-sm text-slate-500">
             <Link href="/aviso-de-privacidad" className="hover:text-slate-600">Privacidad</Link>
             <Link href="/terminos" className="hover:text-slate-600">Términos</Link>
             <Link href="/soporte" className="hover:text-slate-600">Soporte</Link>
           </div>
         </div>
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 text-xs text-slate-500">
           © {new Date().getFullYear()} VITAEON · Red médica privada · León, Guanajuato, México
         </p>
       </footer>

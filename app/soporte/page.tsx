@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage } from "@/components/platform/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Soporte VITAEON"
+  title: "Soporte"
 };
 
 export default function SupportPage() {

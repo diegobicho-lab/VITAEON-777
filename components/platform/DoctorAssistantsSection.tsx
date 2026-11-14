@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Trash2, UserPlus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { clientApi } from "@/services/client/api";
 
 /* ── Tipos ──────────────────────────────────────────────────── */
@@ -21,12 +21,19 @@ type AssistantItem = {
 
 /* ── Componente ─────────────────────────────────────────────── */
 
+/**
+ * El resultado se reporta al panel, no aquí.
+ *
+ * Esta sección tenía su propio aviso con glifos ✓/⚠ y su propio temporizador
+ * sin limpiar. Dos avisos distintos en la misma pantalla enseñan al médico a
+ * no mirar ninguno, así que ahora habla por el único aviso del panel.
+ */
 export function DoctorAssistantsSection({
   plan,
-  onMessage: _onMessage
+  onFeedback
 }: {
   plan: string; // "oro" | "diamante" | "amatista" | "obsidiana"
-  onMessage: (msg: string) => void;
+  onFeedback: (feedback: { tone: "success" | "error"; text: string }) => void;
 }) {
   const [assistants, setAssistants] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,11 +41,10 @@ export function DoctorAssistantsSection({
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
-  const [sectionMessage, setSectionMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const isPlanAllowed = plan === "diamante" || plan === "amatista";
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!isPlanAllowed) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -49,13 +55,13 @@ export function DoctorAssistantsSection({
     } finally {
       setLoading(false);
     }
-  }
+  }, [isPlanAllowed]);
 
-  useEffect(() => { void load(); }, []);
+  // Depende del plan: quien sube a Diamante a media sesión debe ver su lista.
+  useEffect(() => { void load(); }, [load]);
 
   function showMsg(text: string, ok: boolean) {
-    setSectionMessage({ text, ok });
-    setTimeout(() => setSectionMessage(null), 6000);
+    onFeedback({ tone: ok ? "success" : "error", text });
   }
 
   async function invite() {
@@ -116,7 +122,7 @@ export function DoctorAssistantsSection({
         </div>
         <div className="mt-6 rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-8 text-center">
           <UserPlus className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-400">Actualiza tu plan para activar la función de asistente.</p>
+          <p className="mt-3 text-sm text-slate-500">Actualiza tu plan para activar la función de asistente.</p>
         </div>
       </section>
     );
@@ -125,19 +131,6 @@ export function DoctorAssistantsSection({
   /* ── Plan correcto ── */
   return (
     <section className="dashboard-card rounded-[1.75rem] border-silver/70">
-      {/* Mensaje de estado — aparece justo arriba del encabezado de esta sección */}
-      {sectionMessage && (
-        <div
-          className={`mb-5 flex items-start gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium ${
-            sectionMessage.ok
-              ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
-              : "bg-red-50 text-red-700 ring-1 ring-red-200"
-          }`}
-        >
-          <span>{sectionMessage.ok ? "✓" : "⚠"}</span>
-          <span>{sectionMessage.text}</span>
-        </div>
-      )}
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-medical">Asistente de recepción</p>
         <h2 className="mt-2 text-2xl font-semibold text-deep">Gestión de asistentes</h2>
@@ -156,7 +149,7 @@ export function DoctorAssistantsSection({
         ) : assistants.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-silver/50 bg-slate-50/60 px-6 py-6 text-center">
             <UserPlus className="mx-auto h-7 w-7 text-slate-300" />
-            <p className="mt-2 text-sm text-slate-400">Sin asistente asignado. Invita a tu secretaria o recepcionista.</p>
+            <p className="mt-2 text-sm text-slate-500">Sin asistente asignado. Invita a tu secretaria o recepcionista.</p>
           </div>
         ) : (
           <div className="grid gap-3">

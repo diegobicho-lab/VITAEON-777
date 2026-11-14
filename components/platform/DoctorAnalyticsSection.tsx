@@ -46,7 +46,7 @@ function MiniBarChart({ data }: { data: DayCount[] }) {
             style={{ height: `${Math.max((d.count / max) * 100, 4)}%` }}
             title={`${d.count} citas`}
           />
-          <span className="text-[10px] font-semibold text-slate-400">{d.label}</span>
+          <span className="text-[10px] font-semibold text-slate-500">{d.label}</span>
         </div>
       ))}
     </div>
@@ -76,7 +76,7 @@ function StatCard({
       <div>
         <p className="text-2xl font-bold text-[#071726]">{value}</p>
         <p className="mt-0.5 text-xs font-semibold text-slate-500">{label}</p>
-        {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+        {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
       </div>
     </div>
   );
@@ -174,14 +174,14 @@ export function DoctorAnalyticsSection() {
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
           <p className="mb-4 text-sm font-semibold text-[#071726]">Citas por día de la semana</p>
           <MiniBarChart data={data.appointmentsByDay} />
-          <p className="mt-3 text-xs text-slate-400">Basado en los últimos 90 días</p>
+          <p className="mt-3 text-xs text-slate-500">Basado en los últimos 90 días</p>
         </div>
 
         {/* Top patients */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
           <p className="mb-4 text-sm font-semibold text-[#071726]">Pacientes más frecuentes</p>
           {data.topPatients.length === 0 ? (
-            <p className="text-sm text-slate-400">Sin datos suficientes aún.</p>
+            <p className="text-sm text-slate-500">Sin datos suficientes aún.</p>
           ) : (
             <div className="space-y-2">
               {data.topPatients.map((p, i) => {
@@ -221,10 +221,10 @@ export function DoctorAnalyticsSection() {
             <li className="flex gap-2"><span className="shrink-0 text-red-400">⚠️</span>Tu tasa de completadas es baja. Verifica si hay cancelaciones frecuentes y contacta a tus pacientes.</li>
           )}
           {data.cancelled90 > 0 && (
-            <li className="flex gap-2"><span className="shrink-0 text-slate-400">🔔</span>{data.cancelled90} {data.cancelled90 === 1 ? "cita cancelada" : "citas canceladas"} en 90 días. Los recordatorios automáticos reducen cancelaciones.</li>
+            <li className="flex gap-2"><span className="shrink-0 text-slate-500">🔔</span>{data.cancelled90} {data.cancelled90 === 1 ? "cita cancelada" : "citas canceladas"} en 90 días. Los recordatorios automáticos reducen cancelaciones.</li>
           )}
           {data.revenueThisMonthCents === 0 && (
-            <li className="flex gap-2"><span className="shrink-0 text-slate-400">💳</span>Activa los cobros en línea con Stripe para registrar ingresos automáticamente en tu panel.</li>
+            <li className="flex gap-2"><span className="shrink-0 text-slate-500">💳</span>Activa los cobros en línea con Stripe para registrar ingresos automáticamente en tu panel.</li>
           )}
           <li className="flex gap-2"><span className="shrink-0 text-sky-500">👤</span>Completa foto, biografía y dirección: es lo que el paciente compara antes de elegir.</li>
           {data.total90 > 0 && data.appointmentsByDay.some((d) => d.count === 0) && (

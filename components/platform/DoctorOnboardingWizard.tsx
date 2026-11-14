@@ -294,7 +294,7 @@ export default function DoctorOnboardingWizard({
         {/* Botón cerrar */}
         <button
           onClick={onSkip}
-          className="absolute right-5 top-5 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-5 top-5 rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
           aria-label="Omitir wizard"
         >
           <X className="h-4 w-4" />
@@ -307,7 +307,7 @@ export default function DoctorOnboardingWizard({
           </p>
           <h2 className="mt-1 text-xl font-bold text-[#071726]">
             {STEPS[step - 1].label}
-            <span className="ml-2 text-sm font-normal text-slate-400">
+            <span className="ml-2 text-sm font-normal text-slate-500">
               Paso {step} de {STEPS.length}
             </span>
           </h2>
@@ -330,7 +330,7 @@ export default function DoctorOnboardingWizard({
                     ? "bg-[#071726] text-white shadow-sm"
                     : s.number < step
                     ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100/80 text-slate-400"
+                    : "bg-slate-100/80 text-slate-600"
                 }`}
               >
                 {s.number < step ? <CheckCircle2 className="h-3 w-3" /> : s.icon}
@@ -366,7 +366,7 @@ export default function DoctorOnboardingWizard({
                     value={data.fullName}
                     onChange={(v) => set("fullName", v)}
                     placeholder="Dr. Juan García López"
-                    icon={<User className="h-4 w-4 text-slate-400" />}
+                    icon={<User className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Especialidad">
@@ -399,9 +399,9 @@ export default function DoctorOnboardingWizard({
                     onChange={(v) => set("subSpecialty", v)}
                     placeholder="Ej: Cardiología intervencionista"
                     maxLength={120}
-                    icon={<Stethoscope className="h-4 w-4 text-slate-400" />}
+                    icon={<Stethoscope className="h-4 w-4 text-slate-500" />}
                   />
-                  <p className="mt-1 text-right text-xs text-slate-400">{data.subSpecialty.length} / 120</p>
+                  <p className="mt-1 text-right text-xs text-slate-500">{data.subSpecialty.length} / 120</p>
                 </Label>
               </div>
             )}
@@ -414,7 +414,7 @@ export default function DoctorOnboardingWizard({
                     value={data.professionalLicense}
                     onChange={(v) => set("professionalLicense", v)}
                     placeholder="12345678"
-                    icon={<BadgeCheck className="h-4 w-4 text-slate-400" />}
+                    icon={<BadgeCheck className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Universidad de titulación">
@@ -422,7 +422,7 @@ export default function DoctorOnboardingWizard({
                     value={data.university}
                     onChange={(v) => set("university", v)}
                     placeholder="Universidad de Guanajuato"
-                    icon={<Building2 className="h-4 w-4 text-slate-400" />}
+                    icon={<Building2 className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Años de experiencia">
@@ -431,7 +431,7 @@ export default function DoctorOnboardingWizard({
                     onChange={(v) => set("yearsExperience", v)}
                     placeholder="12"
                     type="number"
-                    icon={<Briefcase className="h-4 w-4 text-slate-400" />}
+                    icon={<Briefcase className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Certificaciones (opcional)" hint="Ej: Consejo Mexicano de Cardiología">
@@ -440,9 +440,9 @@ export default function DoctorOnboardingWizard({
                     onChange={(v) => set("certifications", v)}
                     placeholder="Certificaciones y logros"
                     maxLength={160}
-                    icon={<Star className="h-4 w-4 text-slate-400" />}
+                    icon={<Star className="h-4 w-4 text-slate-500" />}
                   />
-                  <p className="mt-1 text-right text-xs text-slate-400">{data.certifications.length} / 160</p>
+                  <p className="mt-1 text-right text-xs text-slate-500">{data.certifications.length} / 160</p>
                 </Label>
               </div>
             )}
@@ -456,7 +456,7 @@ export default function DoctorOnboardingWizard({
                     onChange={(v) => set("consultationPriceCents", String(Math.round(Number(v) * 100)))}
                     placeholder="1000"
                     type="number"
-                    icon={<CreditCard className="h-4 w-4 text-slate-400" />}
+                    icon={<CreditCard className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Duración de consulta (minutos)">
@@ -479,7 +479,7 @@ export default function DoctorOnboardingWizard({
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-sm text-[#071726] outline-none transition focus:border-[#1e9bd4]/40 focus:bg-white focus:ring-2 focus:ring-[#1e9bd4]/10"
                   />
                   <p className={`mt-1 text-right text-xs font-medium transition-colors duration-200 ${
-                    bioOk ? "text-emerald-500" : "text-slate-400"
+                    bioOk ? "text-emerald-500" : "text-slate-500"
                   }`}>
                     {data.bio.length} / 100 mín.{bioOk ? " ✓" : ""}
                   </p>
@@ -495,7 +495,7 @@ export default function DoctorOnboardingWizard({
                     value={data.officeAddress}
                     onChange={(v) => set("officeAddress", v)}
                     placeholder="Blvd. Campestre 123, Col. Jardines del Moral"
-                    icon={<MapPin className="h-4 w-4 text-slate-400" />}
+                    icon={<MapPin className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Teléfono profesional">
@@ -504,7 +504,7 @@ export default function DoctorOnboardingWizard({
                     onChange={(v) => set("professionalPhone", v)}
                     placeholder="+52 477 123 4567"
                     type="tel"
-                    icon={<Phone className="h-4 w-4 text-slate-400" />}
+                    icon={<Phone className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="WhatsApp (URL o número)">
@@ -512,7 +512,7 @@ export default function DoctorOnboardingWizard({
                     value={data.whatsappUrl}
                     onChange={(v) => set("whatsappUrl", v)}
                     placeholder="https://wa.me/524771234567"
-                    icon={<Phone className="h-4 w-4 text-slate-400" />}
+                    icon={<Phone className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="Instagram (URL, opcional)">
@@ -520,7 +520,7 @@ export default function DoctorOnboardingWizard({
                     value={data.instagramUrl}
                     onChange={(v) => set("instagramUrl", v)}
                     placeholder="https://instagram.com/drjuangarcia"
-                    icon={<Instagram className="h-4 w-4 text-slate-400" />}
+                    icon={<Instagram className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
                 <Label text="LinkedIn (URL, opcional)">
@@ -528,7 +528,7 @@ export default function DoctorOnboardingWizard({
                     value={data.linkedinUrl}
                     onChange={(v) => set("linkedinUrl", v)}
                     placeholder="https://linkedin.com/in/drjuangarcia"
-                    icon={<Linkedin className="h-4 w-4 text-slate-400" />}
+                    icon={<Linkedin className="h-4 w-4 text-slate-500" />}
                   />
                 </Label>
               </div>
@@ -572,7 +572,7 @@ export default function DoctorOnboardingWizard({
                       value={data.availabilityStartTime}
                       onChange={(v) => set("availabilityStartTime", v)}
                       type="time"
-                      icon={<CalendarClock className="h-4 w-4 text-slate-400" />}
+                      icon={<CalendarClock className="h-4 w-4 text-slate-500" />}
                     />
                   </Label>
                   <Label text="Hora de término">
@@ -580,7 +580,7 @@ export default function DoctorOnboardingWizard({
                       value={data.availabilityEndTime}
                       onChange={(v) => set("availabilityEndTime", v)}
                       type="time"
-                      icon={<CalendarClock className="h-4 w-4 text-slate-400" />}
+                      icon={<CalendarClock className="h-4 w-4 text-slate-500" />}
                     />
                   </Label>
                 </div>
@@ -619,7 +619,7 @@ export default function DoctorOnboardingWizard({
                         {p.name}
                       </span>
                       <span className="font-bold text-[#071726]">{p.price}</span>
-                      <span className="text-xs text-slate-400">{p.period}</span>
+                      <span className="text-xs text-slate-500">{p.period}</span>
                       {data.plan === p.id && (
                         <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-[#1e9bd4]" />
                       )}
@@ -635,7 +635,7 @@ export default function DoctorOnboardingWizard({
                     </ul>
                   </button>
                 ))}
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-slate-500">
                   Para planes Diamante y Amatista se abrirá un checkout seguro de Stripe al guardar tu perfil.
                 </p>
               </div>
@@ -701,7 +701,7 @@ function Label({ text, hint, children }: { text: string; hint?: string; children
   return (
     <div>
       <label className="mb-1.5 block text-sm font-semibold text-[#071726]">{text}</label>
-      {hint && <p className="mb-2 text-xs leading-5 text-slate-400">{hint}</p>}
+      {hint && <p className="mb-2 text-xs leading-5 text-slate-500">{hint}</p>}
       {children}
     </div>
   );

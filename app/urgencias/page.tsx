@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Urgencias médicas | VITAEON",
+  title: "Urgencias médicas",
   description: "VITAEON no es un servicio de urgencias. Si estás en peligro, llama al 911 o acude a la sala de emergencias más cercana en León, Guanajuato."
 };
 
@@ -41,7 +41,7 @@ export default function UrgenciasPage() {
       <div className="mx-auto mt-12 max-w-3xl">
         {/* Alerta principal */}
         <div className="rounded-[2rem] border-2 border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-red-600">Aviso importante</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-red-700">Aviso importante</p>
           <h1 className="mt-3 text-3xl font-bold text-red-700 sm:text-4xl">
             VITAEON no es servicio de urgencias
           </h1>
@@ -68,7 +68,7 @@ export default function UrgenciasPage() {
               >
                 <div>
                   <p className={`text-sm ${contact.bold ? "font-bold text-lg" : "font-semibold"}`}>{contact.name}</p>
-                  {!contact.bold && <p className="mt-0.5 text-xs text-rose-500">Toca para llamar</p>}
+                  {!contact.bold && <p className="mt-0.5 text-xs text-rose-700">Toca para llamar</p>}
                 </div>
                 <span className={`font-bold ${contact.bold ? "text-3xl" : "text-lg"}`}>{contact.number}</span>
               </a>
@@ -94,7 +94,7 @@ export default function UrgenciasPage() {
 
         {/* Qué es VITAEON */}
         <section className="mt-10 rounded-[2rem] bg-[#071726] p-7 text-white">
-          <h2 className="text-xl font-bold">¿Qué hace VITAEON?</h2>
+          <h2 className="text-xl font-bold text-white">¿Qué hace VITAEON?</h2>
           <p className="mt-3 text-sm leading-7 text-slate-300">
             VITAEON es una plataforma de orientación, búsqueda y agendamiento de citas con médicos especialistas privados en León, Guanajuato. Nuestro orientador inteligente puede ayudarte a identificar qué especialista necesitas, pero no sustituye la valoración presencial ni la atención de urgencias.
           </p>
@@ -108,7 +108,7 @@ export default function UrgenciasPage() {
           </div>
         </section>
 
-        <p className="mt-8 text-center text-xs leading-5 text-slate-400">
+        <p className="mt-8 text-center text-xs leading-5 text-slate-500">
           VITAEON · Red médica privada en León, Guanajuato · No sustituye servicios de emergencia, ambulancia ni valoración inmediata.
         </p>
       </div>
