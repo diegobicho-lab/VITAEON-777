@@ -4974,7 +4974,17 @@ function SecretaryLinkSection({ medal }: { medal: DoctorProfile["medal"] }) {
 
   const isPlanAllowed = medal === "diamante" || medal === "amatista";
 
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "https://vitaeon.mx";
+  /**
+   * El dominio real, no el que el médico tenga abierto.
+   *
+   * Con window.location.origin, un médico que entrara desde una URL de
+   * previsualización de Vercel generaba el enlace de su secretaria apuntando a
+   * ese despliegue concreto. Esas URLs quedan congeladas en un commit y pueden
+   * borrarse: la secretaria se quedaría con un enlace muerto o con una versión
+   * vieja del portal, sin que nadie se entere. El resto del código ya usaba
+   * esta variable; esta sección era la única excepción.
+   */
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://vitaeon.mx").replace(/\/$/, "");
   const portalUrl = link ? `${appUrl}/secretaria/${link.token}` : "";
 
   useEffect(() => {
