@@ -181,6 +181,28 @@ button, input, select, textarea {
   }
 }
 
+/* Un control de formulario trae ancho intrínseco propio: el <select> se
+   dimensiona a su opción más larga, el <textarea> a su atributo cols. Como
+   hijo de una rejilla o de un flex, ese ancho se vuelve un mínimo que no
+   puede encoger, y estira la columna por encima de la pantalla. Siguen
+   ocupando todo el ancho disponible —eso lo da `w-full` o el estirado por
+   defecto de la rejilla—, solo dejan de empujar.
+
+   Las casillas y los radios quedan fuera: su tamaño es fijo y no se estiran. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-width: 0;
+}
+
+/* Y además no deben encoger nunca. Al corregir los desbordamientos de arriba
+   las filas dejaron de tener espacio de sobra, y una casilla es un flex item
+   que por defecto sí encoge: medido, una de 16px acababa en 13. */
+input[type="checkbox"],
+input[type="radio"] {
+  flex: none;
+}
+
 input, select, textarea {
   border: 1px solid rgba(216, 226, 234, 0.9);
   background: rgba(255, 255, 255, 0.9);
@@ -775,9 +797,8 @@ select {
   flex-direction: column;
   /* El panel es hijo de una rejilla (`grid place-items-center`), y los hijos
      de una rejilla llevan min-width:auto: no pueden encoger por debajo del
-     ancho mínimo de su contenido. Un <textarea> tiene ancho intrínseco propio
-     —el del atributo cols— que `w-full` no anula a efectos de ese mínimo, así
-     que estiraba el panel a 610px dentro de una pantalla de 375. */
+     min-content de su contenido. Medido: el panel se estiraba a 610px dentro
+     de una pantalla de 375 y el texto quedaba cortado por la derecha. */
   min-width: 0;
 }
 
@@ -796,11 +817,15 @@ select {
 
 .booking-flow > section {
   min-height: 0;
-  /* El mismo mínimo, en el otro eje. `grid-template-columns: 1fr` no basta:
-     1fr conserva un mínimo automático de min-content, y aquí ese mínimo lo
-     fija un <textarea>, que trae ancho intrínseco propio. Sin esto la
-     sección medía 564px dentro de una pantalla de 375 y los botones de pago
-     quedaban fuera de la pantalla. */
+  /* El mismo mínimo, en el otro eje, y por eso el fallo solo salía en móvil.
+     Un hijo de rejilla con min-width:auto no puede encoger por debajo del
+     min-content de su contenido, pero ese mínimo automático solo se aplica
+     si su overflow es visible. Aquí arriba hay overflow-y:auto, así que en
+     escritorio no pasaba nada; el bloque de móvil pone overflow:visible y lo
+     reactivaba. `grid-template-columns: 1fr` no salva: 1fr conserva el mismo
+     mínimo. Resultado medido: la sección se estiraba a 564px dentro de un
+     contenedor de 337 y los botones de pago quedaban fuera de la pantalla.
+     Lo que empujaba estaba en la lista de doctores, no en el <textarea>. */
   min-width: 0;
   overflow-y: auto;
 }
@@ -830,6 +855,16 @@ select {
   padding: 1.5rem;
   box-shadow: 0 4px 24px rgba(8, 32, 51, 0.05);
   transition: box-shadow 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Estas tarjetas suelen ser hijas de una rejilla, y un hijo de rejilla con
+     min-width:auto no encoge por debajo del min-content de su contenido. En
+     Perfil ese mínimo lo fijaba un <select> de hospitales: un desplegable se
+     dimensiona a su opción más larga —"Hospital Christus Muguerza Altagracia
+     · León, Guanajuato"— y `w-full` no lo anula a efectos del mínimo. Como
+     las tres tarjetas comparten una sola columna, esa arrastraba a las demás
+     y la pestaña entera medía 516px en una pantalla de 375.
+     En un elemento de bloque normal esto no cambia nada: ahí min-width:auto
+     ya vale 0. */
+  min-width: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {

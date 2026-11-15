@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, ElementType, ReactNode } from "react";
+import type { CSSProperties, ElementType, KeyboardEvent, ReactNode } from "react";
 import { EmailVerificationNotice, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { StripePaymentForm } from "@/components/platform/StripePaymentForm";
 import { MotionConfig, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
@@ -761,6 +761,13 @@ export default function VitaeonPlatform() {
     selectDoctor(doctor);
     setUrgentOpen(false);
     setBookingOpen(true);
+  }
+
+  /** La tecla de envío del teclado hace lo mismo que el botón. */
+  function enviarConEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    void submitAuth();
   }
 
   async function submitAuth() {
@@ -1552,10 +1559,10 @@ export default function VitaeonPlatform() {
                 )}
               </>
             )}
-            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
-            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" autoComplete={authMode === "login" ? "current-password" : "new-password"} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" enterKeyHint="go" onKeyDown={enviarConEnter} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+            <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Contraseña" autoComplete={authMode === "login" ? "current-password" : "new-password"} enterKeyHint="go" onKeyDown={enviarConEnter} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             {mfaChallengeToken && (
-              <input value={authForm.mfaCode} onChange={(event) => setAuthForm({ ...authForm, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="Código MFA" inputMode="numeric" autoComplete="one-time-code" className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
+              <input value={authForm.mfaCode} onChange={(event) => setAuthForm({ ...authForm, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="Código MFA" inputMode="numeric" autoComplete="one-time-code" enterKeyHint="go" onKeyDown={enviarConEnter} className="w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" />
             )}
             {error && <p className="rounded-3xl bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">{error}</p>}
             <button type="button" onClick={submitAuth} className="w-full rounded-full bg-[#071726] px-6 py-4 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] active:scale-[0.98]">{mfaChallengeToken ? "Verificar código" : authMode === "login" ? "Entrar" : "Registrarme"}</button>
