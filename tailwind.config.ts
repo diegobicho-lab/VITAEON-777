@@ -1,6 +1,10 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  future: {
+    // `hover:` pasa a compilarse dentro de @media (hover: hover).
+    hoverOnlyWhenSupported: true
+  },
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
