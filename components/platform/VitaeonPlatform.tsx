@@ -992,6 +992,17 @@ export default function VitaeonPlatform() {
       setTicket(nextTicket);
       setBookingStatus("success");
       track("booking_completed", { specialty: selectedDoctor.specialty, amountCents: payment?.amountCents ?? selectedDoctor.priceCents, paymentMethod: selectedPaymentMethod });
+      /**
+       * Cerrar el modal es lo que hace visible todo lo de abajo.
+       *
+       * El ticket y el formulario de pago se renderizan en la página, y el
+       * scroll de aquí abajo lleva hasta ellos — pero el modal se quedaba
+       * abierto encima, así que ese scroll movía algo que nadie veía. El
+       * paciente que elegía pagar en línea se quedaba con "la cita se creó,
+       * ve a tu panel" y nunca llegaba a la tarjeta, teniendo el formulario
+       * a un dedo de distancia detrás del modal.
+       */
+      setBookingOpen(false);
       window.setTimeout(() => {
         document.getElementById("appointment-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 120);
