@@ -2904,16 +2904,16 @@ function DoctorDetail(props: {
         <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500">Agendar consulta</p>
 
         <div>
-          <label className="text-sm font-semibold text-slate-700">Disponibilidad real</label>
-          <select value={props.slotId} onChange={(event) => { props.setSlotId(event.target.value); props.onSlotChange?.(); }} className="mt-2 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
+          <label htmlFor="cita-horario" className="text-sm font-semibold text-slate-700">Disponibilidad real</label>
+          <select id="cita-horario" value={props.slotId} onChange={(event) => { props.setSlotId(event.target.value); props.onSlotChange?.(); }} className="mt-2 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10">
             {doctor.availability.length === 0 && <option value="">Sin horarios publicados</option>}
             {doctor.availability.map((slot) => <option key={slot.id} value={slot.id}>{dateTime(slot.startsAt)}</option>)}
           </select>
         </div>
 
         <div className="mt-4">
-          <label className="text-sm font-semibold text-slate-700">Motivo de consulta</label>
-          <textarea value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-2 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
+          <label htmlFor="cita-motivo" className="text-sm font-semibold text-slate-700">Motivo de consulta</label>
+          <textarea id="cita-motivo" value={props.reason} onChange={(event) => props.setReason(event.target.value)} className="mt-2 min-h-28 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10" placeholder="Describe brevemente el motivo principal." />
         </div>
 
         {/* Política de devolución del médico: visible ANTES de elegir cómo pagar. */}
@@ -3080,10 +3080,11 @@ function DoctorReviews(props: {
       <div className="mt-5 rounded-3xl bg-slate-50 p-4">
         <p className="font-semibold text-deep">Dejar opinión</p>
         <p className="mt-1 text-sm leading-6 text-slate-600">Solo pacientes con cita completada pueden publicar reseñas.</p>
-        <select value={props.rating} onChange={(event) => props.setRating(Number(event.target.value))} className="mt-3 w-full rounded-2xl bg-white px-4 py-3 outline-none">
+        <label htmlFor="opinion-calificacion" className="mt-3 block text-sm font-semibold text-deep">Calificación</label>
+        <select id="opinion-calificacion" value={props.rating} onChange={(event) => props.setRating(Number(event.target.value))} className="mt-2 w-full rounded-2xl bg-white px-4 py-3 outline-none">
           {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} estrellas</option>)}
         </select>
-        <textarea value={props.comment} onChange={(event) => props.setComment(event.target.value)} placeholder="Escribe una opinión clara y respetuosa." className="mt-3 min-h-24 w-full rounded-2xl bg-white px-4 py-3 outline-none" />
+        <textarea aria-label="Tu opinión" value={props.comment} onChange={(event) => props.setComment(event.target.value)} placeholder="Escribe una opinión clara y respetuosa." className="mt-3 min-h-24 w-full rounded-2xl bg-white px-4 py-3 outline-none" />
         <button onClick={props.onSubmit} disabled={!props.canReview} className="mt-3 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
           Publicar opinión
         </button>

@@ -23,8 +23,8 @@ const planLabels = {
   amatista: "Amatista"
 };
 
-function recurringForPlan(_plan: keyof typeof planPrices) {
-  // Todos los planes tienen ciclo mensual.
+/** Todos los planes son mensuales; el ciclo no depende del plan. */
+function cicloMensual() {
   return { interval: "month" as const, interval_count: 1 };
 }
 
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
           price_data: {
             currency: "mxn",
             unit_amount: amountCents,
-            recurring: recurringForPlan(parsed.data.plan),
+            recurring: cicloMensual(),
             product_data: {
               name: `VITAEON Plan ${planLabels[parsed.data.plan]}`,
               description: descriptionForPlan(parsed.data.plan)
