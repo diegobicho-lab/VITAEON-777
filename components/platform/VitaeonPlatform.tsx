@@ -868,6 +868,39 @@ export default function VitaeonPlatform() {
     if (fresh) setUser(fresh);
   }
 
+  /**
+   * El correo se verifica en otra pestaña, y al volver aquí el aviso seguía
+   * puesto: el usuario se lee una sola vez al cargar. El paciente verificaba,
+   * regresaba y la reserva seguía bloqueada, sin más salida que recargar o
+   * pulsar "Reenviar enlace" —lo último que uno pulsa cuando ya verificó—,
+   * que era el único camino que releía la sesión.
+   *
+   * Al volver a la pestaña se relee. Solo mientras falte verificar, para no
+   * pedirlo en cada cambio de ventana.
+   */
+  useEffect(() => {
+    if (!user || user.emailVerifiedAt) return;
+    // visibilitychange y focus se disparan los dos al volver a la pestaña;
+    // este cerrojo evita pedir la sesión dos veces seguidas.
+    let pidiendo = false;
+    async function alVolver() {
+      if (document.visibilityState !== "visible" || pidiendo) return;
+      pidiendo = true;
+      try {
+        await refreshCurrentUser();
+      } finally {
+        pidiendo = false;
+      }
+    }
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("focus", alVolver);
+    return () => {
+      document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("focus", alVolver);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.emailVerifiedAt, user?.id]);
+
   async function logout() {
     await clientApi<{ signedOut: boolean }>("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null);
     setUser(null);
