@@ -1495,7 +1495,12 @@ export default function VitaeonPlatform() {
         <LegalLinks />
       </main>
 
-      {/* ── Botón flotante WhatsApp soporte ── */}
+      {/* ── Botones flotantes ──
+          Se ocultan mientras el formulario de tarjeta está montado: ahí se
+          quedaban encima de los campos —el de WhatsApp sobre el del celular—
+          y nada de lo que ofrecen importa más que terminar de pagar. */}
+      {!(clientSecret && stripePromise) && (
+      <>
       <a
         href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "5214771234567"}?text=${encodeURIComponent("Hola, tengo una pregunta sobre VITAEON.")}`}
         target="_blank"
@@ -1518,6 +1523,8 @@ export default function VitaeonPlatform() {
         <span className="hidden sm:inline">Cita pronta</span>
         <span className="sm:hidden">Cita</span>
       </button>
+      </>
+      )}
 
       {authOpen && (
         <Modal title={authAudience ? (authAudience === "DOCTOR" ? "Acceso médico" : "Acceso paciente") : "Elige cómo entrar"} onClose={() => setAuthOpen(false)}>
