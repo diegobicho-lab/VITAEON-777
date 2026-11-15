@@ -858,7 +858,7 @@ function PlanActivatingCard({ plan }: { plan: keyof typeof planActivatingConfig 
 /* ── Dashboard top navbar (mobile + desktop) ──────────────────── */
 function DashboardNavbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-silver/30 bg-white/90 px-4 py-3 backdrop-blur-md sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-silver/30 bg-white/90 pb-3 pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))] pt-[calc(0.75rem+env(safe-area-inset-top,0px))] backdrop-blur-md sm:pl-[calc(1.5rem+env(safe-area-inset-left,0px))] sm:pr-[calc(1.5rem+env(safe-area-inset-right,0px))]">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         <Link href="/" className="text-[15px] font-bold tracking-tight text-deep">VITAEON</Link>
         <Link
@@ -908,7 +908,7 @@ function LoadingState() {
 function PatientMobileNav() {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 px-safe pb-safe backdrop-blur-md md:hidden"
       aria-label="Navegación paciente"
     >
       <div className="grid grid-cols-3">
@@ -1560,7 +1560,7 @@ function DoctorMobileNav({
   ];
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 px-safe pb-safe backdrop-blur-md md:hidden"
       aria-label="Navegación principal"
     >
       <div className="grid grid-cols-5">
@@ -4372,7 +4372,7 @@ function AdminMobileNav({
   ];
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 pb-safe backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-silver/30 bg-white/95 px-safe pb-safe backdrop-blur-md md:hidden"
       aria-label="Navegación administración"
     >
       <div className="grid grid-cols-5">

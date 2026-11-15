@@ -143,7 +143,7 @@ export default async function DoctorSeoPage({ params }: PageProps) {
 
         <section className="mx-auto mt-16 grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           {/* Columna izquierda — foto y galería */}
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             <div className="rounded-[2rem] border border-silver bg-white p-5 shadow-premium">
               <Image
                 src={doctor.imageUrl ?? "/doctor-diagnosis.jpg"}
@@ -215,7 +215,7 @@ export default async function DoctorSeoPage({ params }: PageProps) {
           </div>
 
           {/* Columna derecha — info y disponibilidad */}
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             <div className="rounded-[2rem] border border-silver bg-white p-8 shadow-premium">
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-medical">Perfil médico público</p>
               <h1 className="mt-4 text-4xl font-semibold leading-tight text-[#071726] sm:text-5xl">

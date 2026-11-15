@@ -773,6 +773,12 @@ select {
   max-height: calc(100vh - 3rem);
   display: flex;
   flex-direction: column;
+  /* El panel es hijo de una rejilla (`grid place-items-center`), y los hijos
+     de una rejilla llevan min-width:auto: no pueden encoger por debajo del
+     ancho mínimo de su contenido. Un <textarea> tiene ancho intrínseco propio
+     —el del atributo cols— que `w-full` no anula a efectos de ese mínimo, así
+     que estiraba el panel a 610px dentro de una pantalla de 375. */
+  min-width: 0;
 }
 
 .modal-header { flex: 0 0 auto; }
@@ -882,6 +888,11 @@ body { overflow-x: hidden; }
 /* ─── Safe area utility ───────────────────────────────────────── */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .mb-safe { margin-bottom: env(safe-area-inset-bottom, 0px); }
+/* En horizontal la muesca se come un lateral entero. */
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
 
 /* ─── Scroll fade — horizontal scroll indicators ─────────────── */
 .scroll-fade-x {

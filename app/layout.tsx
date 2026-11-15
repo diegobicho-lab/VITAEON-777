@@ -74,7 +74,15 @@ export const viewport: Viewport = {
   themeColor: "#071726",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5
+  maximumScale: 5,
+  /**
+   * La página pinta de borde a borde, por debajo de la muesca y del
+   * indicador de inicio. Sin esto, env(safe-area-inset-*) devuelve 0px y
+   * las seis declaraciones que ya existían en el código no hacían nada.
+   * A cambio, todo elemento fijo pegado a un borde tiene que apartar su
+   * contenido por su cuenta — ver las cabeceras y las barras inferiores.
+   */
+  viewportFit: "cover"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

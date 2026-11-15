@@ -1724,7 +1724,7 @@ function Header({ user, onLogin, onLogout }: { user: CurrentUser | null; onLogin
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 px-4 py-3 sm:px-5 sm:py-4">
+    <header className="fixed inset-x-0 top-0 z-40 pb-3 pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))] pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pb-4 sm:pl-[calc(1.25rem+env(safe-area-inset-left,0px))] sm:pr-[calc(1.25rem+env(safe-area-inset-right,0px))] sm:pt-[calc(1rem+env(safe-area-inset-top,0px))]">
       <nav className="glass mx-auto flex max-w-7xl items-center justify-between rounded-full px-5 py-3 shadow-glass sm:px-7 sm:py-4">
         <Link href="/" className="flex select-none items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071726]">
@@ -2491,7 +2491,6 @@ function BookingFlow(props: {
   bookingError?: { message: string; hint?: string } | null;
   onSlotChange?: () => void;
 }) {
-  const selectedSpecialtyName = props.specialties.find((specialty) => specialty.id === props.specialtyId)?.name ?? "Todas las especialidades";
 
   return (
     <div className="booking-flow grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -2507,11 +2506,6 @@ function BookingFlow(props: {
             <option key={specialty.id} value={specialty.id}>{specialty.name}</option>
           ))}
         </select>
-        <div className="mt-5 flex items-center gap-3 rounded-3xl bg-white p-4 text-slate-600 shadow-sm">
-          <Stethoscope className="h-5 w-5 text-medical" />
-          <span>{selectedSpecialtyName}</span>
-        </div>
-
         <div className="mt-6">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-medical">Doctores disponibles</p>
           <div className="booking-doctor-list mt-4 grid gap-3">
@@ -2540,7 +2534,9 @@ function BookingFlow(props: {
                   <MedalShield medal={doctor.medal} compact />
                 </div>
                 <p className="mt-3 text-xs font-semibold text-slate-500">
-                  {doctor.availability.length} horarios visibles para paciente
+                  {doctor.availability.length === 0
+                    ? "Sin horarios disponibles"
+                    : `${doctor.availability.length} ${doctor.availability.length === 1 ? "horario disponible" : "horarios disponibles"}`}
                 </p>
               </button>
             ))}
