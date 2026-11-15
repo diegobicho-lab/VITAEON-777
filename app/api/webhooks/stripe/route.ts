@@ -521,6 +521,27 @@ export async function POST(request: Request) {
         where: { userId: payment.userId },
         data: planMedal && status === SubscriptionStatus.ACTIVE ? { subscriptionStatus: status, medal: planMedal } : { subscriptionStatus: status }
       });
+
+      /**
+       * Este es el único punto del código que puede retirarle a un médico las
+       * funciones que paga, y hasta ahora no dejaba rastro: los otros ocho
+       * caminos del webhook sí auditan. Cuando una cuenta aparezca en
+       * CANCELLED hay que poder decir cuándo y por qué evento de Stripe, sin
+       * tener que deducirlo.
+       */
+      await auditLog({
+        action: "STRIPE_WEBHOOK_SUBSCRIPTION_STATUS",
+        entityType: "Doctor",
+        metadata: {
+          stripeEvent: event.id,
+          stripeEventType: event.type,
+          stripeSubscriptionId: subscription.id,
+          stripeSubscriptionStatus: subscription.status,
+          nuevoEstado: status,
+          plan: planMedal ?? undefined,
+          userId: payment.userId
+        }
+      });
     } else {
       const marketplacePayment = await prisma.marketplaceSubscriptionPayment.findFirst({
         where: {

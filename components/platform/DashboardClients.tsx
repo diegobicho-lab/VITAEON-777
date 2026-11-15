@@ -1716,9 +1716,20 @@ export function DoctorDashboardClient() {
   } | null>(null);
   const [connectStatusState, setConnectStatusState] = useState<"idle" | "checking" | "done" | "error">("idle");
   const [connectStatusMessage, setConnectStatusMessage] = useState("");
-  const assistantEnabled = medal === "amatista";
-  const collaborationEnabled = medal === "amatista";
-  const amatistaToolsEnabled = medal === "amatista" && profile?.subscriptionStatus === "ACTIVE";
+  /**
+   * El plan no basta: el servidor exige además que la suscripción esté activa.
+   *
+   * Con Amatista y la suscripción cancelada, el panel ofrecía el asistente y la
+   * colaboración como disponibles y el servidor respondía 402 al pulsar. Ahora
+   * las tres puertas preguntan lo mismo que /api/doctor-assistant,
+   * /api/doctor-conversations y /api/medications/search.
+   */
+  const subscriptionActive = profile?.subscriptionStatus === "ACTIVE";
+  /** "plan" = tu plan no lo incluye. "inactiva" = lo incluye, pero no está al corriente. */
+  const motivoBloqueo: "plan" | "inactiva" = medal === "amatista" ? "inactiva" : "plan";
+  const assistantEnabled = medal === "amatista" && subscriptionActive;
+  const collaborationEnabled = medal === "amatista" && subscriptionActive;
+  const amatistaToolsEnabled = medal === "amatista" && subscriptionActive;
   // Historias clínicas y recetario disponibles para todos los planes salvo Obsidiana
   const clinicalToolsEnabled = medal !== "obsidiana";
   /*
@@ -2687,7 +2698,12 @@ export function DoctorDashboardClient() {
   async function askAssistant() {
     setFeedback(null);
     if (!assistantEnabled) {
-      setFeedback({ tone: "info", text: "El asistente de agenda está disponible al actualizar al plan Amatista." });
+      setFeedback({
+        tone: "info",
+        text: motivoBloqueo === "inactiva"
+          ? "Tu plan Amatista incluye el asistente de agenda, pero tu suscripción no está activa. Reactívala en Negocio."
+          : "El asistente de agenda está disponible al actualizar al plan Amatista."
+      });
       return;
     }
     const response = await clientApi<AssistantResponse>("/api/doctor-assistant", {
@@ -2700,7 +2716,12 @@ export function DoctorDashboardClient() {
   async function searchMedicationReference() {
     setFeedback(null);
     if (!assistantEnabled) {
-      setFeedback({ tone: "info", text: "La búsqueda de medicamentos está disponible en el plan Amatista." });
+      setFeedback({
+        tone: "info",
+        text: motivoBloqueo === "inactiva"
+          ? "Tu plan Amatista incluye la búsqueda de medicamentos, pero tu suscripción no está activa. Reactívala en Negocio."
+          : "La búsqueda de medicamentos está disponible en el plan Amatista."
+      });
       return;
     }
     const response = await clientApi<MedicationResult>("/api/medications/search", {
@@ -4306,8 +4327,8 @@ export function DoctorDashboardClient() {
                 />
               )}
 
-              <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} secretary={secretarySummary} notifications={notifications} />
-              <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} />
+              <DoctorAssistantPanel prompt={assistantPrompt} setPrompt={setAssistantPrompt} response={assistantResponse} onAsk={askAssistant} locked={!assistantEnabled} lockReason={motivoBloqueo} secretary={secretarySummary} notifications={notifications} />
+              <MedicationSearchPanel query={medicationQuery} setQuery={setMedicationQuery} result={medicationResult} onSearch={searchMedicationReference} locked={!assistantEnabled} lockReason={motivoBloqueo} />
               <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible iniciar Amatista." }))} />
             </div>
           )}
@@ -6003,6 +6024,7 @@ function DoctorAssistantPanel({
   response,
   onAsk,
   locked,
+  lockReason,
   secretary,
   notifications
 }: {
@@ -6011,6 +6033,7 @@ function DoctorAssistantPanel({
   response: AssistantResponse | null;
   onAsk: () => void;
   locked: boolean;
+  lockReason: "plan" | "inactiva";
   secretary: SecretarySummary | null;
   notifications: NotificationItem[];
 }) {
@@ -6065,7 +6088,9 @@ function DoctorAssistantPanel({
       />
       {locked && (
         <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
-          Esta asistencia de agenda está incluida en el plan Amatista.
+          {lockReason === "inactiva"
+            ? "Tu plan Amatista incluye esta asistencia de agenda, pero tu suscripción no está activa. Reactívala desde Negocio."
+            : "Esta asistencia de agenda está incluida en el plan Amatista."}
         </p>
       )}
       <button onClick={onAsk} className="mt-4 rounded-full bg-black px-5 py-3 font-semibold text-white">Pedir apoyo de agenda</button>
@@ -6090,13 +6115,15 @@ function MedicationSearchPanel({
   setQuery,
   result,
   onSearch,
-  locked
+  locked,
+  lockReason
 }: {
   query: string;
   setQuery: (value: string) => void;
   result: MedicationResult | null;
   onSearch: () => void;
   locked: boolean;
+  lockReason: "plan" | "inactiva";
 }) {
   return (
     <section className="dashboard-card rounded-[1.75rem] border-silver/70">
@@ -6119,7 +6146,9 @@ function MedicationSearchPanel({
       </div>
       {locked && (
         <p className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-700">
-          La búsqueda avanzada de medicamentos está incluida en el plan Amatista.
+          {lockReason === "inactiva"
+            ? "Tu plan Amatista incluye la búsqueda avanzada de medicamentos, pero tu suscripción no está activa. Reactívala desde Negocio."
+            : "La búsqueda avanzada de medicamentos está incluida en el plan Amatista."}
         </p>
       )}
       {result && result.status === "integration_pending" && (
