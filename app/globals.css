@@ -796,6 +796,12 @@ select {
 
 .booking-flow > section {
   min-height: 0;
+  /* El mismo mínimo, en el otro eje. `grid-template-columns: 1fr` no basta:
+     1fr conserva un mínimo automático de min-content, y aquí ese mínimo lo
+     fija un <textarea>, que trae ancho intrínseco propio. Sin esto la
+     sección medía 564px dentro de una pantalla de 375 y los botones de pago
+     quedaban fuera de la pantalla. */
+  min-width: 0;
   overflow-y: auto;
 }
 
