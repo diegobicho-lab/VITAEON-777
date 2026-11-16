@@ -4332,9 +4332,15 @@ export function DoctorDashboardClient() {
               <MedicalChatPanel conversations={conversations} doctors={doctorOptions} recipientDoctorId={recipientDoctorId} setRecipientDoctorId={setRecipientDoctorId} conversationTitle={conversationTitle} setConversationTitle={setConversationTitle} patientAlias={patientAlias} setPatientAlias={setPatientAlias} clinicalSummary={clinicalSummary} setClinicalSummary={setClinicalSummary} chatMessage={chatMessage} setChatMessage={setChatMessage} onCreate={createConversation} onSend={sendConversationMessage} locked={!collaborationEnabled} onUpgrade={() => checkoutPlan("amatista").catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible iniciar Amatista." }))} />
             </div>
           )}
+          {/* Mismas clases que el modal de agendar, que es el patrón probado:
+              en móvil .modal-shell se ancla abajo como hoja inferior. Con
+              place-items-center el panel caía fuera de la pantalla en iOS,
+              porque allí un fixed inset-0 se dimensiona al viewport grande
+              —el de la barra de URL oculta— y el centro queda por debajo de
+              lo que se ve. Había que desplazarse a ciegas para encontrarlo. */}
           {cancellationModal && (
-            <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-deep/35 px-4 py-6 backdrop-blur-sm">
-              <div className="my-auto w-full min-w-0 max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <div className="modal-shell fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-deep/35 px-4 py-6 backdrop-blur-sm sm:px-6">
+              <div className="modal-panel w-full min-w-0 max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-600">Cancelar esta cita</p>
