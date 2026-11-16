@@ -3351,11 +3351,11 @@ export function DoctorDashboardClient() {
                 <h2 className="mt-3 text-xl font-semibold text-deep sm:mt-4 sm:text-3xl">{profile?.fullName}</h2>
                 <p className="mt-1 text-sm text-slate-600 sm:mt-2">{profile?.specialty.name} · {profile?.hospital.name}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <div className="relative flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <Badge value={profile?.verificationStatus ?? "IN_REVIEW"} />
                 <PlanBadge medal={medal} />
                 <Badge value={profile?.subscriptionStatus ?? "PENDING"} />
-                <div className="relative">
+                <div>
                   <button
                     type="button"
                     onClick={() => setAlertasAbiertas((abierto) => !abierto)}
@@ -3380,7 +3380,7 @@ export function DoctorDashboardClient() {
                         onClick={() => setAlertasAbiertas(false)}
                         className="fixed inset-0 z-30 cursor-default"
                       />
-                      <div className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.25rem] border border-silver/60 bg-white shadow-premium">
+                      <div className="absolute right-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.25rem] border border-silver/60 bg-white shadow-premium">
                         <div className="flex items-center justify-between gap-3 border-b border-silver/40 px-4 py-3">
                           <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Alertas</p>
                           {alertasSinLeer > 0 && (
@@ -4333,11 +4333,11 @@ export function DoctorDashboardClient() {
             </div>
           )}
           {cancellationModal && (
-            <div className="fixed inset-0 z-50 grid place-items-center bg-deep/35 px-4 backdrop-blur-sm">
-              <div className="w-full max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-deep/35 px-4 py-6 backdrop-blur-sm">
+              <div className="my-auto w-full min-w-0 max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.22em] text-medical">Solicitud de cancelación</p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-600">Cancelar esta cita</p>
                     <h3 className="mt-2 text-2xl font-semibold text-deep">{cancellationModal.patient.user.name}</h3>
                     <p className="mt-1 text-sm text-slate-600">{dateTime(cancellationModal.availabilitySlot.startsAt)} · {cancellationModal.doctor.specialty.name}</p>
                   </div>
@@ -4346,18 +4346,18 @@ export function DoctorDashboardClient() {
                 <textarea
                   value={cancellationReason}
                   onChange={(event) => setCancellationReason(event.target.value)}
-                  placeholder="Motivo de cancelación para revisión administrativa"
+                  placeholder="Motivo de la cancelación (lo verá el paciente)"
                   className="mt-5 min-h-32 w-full rounded-2xl border border-silver/60 bg-slate-50/80 px-5 py-3.5 text-deep outline-none transition focus:border-medical/40 focus:bg-white focus:ring-2 focus:ring-medical/10"
                 />
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Esta acción crea una solicitud pendiente. Primero se intentará reagendar; una devolución queda como segunda opción de revisión, sin mezclar pagos de suscripciones.
+                <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+                  La cita se cancela ahora, no queda en revisión. El horario vuelve a tu agenda, se avisa al paciente y, si ya había pagado en línea, la devolución se procesa sola. Esto no se puede deshacer.
                 </p>
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <button onClick={() => submitCancellationRequest().catch((error) => setFeedback({ tone: "error", text: error instanceof Error ? error.message : "No fue posible enviar la solicitud." }))} className="w-full rounded-full bg-[#071726] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d2638] sm:w-auto">
-                    Enviar solicitud
+                    Sí, cancelar la cita
                   </button>
                   <button onClick={() => setCancellationModal(null)} className="w-full rounded-full border border-silver bg-white px-5 py-3 font-semibold text-deep sm:w-auto">
-                    Cancelar
+                    Volver
                   </button>
                 </div>
               </div>
