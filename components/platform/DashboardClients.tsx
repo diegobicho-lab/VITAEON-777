@@ -4,6 +4,7 @@ import { BadgeCheck, BarChart2, Bell, Brain, Calendar, CalendarOff, CheckCircle2
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { NoRefundConfirmation, RefundPolicyNotice } from "@/components/platform/BookingNotices";
 import { CLINIC_TIME_ZONE, clinicDayKey, formatClinicDateTime, formatClinicTime } from "@/lib/clinic-time";
@@ -1646,6 +1647,9 @@ export function DoctorDashboardClient() {
   const [medicationQuery, setMedicationQuery] = useState("");
   const [medicationResult, setMedicationResult] = useState<MedicationResult | null>(null);
   const [cancellationModal, setCancellationModal] = useState<Appointment | null>(null);
+  /** El portal necesita document, que no existe al renderizar en el servidor. */
+  const [montado, setMontado] = useState(false);
+  useEffect(() => { setMontado(true); }, []);
   const [cancellationReason, setCancellationReason] = useState("");
   const [activeAmatistaTool, setActiveAmatistaTool] = useState<"historias" | "recetario" | null>(null);
   const [clinicalHistories, setClinicalHistories] = useState<ClinicalHistoryRecord[]>([]);
@@ -4338,7 +4342,7 @@ export function DoctorDashboardClient() {
               porque allí un fixed inset-0 se dimensiona al viewport grande
               —el de la barra de URL oculta— y el centro queda por debajo de
               lo que se ve. Había que desplazarse a ciegas para encontrarlo. */}
-          {cancellationModal && (
+          {cancellationModal && montado && createPortal(
             <div className="fixed inset-0 z-50">
               {/* El velo va en su propia capa, hermana del panel y no padre.
                   Safari en iOS aplica el backdrop-filter también a los hijos
@@ -4375,7 +4379,8 @@ export function DoctorDashboardClient() {
                 </div>
               </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}
