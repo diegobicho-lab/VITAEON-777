@@ -4339,8 +4339,15 @@ export function DoctorDashboardClient() {
               —el de la barra de URL oculta— y el centro queda por debajo de
               lo que se ve. Había que desplazarse a ciegas para encontrarlo. */}
           {cancellationModal && (
-            <div className="modal-shell fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-deep/35 px-4 py-6 backdrop-blur-sm sm:px-6">
-              <div className="modal-panel w-full min-w-0 max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-premium">
+            <div className="fixed inset-0 z-50">
+              {/* El velo va en su propia capa, hermana del panel y no padre.
+                  Safari en iOS aplica el backdrop-filter también a los hijos
+                  del elemento que lo lleva: el panel salía translúcido y se
+                  leía la página a través de él aunque su fondo fuera blanco
+                  sólido. Siendo hermanos, el desenfoque no puede alcanzarlo. */}
+              <div className="modal-shell absolute inset-0 bg-deep/45 backdrop-blur-sm" />
+              <div className="absolute inset-0 grid place-items-center overflow-y-auto px-4 py-6 sm:px-6 [align-items:end] sm:[align-items:center]">
+              <div className="modal-panel relative w-full min-w-0 max-w-xl rounded-[2rem] border border-silver bg-white p-6 shadow-[0_24px_80px_rgba(7,23,38,0.35)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-600">Cancelar esta cita</p>
@@ -4366,6 +4373,7 @@ export function DoctorDashboardClient() {
                     Volver
                   </button>
                 </div>
+              </div>
               </div>
             </div>
           )}
